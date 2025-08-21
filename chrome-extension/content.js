@@ -109,7 +109,7 @@
                 </div>
                 <div class="threadly-action-buttons">
                     <button id="threadly-assign-btn" class="threadly-action-btn" disabled>
-                        Assign to Collection
+                        ASSIGN TO
                     </button>
                     <button id="threadly-unstar-btn" class="threadly-action-btn" disabled>
                         Unstar
@@ -162,7 +162,7 @@
         container = document.createElement('div');
         container.id = 'threadly-container';
         container.innerHTML = `
-            <div id="threadly-panel" class="threadly-edge-panel">
+            <div id="threadly-panel" class="threadly-edge-panel" data-filter="user">
                 <div class="threadly-tint-layer"></div>
                 <div class="threadly-tab-content">
                     <span class="threadly-brand">threadly</span>
@@ -174,7 +174,28 @@
                 <div class="threadly-content">
                     <div class="threadly-search-container">
                         <div class="threadly-search-row">
-                            <input type="text" id="threadly-search-input" placeholder="Search your prompts...">
+                            <input type="text" id="threadly-search-input" placeholder="Search saved items...">
+                            <div class="threadly-saved-pill" id="threadly-saved-pill" title="Manage saved items">
+                                <div class="item-left">
+                                    <svg class="bookmark-icon" viewBox="0 0 24 24">
+                                        <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+                                    </svg>
+                                    <span class="item-text">Saved</span>
+                                </div>
+                                <svg class="chevron-icon" viewBox="0 0 24 24">
+                                    <polyline points="9,18 15,12 9,6"/>
+                                </svg>
+                            </div>
+                            <button id="threadly-select-btn" class="threadly-select-btn" title="Enable selection mode">
+                                <span class="threadly-select-icon">
+                                    <span class="xbox-box" aria-hidden="true">
+                                        <span class="xbox-side top"></span>
+                                        <span class="xbox-side right"></span>
+                                        <span class="xbox-side bottom"></span>
+                                        <span class="xbox-side left"></span>
+                                    </span>
+                                </span>
+                            </button>
                         </div>
                     </div>
                     <div id="threadly-message-list">
@@ -216,14 +237,59 @@
         toggleSegment.classList.add('user');
         messageFilterState = 'user';
         
-
+        // Set initial search row state
+        const searchRow = document.querySelector('.threadly-search-row');
+        if (searchRow) {
+            searchRow.classList.remove('fav-mode');
+        }
         
         // Platform-specific positioning adjustments
         adjustUIForPlatform();
         
         addEventListeners();
         
+        // Initialize metaball renderer
+        initializeMetaballRenderer();
+        
+        // Add resize handler for metaball renderer
+        window.addEventListener('resize', () => {
+            if (window.metaBallRenderer) {
+                window.metaBallRenderer.resize();
+            }
+        });
+        
         console.log('Threadly: UI injected successfully');
+    }
+
+    // --- Metaball Renderer Initialization --- //
+    function initializeMetaballRenderer() {
+        // Create metaball canvas
+        const metaballCanvas = document.createElement('canvas');
+        metaballCanvas.className = 'metaball-canvas';
+        metaballCanvas.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        `;
+        
+        // Add canvas to search container
+        const searchContainer = document.querySelector('.threadly-search-container');
+        if (searchContainer) {
+            searchContainer.appendChild(metaballCanvas);
+            searchContainer.style.position = 'relative';
+        }
+        
+        // Initialize metaball renderer
+        if (typeof CleanMetaBallRenderer !== 'undefined') {
+            window.metaBallRenderer = new CleanMetaBallRenderer(metaballCanvas);
+            console.log('Threadly: Metaball renderer initialized');
+        } else {
+            console.log('Threadly: Metaball renderer not available, skipping');
+        }
     }
 
     // --- Glass Filter Injection --- //
@@ -363,6 +429,27 @@
         // Add event listeners for contextual action buttons
         document.getElementById('threadly-assign-btn').addEventListener('click', showAssignToCollectionPopover);
         document.getElementById('threadly-unstar-btn').addEventListener('click', unstarMessages);
+        
+        // Add event listener for select button
+        const selectBtn = document.getElementById('threadly-select-btn');
+        if (selectBtn) {
+            selectBtn.addEventListener('click', toggleSelectionMode);
+        }
+        
+        // Add event listener for saved pill
+        const savedPill = document.getElementById('threadly-saved-pill');
+        if (savedPill) {
+            savedPill.addEventListener('click', showCollectionsManager);
+        }
+        
+        // Add fluid search bar behavior for FAV mode
+        if (searchInput) {
+            searchInput.addEventListener('click', handleSearchClick);
+            searchInput.addEventListener('blur', handleSearchBlur);
+        }
+        
+        // Add escape key handler for search
+        document.addEventListener('keydown', handleSearchKeydown);
         
         document.addEventListener('click', handleClickOutside);
     }
@@ -735,6 +822,8 @@
             const item = document.createElement('div');
             item.className = 'threadly-message-item';
             item.dataset.role = msg.role;
+            item.dataset.messageId = `msg_${index}`;
+            
             if (msg.isFavorited) {
                 item.classList.add('favorited');
                 item.setAttribute('data-starred', 'true');
@@ -763,16 +852,21 @@
                             ${platformIndicator}
                         </div>
                     </div>
-                    <button class="threadly-star-btn ${msg.isFavorited ? 'starred' : ''}" title="${msg.isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
-                        <span class="threadly-star-icon">${msg.isFavorited ? '★' : '☆'}</span>
-                    </button>
+                    <div class="threadly-message-right">
+                        ${msg.isFavorited ? `
+                            <div class="threadly-message-checkbox-container" style="display: none;">
+                                <input type="checkbox" class="threadly-message-checkbox" id="checkbox_${index}" data-message-id="msg_${index}">
+                            </div>
+                        ` : ''}
+                        <button class="threadly-star-btn ${msg.isFavorited ? 'starred' : ''}" title="${msg.isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
+                            <span class="threadly-star-icon">${msg.isFavorited ? '★' : '☆'}</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="threadly-message-text">${escapeHTML(msg.content)}</div>
                 ${msg.collectionId ? `<div class="threadly-collection-tag">${getCollectionName(msg.collectionId)}</div>` : ''}
                 ${isLongMessage ? '<div class="threadly-read-more">See More</div>' : ''}
             `;
-
-
 
             // Add star button event listener
             const starBtn = item.querySelector('.threadly-star-btn');
@@ -904,6 +998,8 @@
             const item = document.createElement('div');
             item.className = 'threadly-message-item favorited';
             item.dataset.role = fav.role;
+            item.dataset.messageId = `global_fav_${index}`;
+            item.setAttribute('data-starred', 'true');
             
             // Check if message is longer than 10 words
             const wordCount = fav.content.trim().split(/\s+/).length;
@@ -923,9 +1019,14 @@
                             ${platformIndicator}
                         </div>
                     </div>
-                    <button class="threadly-star-btn starred" title="Remove from favorites">
-                        <span class="threadly-star-icon">★</span>
-                    </button>
+                    <div class="threadly-message-right">
+                        <div class="threadly-message-checkbox-container" style="display: none;">
+                            <input type="checkbox" class="threadly-message-checkbox" id="global_checkbox_${index}" data-message-id="global_fav_${index}">
+                        </div>
+                        <button class="threadly-star-btn starred" title="Remove from favorites">
+                            <span class="threadly-star-icon">★</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="threadly-message-text">${escapeHTML(fav.content)}</div>
                 ${isLongMessage ? '<div class="threadly-read-more">See More</div>' : ''}
@@ -990,6 +1091,29 @@
         // Update the toggle segment position
         toggleSegment.classList.remove('user', 'assistant', 'fav', 'collection');
         toggleSegment.classList.add(state === 'user' ? 'user' : state === 'assistant' ? 'assistant' : state === 'favorites' ? 'fav' : 'collection');
+        
+        // Update panel data-filter attribute for CSS targeting
+        if (panel) {
+            panel.setAttribute('data-filter', state);
+        }
+        
+        // Update search row classes for FAV mode
+        const searchRow = document.querySelector('.threadly-search-row');
+        if (searchRow) {
+            if (state === 'favorites') {
+                searchRow.classList.add('fav-mode');
+                // Trigger metaball animation for FAV mode (separated state)
+                if (window.metaBallRenderer) {
+                    window.metaBallRenderer.setState(2);
+                }
+            } else {
+                searchRow.classList.remove('fav-mode');
+                // Trigger metaball animation for normal mode (combined state)
+                if (window.metaBallRenderer) {
+                    window.metaBallRenderer.setState(1);
+                }
+            }
+        }
         
         await filterMessages(searchInput.value);
         console.log('Threadly: Filter state changed to:', state);
@@ -1116,6 +1240,45 @@
         return newCollection;
     }
 
+    async function deleteCollection(collectionId) {
+        try {
+            // Find the collection
+            const collectionIndex = collections.findIndex(c => c.id === collectionId);
+            if (collectionIndex === -1) {
+                console.error('Threadly: Collection not found:', collectionId);
+                return;
+            }
+            
+            const collectionName = collections[collectionIndex].name;
+            
+            // Remove collection from collections array
+            collections.splice(collectionIndex, 1);
+            await saveCollectionsToStorage(collections);
+            
+            // Remove collection ID from all messages that were assigned to it
+            allMessages.forEach(message => {
+                if (message.collectionId === collectionId) {
+                    message.collectionId = null;
+                }
+            });
+            
+            // Save updated messages
+            await saveMessagesToStorage(allMessages);
+            
+            // Update global favorites if needed
+            await updateGlobalFavorites();
+            
+            console.log('Threadly: Deleted collection:', collectionName);
+            
+            // Show confirmation toast
+            showToast(`Deleted saved folder '${collectionName}'`);
+            
+        } catch (error) {
+            console.error('Threadly: Error deleting collection:', error);
+            showToast('Error deleting saved folder');
+        }
+    }
+
     async function assignToCollection(messageIds, collectionId) {
         try {
             // Update messages with collection ID
@@ -1148,14 +1311,26 @@
         try {
             // Unstar selected messages
             for (const messageId of selectedMessageIds) {
-                await unstarGlobalFavorite(messageId);
+                // Find the message in allMessages
+                const messageIndex = allMessages.findIndex(m => m.id === messageId || `msg_${allMessages.indexOf(m)}` === messageId);
+                
+                if (messageIndex !== -1) {
+                    allMessages[messageIndex].isFavorited = false;
+                    allMessages[messageIndex].collectionId = null;
+                }
             }
+            
+            // Save updated messages
+            await saveMessagesToStorage(allMessages);
+            
+            // Update global favorites
+            await updateGlobalFavorites();
             
             // Exit selection mode
             exitSelectionMode();
             
             // Refresh the display
-            await filterMessages(document.getElementById('threadly-search-input').value);
+            await filterMessages(searchInput.value);
             
             // Show success toast
             showToast(`Unstarred ${selectedMessageIds.length} message(s)`);
@@ -1358,6 +1533,231 @@
         }
     }
 
+    // --- CleanMetaBallRenderer Class --- //
+    class CleanMetaBallRenderer {
+        constructor(canvas) {
+            this.canvas = canvas;
+            this.gl = canvas.getContext('webgl2');
+            this.currentState = 1;
+            this.targetBalls = [];
+            this.currentBalls = [];
+            this.animationTime = 0;
+            this.transitionProgress = 0;
+            this.targetTransition = 0;
+            
+            if (!this.gl) {
+                console.error('WebGL2 not supported');
+                return;
+            }
+            
+            this.initShaders();
+            this.initGeometry();
+            this.setupUniforms();
+            this.resize();
+            this.setState1Balls();
+            this.animate();
+        }
+        
+        initShaders() {
+            const vertexShader = this.createShader(this.gl.VERTEX_SHADER, `#version 300 es
+                precision highp float;
+                layout(location = 0) in vec2 position;
+                void main() {
+                    gl_Position = vec4(position, 0.0, 1.0);
+                }
+            `);
+            
+            const fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, `#version 300 es
+                precision highp float;
+                uniform vec3 iResolution;
+                uniform float iTime;
+                uniform float iTransition;
+                out vec4 outColor;
+                
+                float sdRoundedBox(vec2 p, vec2 b, float r) {
+                    vec2 q = abs(p) - b + r;
+                    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+                }
+                
+                float sdCircle(vec2 p, float r) {
+                    return length(p) - r;
+                }
+                
+                float smoothUnion(float d1, float d2, float k) {
+                    float h = clamp(0.5 + 0.5 * (d2 - d1) / k, 0.0, 1.0);
+                    return mix(d2, d1, h) - k * h * (1.0 - h);
+                }
+                
+                void main() {
+                    vec2 fc = gl_FragCoord.xy;
+                    vec2 coord = (fc - iResolution.xy * 0.5) / iResolution.y;
+                    coord.y *= -1.0; // Flip Y to match UI
+                    
+                    // Search bar positions and sizes
+                    vec2 searchPos1 = vec2(0.0, 0.0);
+                    vec2 searchSize1 = vec2(0.38, 0.08);
+                    
+                    vec2 searchPos2 = vec2(-0.05, 0.0);
+                    vec2 searchSize2 = vec2(0.32, 0.08);
+                    
+                    vec2 closePos2 = vec2(0.45, 0.0);
+                    float closeRadius = 0.06;
+                    
+                    // Interpolate positions and sizes
+                    vec2 searchPos = mix(searchPos1, searchPos2, iTransition);
+                    vec2 searchSize = mix(searchSize1, searchSize2, iTransition);
+                    
+                    // Create shapes
+                    float searchBar = sdRoundedBox(coord - searchPos, searchSize, 0.08);
+                    float closeButton = sdCircle(coord - closePos2, closeRadius);
+                    
+                    // Combine shapes based on transition
+                    float shape;
+                    if (iTransition < 0.5) {
+                        // Morphing phase - smooth union
+                        float t = iTransition * 2.0;
+                        float smoothK = mix(0.15, 0.02, t);
+                        shape = smoothUnion(searchBar, closeButton, smoothK);
+                    } else {
+                        // Separation phase - individual shapes
+                        float t = (iTransition - 0.5) * 2.0;
+                        float gap = mix(0.0, 0.08, t);
+                        
+                        // Adjust close button position to create gap
+                        vec2 adjustedClosePos = closePos2 + vec2(gap, 0.0);
+                        float adjustedCloseButton = sdCircle(coord - adjustedClosePos, closeRadius);
+                        
+                        shape = min(searchBar, adjustedCloseButton);
+                    }
+                    
+                    // Create smooth edges
+                    float alpha = 1.0 - smoothstep(-0.005, 0.005, shape);
+                    
+                    // Color based on position and state
+                    vec3 searchColor = vec3(1.0, 1.0, 1.0);
+                    vec3 closeColor = vec3(1.0, 0.42, 0.42);
+                    
+                    // Determine which part we're coloring
+                    float isCloseButton = step(0.0, coord.x - 0.25) * step(iTransition, 0.8);
+                    vec3 finalColor = mix(searchColor, closeColor, isCloseButton);
+                    
+                    outColor = vec4(finalColor, alpha * 0.9);
+                }
+            `);
+            
+            this.program = this.createProgram(vertexShader, fragmentShader);
+            this.gl.useProgram(this.program);
+        }
+        
+        createShader(type, source) {
+            const shader = this.gl.createShader(type);
+            this.gl.shaderSource(shader, source);
+            this.gl.compileShader(shader);
+            
+            if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+                console.error('Shader compilation error:', this.gl.getShaderInfoLog(shader));
+                return null;
+            }
+            return shader;
+        }
+        
+        createProgram(vertexShader, fragmentShader) {
+            const program = this.gl.createProgram();
+            this.gl.attachShader(program, vertexShader);
+            this.gl.attachShader(program, fragmentShader);
+            this.gl.linkProgram(program);
+            
+            if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+                console.error('Program linking error:', this.gl.getProgramInfoLog(program));
+                return null;
+            }
+            return program;
+        }
+        
+        initGeometry() {
+            const vertices = new Float32Array([
+                -1, -1,
+                 3, -1,
+                -1,  3
+            ]);
+            
+            this.vao = this.gl.createVertexArray();
+            this.gl.bindVertexArray(this.vao);
+            
+            const buffer = this.gl.createBuffer();
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+            this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+            
+            this.gl.enableVertexAttribArray(0);
+            this.gl.vertexAttribPointer(0, 2, this.gl.FLOAT, false, 0, 0);
+        }
+        
+        setupUniforms() {
+            this.uniforms = {
+                iResolution: this.gl.getUniformLocation(this.program, 'iResolution'),
+                iTime: this.gl.getUniformLocation(this.program, 'iTime'),
+                iTransition: this.gl.getUniformLocation(this.program, 'iTransition')
+            };
+        }
+        
+        setState1Balls() {
+            this.targetTransition = 0.0;
+        }
+        
+        setState2Balls() {
+            this.targetTransition = 1.0;
+        }
+        
+        setState(state) {
+            this.currentState = state;
+            if (state === 1) {
+                this.setState1Balls();
+            } else {
+                this.setState2Balls();
+            }
+        }
+        
+        updateTransition() {
+            // Smooth interpolation towards target
+            const speed = 0.05;
+            this.transitionProgress += (this.targetTransition - this.transitionProgress) * speed;
+        }
+        
+        resize() {
+            const container = this.canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            
+            this.canvas.width = rect.width;
+            this.canvas.height = rect.height;
+            this.canvas.style.width = rect.width + 'px';
+            this.canvas.style.height = rect.height + 'px';
+            
+            this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            this.gl.uniform3f(this.uniforms.iResolution, this.canvas.width, this.canvas.height, 0);
+        }
+        
+        animate() {
+            this.animationTime += 0.016;
+            this.updateTransition();
+            
+            this.gl.clearColor(0, 0, 0, 0);
+            this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+            this.gl.enable(this.gl.BLEND);
+            this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+            
+            this.gl.useProgram(this.program);
+            this.gl.bindVertexArray(this.vao);
+            
+            // Update uniforms
+            this.gl.uniform1f(this.uniforms.iTime, this.animationTime);
+            this.gl.uniform1f(this.uniforms.iTransition, this.transitionProgress);
+            
+            this.gl.drawArrays(this.gl.TRIANGLES, 0, 3);
+            
+            requestAnimationFrame(() => this.animate());
+        }
+    }
+
     // --- Enhanced Ready State Handling --- //
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
@@ -1381,7 +1781,7 @@
     // --- Selection Mode Management --- //
     function enterSelectionMode() {
         isInSelectionMode = true;
-        selectedMessageIds.clear();
+        selectedMessageIds = [];
         
         // Show checkboxes on starred messages
         document.body.classList.add('selection-mode');
@@ -1390,6 +1790,13 @@
         const contextualActions = document.getElementById('threadly-contextual-actions');
         if (contextualActions) {
             contextualActions.style.display = 'flex';
+        }
+        
+        // Update select button to show it's in close mode
+        const selectBtn = document.getElementById('threadly-select-btn');
+        if (selectBtn) {
+            selectBtn.title = 'Click to exit selection mode (hover to see X)';
+            selectBtn.setAttribute('data-mode', 'close');
         }
         
         // Update checkbox states
@@ -1402,7 +1809,7 @@
     
     function exitSelectionMode() {
         isInSelectionMode = false;
-        selectedMessageIds.clear();
+        selectedMessageIds = [];
         
         // Hide checkboxes
         document.body.classList.remove('selection-mode');
@@ -1414,10 +1821,17 @@
         }
         
         // Uncheck all checkboxes
-        const checkboxes = document.querySelectorAll('.xbox-input');
+        const checkboxes = document.querySelectorAll('.threadly-message-checkbox');
         checkboxes.forEach(checkbox => {
             checkbox.checked = false;
         });
+        
+        // Update select button to show it's in select mode
+        const selectBtn = document.getElementById('threadly-select-btn');
+        if (selectBtn) {
+            selectBtn.title = 'Enable selection mode';
+            selectBtn.setAttribute('data-mode', 'select');
+        }
         
         // Update checkbox states
         updateCheckboxStates();
@@ -1438,32 +1852,42 @@
     
     // Update checkbox states when entering/exiting selection mode
     function updateCheckboxStates() {
-        const checkboxes = document.querySelectorAll('.xbox-input');
-        checkboxes.forEach(checkbox => {
+        const checkboxContainers = document.querySelectorAll('.threadly-message-checkbox-container');
+        checkboxContainers.forEach(container => {
             if (isInSelectionMode) {
                 // In selection mode, show checkboxes for starred messages
-                const messageItem = checkbox.closest('.threadly-message-item');
-                if (messageItem && messageItem.getAttribute('data-starred') === 'true') {
-                    checkbox.style.display = 'block';
-                    const label = checkbox.nextElementSibling;
-                    if (label && label.classList.contains('xbox-label')) {
-                        label.style.display = 'inline-flex';
-                    }
+                container.style.display = 'block';
+                
+                // Add event listener for checkbox changes
+                const checkbox = container.querySelector('.threadly-message-checkbox');
+                const messageId = checkbox.dataset.messageId;
+                
+                if (checkbox && messageId) {
+                    // Remove existing listeners to prevent duplicates
+                    checkbox.removeEventListener('change', handleCheckboxChange);
+                    checkbox.addEventListener('change', handleCheckboxChange);
                 }
             } else {
                 // Exit selection mode, hide all checkboxes
-                checkbox.style.display = 'none';
-                const label = checkbox.nextElementSibling;
-                if (label && label.classList.contains('xbox-label')) {
-                    label.style.display = 'none';
-                }
+                container.style.display = 'none';
             }
         });
+    }
+
+    function handleCheckboxChange(e) {
+        const checkbox = e.target;
+        const messageId = checkbox.dataset.messageId;
+        const isChecked = checkbox.checked;
+        
+        if (messageId) {
+            toggleMessageSelection(messageId, isChecked);
+        }
     }
 
     function updateSelectionInfo() {
         const selectionInfo = document.querySelector('.threadly-selection-info');
         const assignBtn = document.getElementById('threadly-assign-btn');
+        const unstarBtn = document.getElementById('threadly-unstar-btn');
         
         if (selectionInfo) {
             if (selectedMessageIds.length === 0) {
@@ -1475,6 +1899,10 @@
         
         if (assignBtn) {
             assignBtn.disabled = selectedMessageIds.length === 0;
+        }
+        
+        if (unstarBtn) {
+            unstarBtn.disabled = selectedMessageIds.length === 0;
         }
     }
 
@@ -1488,12 +1916,6 @@
             if (index !== -1) {
                 selectedMessageIds.splice(index, 1);
             }
-        }
-        
-        // Update the checkbox visual state
-        const checkbox = document.querySelector(`[data-message-id="${messageId}"]`);
-        if (checkbox) {
-            checkbox.checked = checked;
         }
         
         updateSelectionInfo();
@@ -1530,8 +1952,8 @@
                 const collectionItem = document.createElement('div');
                 collectionItem.className = 'threadly-collection-item';
                 collectionItem.textContent = collection.name;
-                collectionItem.addEventListener('click', () => {
-                    assignToCollection(selectedMessageIds, collection.id);
+                collectionItem.addEventListener('click', async () => {
+                    await assignToCollection(selectedMessageIds, collection.id);
                     exitSelectionMode();
                     filterMessages(searchInput.value);
                     popover.remove();
@@ -1599,6 +2021,189 @@
                 }
             });
         }, 100);
+    }
+
+    // --- Collections Manager --- //
+    async function showCollectionsManager() {
+        try {
+            // Load existing collections
+            const existingCollections = await loadCollectionsFromStorage();
+            
+            // Remove existing popover
+            const existingPopover = document.querySelector('.threadly-saved-manager-popover');
+            if (existingPopover) {
+                existingPopover.remove();
+            }
+            
+            // Create saved items manager popover
+            const popover = document.createElement('div');
+            popover.className = 'threadly-saved-manager-popover';
+            
+            // Create header
+            const header = document.createElement('div');
+            header.className = 'threadly-saved-manager-header';
+            header.innerHTML = `
+                <h3>Saved Items Manager</h3>
+                <button class="threadly-close-collections">×</button>
+            `;
+            
+            // Create new collection input
+            const newCollectionInput = document.createElement('div');
+            newCollectionInput.className = 'threadly-new-collection-input';
+            newCollectionInput.innerHTML = `
+                <input type="text" placeholder="Create new saved folder..." class="threadly-collection-name-input">
+                <button class="threadly-create-collection-btn">Create</button>
+            `;
+            
+            // Create existing collections list
+            const collectionsList = document.createElement('div');
+            collectionsList.className = 'threadly-collections-list';
+            
+            if (existingCollections.length === 0) {
+                collectionsList.innerHTML = '<div class="threadly-no-collections">No saved folders yet. Create your first one above!</div>';
+            } else {
+                existingCollections.forEach(collection => {
+                    const collectionItem = document.createElement('div');
+                    collectionItem.className = 'threadly-collection-item';
+                    collectionItem.innerHTML = `
+                        <span class="collection-name">${collection.name}</span>
+                        <span class="collection-count">${collection.messageCount || 0} messages</span>
+                        <button class="collection-delete-btn" title="Delete collection">🗑️</button>
+                    `;
+                    
+                    // Handle collection deletion
+                    const deleteBtn = collectionItem.querySelector('.collection-delete-btn');
+                    deleteBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        if (confirm(`Are you sure you want to delete the saved folder "${collection.name}"?`)) {
+                            await deleteCollection(collection.id);
+                            popover.remove();
+                            showCollectionsManager(); // Refresh the manager
+                        }
+                    });
+                    
+                    collectionsList.appendChild(collectionItem);
+                });
+            }
+            
+            popover.appendChild(header);
+            popover.appendChild(newCollectionInput);
+            popover.appendChild(collectionsList);
+            
+            // Position popover near the saved pill
+            const savedPill = document.getElementById('threadly-saved-pill');
+            if (savedPill) {
+                const rect = savedPill.getBoundingClientRect();
+                popover.style.position = 'absolute';
+                popover.style.top = `${rect.bottom + 10}px`;
+                popover.style.left = `${rect.left}px`;
+                popover.style.zIndex = '1000';
+            }
+            
+            // Add to panel
+            const panel = document.getElementById('threadly-panel');
+            if (panel) {
+                panel.appendChild(popover);
+            }
+            
+            // Handle new collection creation
+            const nameInput = popover.querySelector('.threadly-collection-name-input');
+            const createBtn = popover.querySelector('.threadly-create-collection-btn');
+            
+            createBtn.addEventListener('click', async () => {
+                const name = nameInput.value.trim();
+                if (name) {
+                    await createCollection(name);
+                    popover.remove();
+                    showCollectionsManager(); // Refresh the manager
+                }
+            });
+            
+            nameInput.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter') {
+                    const name = nameInput.value.trim();
+                    if (name) {
+                        await createCollection(name);
+                        popover.remove();
+                        showCollectionsManager(); // Refresh the manager
+                    }
+                }
+            });
+            
+            // Handle close button
+            const closeBtn = popover.querySelector('.threadly-close-collections');
+            closeBtn.addEventListener('click', () => {
+                popover.remove();
+            });
+            
+            // Focus input
+            nameInput.focus();
+            
+            // Close popover when clicking outside
+            setTimeout(() => {
+                document.addEventListener('click', function closePopover(e) {
+                    if (!popover.contains(e.target) && !savedPill.contains(e.target)) {
+                        popover.remove();
+                        document.removeEventListener('click', closePopover);
+                    }
+                });
+            }, 100);
+            
+        } catch (error) {
+            console.error('Threadly: Error showing collections manager:', error);
+        }
+    }
+
+    // --- Fluid Search Bar Functions --- //
+    function handleSearchClick(e) {
+        if (messageFilterState === 'favorites' && !searchInput.classList.contains('expanded')) {
+            expandSearch();
+            e.stopPropagation();
+        }
+    }
+
+    function handleSearchBlur(e) {
+        if (messageFilterState === 'favorites' && searchInput.classList.contains('expanded')) {
+            // Small delay to allow for focus events
+            setTimeout(() => {
+                if (!searchInput.matches(':focus')) {
+                    collapseSearch();
+                }
+            }, 100);
+        }
+    }
+
+    function handleSearchKeydown(e) {
+        if (e.key === 'Escape' && messageFilterState === 'favorites' && searchInput.classList.contains('expanded')) {
+            collapseSearch();
+        }
+    }
+
+    function expandSearch() {
+        searchInput.classList.add('expanded');
+        searchInput.style.cursor = 'default';
+        searchInput.focus();
+        
+        // Trigger metaball animation for expanded state
+        if (window.metaBallRenderer) {
+            window.metaBallRenderer.setState(3);
+        }
+        
+        console.log('Threadly: Search expanded');
+    }
+
+    function collapseSearch() {
+        searchInput.classList.remove('expanded');
+        searchInput.style.cursor = 'pointer';
+        searchInput.value = '';
+        searchInput.blur();
+        
+        // Trigger metaball animation for collapsed state
+        if (window.metaBallRenderer) {
+            window.metaBallRenderer.setState(2);
+        }
+        
+        console.log('Threadly: Search collapsed');
     }
 
 })();
