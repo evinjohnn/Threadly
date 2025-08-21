@@ -13,6 +13,15 @@
     --glass-shadow-color: rgba(255, 255, 255, 0.7);
     --glass-outer-shadow: rgba(0, 0, 0, 0.1);
     --glass-outer-shadow-blur: 24px;
+    
+    /* Metaball specific variables */
+    --bulb-size: 42.5px; /* Reduced from 50px by 15% (50 * 0.85 = 42.5) */
+    --search-pill-compact-width: 184px; /* 160px + (15px-8px)*2 = 160px + 14px = 174px, rounded up */
+    --search-pill-expanded-width: 295px; /* 268px * 1.1 (10% longer) */
+    --bulb-spacing: 8px;
+    --transition-speed: 0.6s;
+    --transition-easing: cubic-bezier(0.19, 1, 0.22, 1);
+    --bulb-transition-easing: cubic-bezier(0.68, -0.55, 0.27, 1.55);
 }
 
 /* --- Borel Font for Brand --- */
@@ -382,7 +391,7 @@
 }
 
 .threadly-search-container {
-    padding: 12px 18px;
+    padding: 9.6px 18px; /* Reduced from 12px to 9.6px (20% reduction: 12 * 0.8 = 9.6) */
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     flex-shrink: 0; /* Prevent search from shrinking */
     
@@ -1034,14 +1043,15 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 .threadly-search-row {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
+    justify-content: center;
+    margin: 1.6px 0; /* Reduced from 2px to 1.6px (20% reduction: 2 * 0.8 = 1.6) */
     /* Optimize for smooth animations */
     transform: translateZ(0);
     backface-visibility: hidden;
     /* Prevent layout thrashing */
     contain: layout style;
     /* Ensure stable layout */
-    min-height: 50px; /* accommodate 50px bulbs */
+    min-height: var(--bulb-size); /* accommodate bulb size */
 }
 
 /* Metaball wrapper with goo filter */
@@ -1053,24 +1063,26 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     gap: 0;
     width: 100%; /* Always adapt to container */
     position: relative;
-    transition: all 0.5s ease;
+    transition: all var(--transition-speed) ease;
+    /* Ensure perfect horizontal alignment */
+    flex-direction: row;
+    flex-wrap: nowrap;
 }
 
 /* Center search pill */
 .threadly-search-pill {
     display: flex;
     align-items: center;
-    padding: 0.125rem 1rem;
+    padding: 0.6rem 1rem;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    transition: max-width 0.5s cubic-bezier(0.19, 1, 0.22, 1),
-                flex 0.5s ease;
+    transition: all var(--transition-speed) ease;
     overflow: hidden;
     z-index: 2;
-    flex: 1;
-    max-width: 60%; /* compact state uses partial width */
-    min-height: 20px; /* ultra-thin height */
+    flex: 0 0 auto; /* Don't grow or shrink, maintain exact size */
+    width: var(--search-pill-compact-width); /* Use CSS variable for width */
+    height: var(--bulb-size); /* match bulb height exactly */
     
     /* Glass effect for search input */
     backdrop-filter: blur(6px);
@@ -1091,12 +1103,24 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 /* Focus state for search input */
 .threadly-search-pill input:focus {
     outline: none;
+    box-shadow: none;
+}
+
+/* Remove any browser default focus styles */
+.threadly-search-pill input:focus-visible {
+    outline: none;
+    box-shadow: none;
 }
 
 /* Focus state for search pill */
 .threadly-metaball-wrapper.stateA .threadly-search-pill {
     border-color: var(--threadly-primary-accent);
     box-shadow: 0 0 0 2px rgba(0, 191, 174, 0.2);
+}
+
+/* Remove any default focus outlines */
+.threadly-search-pill:focus-within {
+    outline: none;
 }
 
 /* Placeholder text styling */
@@ -1112,15 +1136,15 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 
 /* Circle bulbs */
 .threadly-circle-bulb {
-    width: 50px;
-    height: 50px;
+    width: var(--bulb-size);
+    height: var(--bulb-size);
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
     margin: 0;
     transform: scale(1);
     opacity: 1;
-    transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55),
+    transition: transform var(--transition-speed) var(--bulb-transition-easing),
                 opacity 0.3s ease;
     display: flex;
     align-items: center;
@@ -1134,49 +1158,49 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Default bulb positioning (will be overridden by state classes) */
-.threadly-circle-bulb {
-    transform: scale(1) translateX(0);
-    opacity: 1;
-}
-
 /* Smooth bulb positioning transitions */
 .threadly-circle-bulb {
-    transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55),
+    transition: transform var(--transition-speed) var(--bulb-transition-easing),
                 opacity 0.3s ease,
-                translateX 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+                translateX var(--transition-speed) var(--transition-easing);
 }
 
-/* Bulb icons */
+/* Bulb icons - both reduced to 85% of current size */
 .threadly-circle-bulb svg {
-    width: 24px;
-    height: 24px;
-    fill: var(--threadly-text-secondary);
+    width: 20.4px; /* 24px * 0.85 */
+    height: 20.4px; /* 24px * 0.85 */
+    fill: none;
     stroke: var(--threadly-text-secondary);
     stroke-width: 2;
     transition: all 0.3s ease;
 }
 
-/* Hollow icons for both bulbs */
-.threadly-circle-bulb svg {
-    fill: none;
-    stroke: var(--threadly-text-secondary);
-    stroke-width: 2;
+/* SAVED icon (left bulb) - 85% of previous size */
+.threadly-circle-bulb:first-child svg {
+    width: 25.5px; /* 30px * 0.85 */
+    height: 25.5px; /* 30px * 0.85 */
+}
+
+/* Checkbox icon (right bulb) - 10% smaller than current */
+.threadly-circle-bulb:last-child svg {
+    width: 18.36px; /* 20.4px * 0.9 (10% smaller) */
+    height: 18.36px; /* 20.4px * 0.9 (10% smaller) */
 }
 
 /* Xbox morphing variables for selection bulb */
 .threadly-circle-bulb.square {
-    --box-size: 24px;
+    --box-size: 18.36px; /* 20.4px * 0.9 (10% smaller) */
     --stroke: 2px;
     --duration: 280ms;
     --easing: cubic-bezier(.2,.7,.2,1);
     --diag-scale: 1.41421356;
+    color: var(--threadly-text-secondary); /* Set the color for the checkbox */
 }
 
 /* Square geometry for checkbox state */
 .threadly-circle-bulb.square .xbox-side {
     position: absolute;
-    background: currentColor;
+    background: currentColor; /* Use the color set on the parent */
     transform-origin: 50% 50%;
     transition: transform var(--duration) var(--easing);
     will-change: transform;
@@ -1211,6 +1235,16 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Hover effect for checkbox - change color on hover */
+.threadly-circle-bulb.square:hover .xbox-side {
+    background: var(--threadly-primary-accent) !important;
+}
+
+/* Ensure checkbox is always visible with proper color */
+.threadly-circle-bulb.square .xbox-side {
+    background: white !important;
+}
+
 .threadly-circle-bulb:hover svg {
     fill: var(--threadly-primary-accent);
     stroke: var(--threadly-primary-accent);
@@ -1218,30 +1252,30 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 
 /* State A: Expanded (search focused/typing) */
 .threadly-metaball-wrapper.stateA .threadly-search-pill {
-    max-width: 100%; /* expand to full available space */
-    transition: max-width 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+    width: var(--search-pill-expanded-width);
+    margin: 0 auto;
+    transition: all var(--transition-speed) ease;
 }
 
 .threadly-metaball-wrapper.stateA .threadly-circle-bulb {
     transform: scale(0) translateX(0);
     opacity: 0;
-    transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1),
-                opacity 0.3s ease;
+    transition: transform 0.5s var(--transition-easing), opacity 0.3s ease;
 }
 
 /* State B: Compact (default) */
 .threadly-metaball-wrapper.stateB .threadly-search-pill {
-    max-width: 60%;
-    flex: 1;
+    width: var(--search-pill-compact-width);
+    margin: 0 auto;
 }
 
 .threadly-metaball-wrapper.stateB .threadly-circle-bulb:first-child {
-    transform: scale(1) translateX(-25px);
+    transform: scale(1) translateX(calc(-1 * var(--bulb-spacing)));
     opacity: 1;
 }
 
 .threadly-metaball-wrapper.stateB .threadly-circle-bulb:last-child {
-    transform: scale(1) translateX(25px);
+    transform: scale(1) translateX(var(--bulb-spacing));
     opacity: 1;
 }
 
@@ -1252,7 +1286,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 
 /* Ensure proper container behavior */
 .threadly-metaball-wrapper {
-    min-height: 50px; /* accommodate 50px bulbs */
+    min-height: var(--bulb-size); /* accommodate bulb size */
 }
 
 /* Ensure proper spacing and alignment */
@@ -1273,11 +1307,11 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 /* Responsive adjustments for smaller screens */
 @media (max-width: 400px) {
     .threadly-metaball-wrapper.stateB .threadly-search-pill {
-        max-width: 70%; /* slightly larger on small screens */
+        width: 147px; /* 128px + (15px-8px)*2 = 128px + 14px = 142px, rounded up */
     }
     
     .threadly-metaball-wrapper.stateA .threadly-search-pill {
-        max-width: 100%;
+        width: 235px; /* 214px * 1.1 (10% longer) */
     }
 }
 
