@@ -907,11 +907,13 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     color: #0078d4;
 }
 
+.threadly-toggle-label.user,
 .threadly-toggle-label.you {
     left: 16.67%;
     transform: translate(-50%, -50%);
 }
 
+.threadly-toggle-label.assistant,
 .threadly-toggle-label.ai {
     left: 50%;
     transform: translate(-50%, -50%);
@@ -1869,117 +1871,6 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 .threadly-toggle-label.back:hover {
     color: var(--threadly-text-primary);
     transform: scale(1.05);
-}
-
-/* Assignment Mode Navbar Styles */
-.threadly-toggle-bar.assignment-mode {
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.threadly-toggle-label.add-new {
-    color: var(--threadly-primary-accent);
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.threadly-toggle-label.add-new:hover {
-    color: var(--threadly-primary-accent-hover);
-    transform: scale(1.05);
-}
-
-.threadly-toggle-label.cancel {
-    color: var(--threadly-text-secondary);
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.threadly-toggle-label.cancel:hover {
-    color: var(--threadly-text-primary);
-    transform: scale(1.05);
-}
-
-/* Input Mode Navbar Styles */
-.threadly-toggle-bar.input-mode {
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.threadly-collection-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    padding: 16px 24px;
-    font-size: 16px;
-    color: var(--threadly-text-primary);
-    font-family: inherit;
-}
-
-.threadly-collection-input::placeholder {
-    color: var(--threadly-text-secondary);
-    opacity: 0.7;
-}
-
-.threadly-add-collection-btn {
-    background: var(--threadly-primary-accent);
-    border: none;
-    width: 52px;
-    height: 52px;
-    border-radius: 35px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
-}
-
-.threadly-add-collection-btn:hover {
-    background: var(--threadly-primary-accent-hover);
-    transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(20, 184, 166, 0.4);
-}
-
-.threadly-add-collection-btn:active {
-    transform: scale(0.95);
-}
-
-.threadly-plus-icon {
-    color: white;
-    font-size: 24px;
-    font-weight: 300;
-    line-height: 1;
-}
-
-/* Morphing to SAVED State Animation */
-@keyframes morphToSaved {
-    0% { 
-        transform: translateY(0) scale(1); 
-        opacity: 1;
-    }
-    50% { 
-        transform: translateY(-20px) scale(1.05); 
-        opacity: 0.8;
-    }
-    100% { 
-        transform: translateY(0) scale(1); 
-        opacity: 1;
-    }
-}
-
-.morphing-to-saved {
-    animation: morphToSaved 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.saved-state {
-    background: rgba(20, 184, 166, 0.05);
-    border: 1px solid rgba(20, 184, 166, 0.2);
-}
-
-.saved-state .threadly-message-list {
-    background: rgba(20, 184, 166, 0.02);
 }
 
 
