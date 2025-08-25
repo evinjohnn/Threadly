@@ -58,6 +58,71 @@
     let selectedMessageIds = [];
     let collections = [];
     let currentFilter = { type: 'all' }; // 'all', 'starred', or 'collection'
+    let isInCollectionsView = false; // Track if we're viewing collections
+    
+    // Saved button state management (like React useState)
+    let savedButtonActive = false; // persisted state via click
+    let savedButtonHover = false;  // transient state via hover
+    
+    // Assignment mode state management
+    let isAssigningMode = false; // track if we're in collection assignment mode
+    
+    // VIBGYOR color palette for collections
+    const VIBGYOR_PALETTE = [
+        'rgba(148, 0, 211, 0.3)', // Violet
+        'rgba(75, 0, 130, 0.3)',  // Indigo
+        'rgba(0, 0, 255, 0.3)',   // Blue
+        'rgba(0, 255, 0, 0.3)',   // Green
+        'rgba(255, 255, 0, 0.3)', // Yellow
+        'rgba(255, 127, 0, 0.3)', // Orange
+        'rgba(255, 0, 0, 0.3)'    // Red
+    ];
+    
+    // Saved button state management functions (like React useState)
+    function setSavedButtonActive(active) {
+        savedButtonActive = active;
+        updateSavedButtonVisualState();
+    }
+    
+    function setSavedButtonHover(hover) {
+        savedButtonHover = hover;
+        updateSavedButtonVisualState();
+    }
+    
+    function updateSavedButtonVisualState() {
+        const savedBulb = document.getElementById('threadly-saved-bulb');
+        if (!savedBulb) return;
+        
+        const svg = savedBulb.querySelector('svg');
+        if (!svg) return;
+        
+        const isFilled = savedButtonActive || savedButtonHover;
+        
+        if (isFilled) {
+            svg.style.fill = getPlatformSavedIconColor();
+            svg.style.stroke = getPlatformSavedIconColor();
+        } else {
+            svg.style.fill = 'none';
+            svg.style.stroke = 'var(--threadly-text-secondary)';
+        }
+        
+        // Update accessibility attributes
+        savedBulb.setAttribute('aria-pressed', savedButtonActive);
+        savedBulb.setAttribute('title', savedButtonActive ? 'Saved' : 'Save');
+    }
+    
+    function getPlatformSavedIconColor() {
+        const platformColors = {
+            'chatgpt': '#9ca3af',
+            'gemini': '#4285f4',
+            'claude': '#ff6b35',
+            'ai-studio': '#4285f4',
+            'perplexity': '#14b8a6',
+            'grok': '#1f2937',
+            'copilot': '#0078d4'
+        };
+        return platformColors[currentPlatformId] || 'var(--threadly-primary-accent)';
+    }
 
     // --- DOM Elements --- //
     let container, panel, closeButton, messageList, searchInput, platformIndicator, toggleBar, toggleSegment;
@@ -440,26 +505,29 @@
         });
         
         searchInput.addEventListener('input', async (e) => {
+            // If we're in collections view, return to main messages first
+            if (isInCollectionsView) {
+                isInCollectionsView = false;
+            }
             await filterMessages(e.target.value);
         });
         
         // Add click listeners for each label to allow direct selection
-        toggleBar.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('threadly-toggle-label')) {
-                if (e.target.classList.contains('you')) {
-                    await selectFilterState('user');
-                } else if (e.target.classList.contains('ai')) {
-                    await selectFilterState('assistant');
-                } else if (e.target.classList.contains('fav')) {
-                    await selectFilterState('favorites');
-                }
-            }
-        });
+        toggleBar.addEventListener('click', handleToggleBarClick);
         
 
         
         // Add event listeners for contextual action buttons
-        document.getElementById('threadly-assign-btn').addEventListener('click', showAssignToCollectionPopover);
+        document.getElementById('threadly-assign-btn').addEventListener('click', () => {
+            // Enter assign mode
+            isAssigningMode = true;
+            
+            // Render collections view in assign mode (this will show the collections list)
+            renderCollectionsView(true);
+            
+            // The collections view will show existing collections to assign to
+            // If user wants to create new collection, they can use the existing "Create Collection" functionality
+        });
         document.getElementById('threadly-unstar-btn').addEventListener('click', unstarMessages);
         
         // Add event listener for select bulb
@@ -468,10 +536,32 @@
             selectBulb.addEventListener('click', toggleSelectionMode);
         }
         
-        // Add event listener for saved bulb
+                    // Add event listener for saved bulb
         const savedBulb = document.getElementById('threadly-saved-bulb');
         if (savedBulb) {
-            savedBulb.addEventListener('click', showCollectionsManager);
+            // Set initial accessibility attributes
+            savedBulb.setAttribute('aria-pressed', savedButtonActive);
+            savedBulb.setAttribute('title', savedButtonActive ? 'Saved' : 'Save');
+            savedBulb.setAttribute('data-testid', 'saved-button');
+            
+            savedBulb.addEventListener('click', (e) => {
+                e.preventDefault();
+                setSavedButtonActive(!savedButtonActive);
+                renderCollectionsView();
+            });
+            
+            // Add hover event listeners for smooth fill animation
+            savedBulb.addEventListener('mouseenter', () => setSavedButtonHover(true));
+            savedBulb.addEventListener('mouseleave', () => setSavedButtonHover(false));
+            
+            // Add keyboard support
+            savedBulb.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSavedButtonActive(!savedButtonActive);
+                    renderCollectionsView();
+                }
+            });
         }
         
         // Add metaball search bar behavior
@@ -484,6 +574,13 @@
         
         // Add escape key handler for search
         document.addEventListener('keydown', handleSearchKeydown);
+        
+        // Add escape key handler for collections view
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isInCollectionsView) {
+                returnToMainMessages();
+            }
+        });
         
         document.addEventListener('click', handleClickOutside);
     }
@@ -513,6 +610,9 @@
             if (messageList) {
                 messageList.innerHTML = '';
             }
+            
+            // Reset collections view flag when closing
+            isInCollectionsView = false;
         }
     }
 
@@ -887,11 +987,9 @@
                         </div>
                     </div>
                     <div class="threadly-message-right">
-                        ${msg.isFavorited ? `
-                            <div class="threadly-message-checkbox-container" style="display: none;">
-                                <input type="checkbox" class="threadly-message-checkbox" id="checkbox_${index}" data-message-id="msg_${index}">
-                            </div>
-                        ` : ''}
+                        <div class="threadly-message-checkbox-container" style="display: none;">
+                            <input type="checkbox" class="threadly-message-checkbox" id="checkbox_${index}" data-message-id="msg_${index}">
+                        </div>
                         <button class="threadly-star-btn ${msg.isFavorited ? 'starred' : ''}" title="${msg.isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
                             <span class="threadly-star-icon">${msg.isFavorited ? '★' : '☆'}</span>
                         </button>
@@ -927,18 +1025,24 @@
             }
             
             if (msg.element && document.body.contains(msg.element)) {
-                item.style.cursor = 'pointer';
-                item.title = 'Click to scroll to message';
-                item.addEventListener('click', () => {
-                    msg.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    
-                    const originalBg = msg.element.style.backgroundColor;
-                    msg.element.style.transition = 'background-color 0.3s ease';
-                    msg.element.style.backgroundColor = getPlatformHighlightColor();
-                    setTimeout(() => {
-                        msg.element.style.backgroundColor = originalBg;
-                    }, 1500);
-                });
+                // Only enable scroll behavior if not in selection mode
+                if (!isInSelectionMode) {
+                    item.style.cursor = 'pointer';
+                    item.title = 'Click to scroll to message';
+                    item.addEventListener('click', () => {
+                        msg.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        const originalBg = msg.element.style.backgroundColor;
+                        msg.element.style.transition = 'background-color 0.3s ease';
+                        msg.element.style.backgroundColor = getPlatformHighlightColor();
+                        setTimeout(() => {
+                            msg.element.style.backgroundColor = originalBg;
+                        }, 1500);
+                    });
+                } else {
+                    // In selection mode, just show it's clickable for the checkbox
+                    item.style.cursor = 'default';
+                }
             }
             fragment.appendChild(item);
         });
@@ -958,6 +1062,11 @@
     }
     
     async function filterMessages(query) {
+        // If we're in collections view, return to main messages first
+        if (isInCollectionsView) {
+            isInCollectionsView = false;
+        }
+        
         query = query.trim().toLowerCase();
         let filtered = !query ? allMessages : allMessages.filter(m => 
             m.content.toLowerCase().includes(query)
@@ -1120,11 +1229,19 @@
 
     // --- Filter State Management --- //
     async function selectFilterState(state) {
+        // If we're in collections view, return to main messages first
+        if (isInCollectionsView) {
+            isInCollectionsView = false;
+        }
+        
         messageFilterState = state;
         
         // Update the toggle segment position
+        console.log('Threadly: Updating toggle segment, current state:', state);
         toggleSegment.classList.remove('user', 'assistant', 'fav', 'collection');
-        toggleSegment.classList.add(state === 'user' ? 'user' : state === 'assistant' ? 'assistant' : state === 'favorites' ? 'fav' : 'collection');
+        const newClass = state === 'user' ? 'user' : state === 'assistant' ? 'assistant' : state === 'favorites' ? 'fav' : 'collection';
+        toggleSegment.classList.add(newClass);
+        console.log('Threadly: Toggle segment now has class:', newClass, 'Classes:', toggleSegment.className);
         
         // Update panel data-filter attribute for CSS targeting
         if (panel) {
@@ -1174,7 +1291,10 @@
         await updateGlobalFavorites();
         
         // Re-render to show updated star state
-        filterMessages(searchInput.value);
+        // Don't exit collections view if we're currently in it
+        if (!isInCollectionsView) {
+            filterMessages(searchInput.value);
+        }
         
         console.log('Threadly: Message', message.isFavorited ? 'favorited' : 'unfavorited');
     }
@@ -1255,6 +1375,324 @@
         const collection = collections.find(c => c.id === collectionId);
         return collection ? collection.name : 'Unknown Collection';
     }
+    
+    // --- Collections View Functions --- //
+    function renderCollectionsView(isAssigning = false) {
+        try {
+            if (!messageList) return;
+            
+            // Set flag to indicate we're in collections view
+            isInCollectionsView = true;
+            
+            // Clear current content
+            messageList.innerHTML = '';
+            
+            if (collections.length === 0) {
+                messageList.innerHTML = '<div class="threadly-empty-state">You have no saved collections.</div>';
+                return;
+            }
+        
+        const fragment = document.createDocumentFragment();
+        collections.forEach((collection, index) => {
+            const collectionPill = document.createElement('div');
+            collectionPill.className = 'threadly-collection-pill';
+            collectionPill.dataset.collectionId = collection.id;
+            
+            // Apply VIBGYOR color
+            const colorIndex = index % VIBGYOR_PALETTE.length;
+            const pillColor = VIBGYOR_PALETTE[colorIndex];
+            collectionPill.style.backgroundColor = pillColor;
+            collectionPill.style.borderColor = pillColor.replace('0.3', '0.5');
+            collectionPill.style.setProperty('--pill-color-glow', pillColor.replace('0.3', '0.6'));
+            
+            collectionPill.innerHTML = `
+                <span class="collection-pill-name">${collection.name}</span>
+                <span class="collection-pill-arrow">></span>
+            `;
+            
+            // Add long-press gesture for deletion
+            let longPressTimer;
+            collectionPill.addEventListener('mousedown', () => {
+                longPressTimer = setTimeout(() => {
+                    showDeleteConfirmation(collection.id, collection.name);
+                }, 750);
+            });
+            
+            collectionPill.addEventListener('mouseup', () => {
+                clearTimeout(longPressTimer);
+            });
+            
+            collectionPill.addEventListener('mouseleave', () => {
+                clearTimeout(longPressTimer);
+            });
+            
+            // Click behavior depends on mode
+            collectionPill.addEventListener('click', () => {
+                if (isAssigning) {
+                    assignSelectedMessagesToCollection(collection.id);
+                } else {
+                    renderMessagesForCollection(collection.id);
+                }
+            });
+            
+            fragment.appendChild(collectionPill);
+        });
+        
+        messageList.appendChild(fragment);
+        } catch (error) {
+            console.error('Threadly: Error rendering collections view:', error);
+            // Show error state
+            if (messageList) {
+                messageList.innerHTML = '<div class="threadly-empty-state">Error loading collections. Please try again.</div>';
+            }
+        }
+    }
+    
+    // Function to assign selected messages to a collection
+    async function assignSelectedMessagesToCollection(collectionId) {
+        try {
+            if (selectedMessageIds.length === 0) {
+                console.warn('Threadly: No messages selected for assignment');
+                return;
+            }
+            
+            // Call existing assignToCollection function
+            await assignToCollection(selectedMessageIds, collectionId);
+            
+            // Exit selection mode
+            exitSelectionMode();
+            
+            // Reset assignment mode
+            isAssigningMode = false;
+            
+            // Re-render the original view
+            await filterMessages(searchInput.value);
+            
+            console.log('Threadly: Successfully assigned messages to collection');
+        } catch (error) {
+            console.error('Threadly: Error assigning messages to collection:', error);
+        }
+    }
+    
+
+    
+    // Function to show delete confirmation modal
+    function showDeleteConfirmation(collectionId, collectionName) {
+        const panel = document.getElementById('threadly-panel');
+        if (!panel) return;
+        
+        // Add class to trigger background blur
+        panel.classList.add('delete-confirmation-active');
+        
+        // Create modal overlay
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'threadly-delete-modal-overlay';
+        modalOverlay.innerHTML = `
+            <div id="threadly-delete-modal">
+                <p>Are you sure you want to delete the collection "<strong>${collectionName}</strong>"?</p>
+                <div class="threadly-modal-actions">
+                    <button id="threadly-confirm-delete-btn" class="modal-btn delete">Delete</button>
+                    <button id="threadly-cancel-delete-btn" class="modal-btn cancel">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        // Add to panel
+        panel.appendChild(modalOverlay);
+        
+        // Add event listeners
+        const confirmBtn = document.getElementById('threadly-confirm-delete-btn');
+        const cancelBtn = document.getElementById('threadly-cancel-delete-btn');
+        
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', async () => {
+                try {
+                    await deleteCollection(collectionId);
+                    closeDeleteConfirmation();
+                    // Re-render collections view to show the item is gone
+                    renderCollectionsView();
+                } catch (error) {
+                    console.error('Threadly: Error deleting collection:', error);
+                }
+            });
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', closeDeleteConfirmation);
+        }
+    }
+    
+    // Function to close delete confirmation modal
+    function closeDeleteConfirmation() {
+        const panel = document.getElementById('threadly-panel');
+        const modalOverlay = document.getElementById('threadly-delete-modal-overlay');
+        
+        if (panel) {
+            panel.classList.remove('delete-confirmation-active');
+        }
+        
+        if (modalOverlay) {
+            modalOverlay.remove();
+        }
+    }
+    
+    function renderMessagesForCollection(collectionId) {
+        try {
+            if (!messageList) return;
+            
+            // Filter messages for this collection
+            const collectionMessages = allMessages.filter(message => message.collectionId === collectionId);
+            
+            // Clear message list first
+            messageList.innerHTML = '';
+            
+            // Create back button
+            const backButton = document.createElement('button');
+            backButton.className = 'threadly-back-button';
+            backButton.textContent = '← Back to Collections';
+            backButton.onclick = () => renderCollectionsView();
+            
+            // Add back button first
+            messageList.appendChild(backButton);
+            
+            if (collectionMessages.length === 0) {
+                const emptyState = document.createElement('div');
+                emptyState.className = 'threadly-empty-state';
+                emptyState.textContent = 'No messages saved in this collection yet.';
+                messageList.appendChild(emptyState);
+                return;
+            }
+        
+        // Render the collection messages using the existing renderMessages function
+        // But we need to append to existing content instead of clearing
+        const fragment = document.createDocumentFragment();
+        collectionMessages.forEach((msg, index) => {
+            const item = document.createElement('div');
+            item.className = 'threadly-message-item';
+            item.dataset.role = msg.role;
+            item.dataset.messageId = `msg_${index}`;
+            
+            if (msg.isFavorited) {
+                item.classList.add('favorited');
+                item.setAttribute('data-starred', 'true');
+            } else {
+                item.setAttribute('data-starred', 'false');
+            }
+            
+            // Check if message is longer than 10 words
+            const wordCount = msg.content.trim().split(/\s+/).length;
+            const isLongMessage = wordCount > 10;
+            
+            const roleText = msg.role === 'user' ? `You (#${index + 1})` : `AI (#${index + 1})`;
+            
+            // Add platform indicator for favorited messages
+            let platformIndicator = '';
+            if (msg.isFavorited && msg.originalPlatform && msg.originalPlatform !== currentPlatformId) {
+                const platformName = PLATFORM_CONFIG[msg.originalPlatform]?.name || msg.originalPlatform;
+                platformIndicator = `<span class="threadly-platform-badge" data-original-platform="${msg.originalPlatform}">${platformName}</span>`;
+            }
+            
+            item.innerHTML = `
+                <div class="threadly-message-header">
+                    <div class="threadly-message-left">
+                        <div class="threadly-message-role">
+                            ${roleText}
+                            ${platformIndicator}
+                        </div>
+                    </div>
+                    <div class="threadly-message-right">
+                        <div class="threadly-message-checkbox-container" style="display: none;">
+                            <input type="checkbox" class="threadly-message-checkbox" id="checkbox_${index}" data-message-id="msg_${index}">
+                        </div>
+                        <button class="threadly-star-btn ${msg.isFavorited ? 'starred' : ''}" title="${msg.isFavorited ? 'Remove from favorites' : 'Add to favorites'}">
+                            <span class="threadly-star-icon">${msg.isFavorited ? '★' : '☆'}</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="threadly-message-text">${escapeHTML(msg.content)}</div>
+                ${msg.collectionId ? `<div class="threadly-collection-tag">${getCollectionName(msg.collectionId)}</div>` : ''}
+                ${isLongMessage ? '<div class="threadly-read-more">See More</div>' : ''}
+            `;
+
+            // Add star button event listener
+            const starBtn = item.querySelector('.threadly-star-btn');
+            starBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleFavorite(msg, index);
+            });
+
+            // Add read more functionality
+            if (isLongMessage) {
+                const readMoreBtn = item.querySelector('.threadly-read-more');
+                const messageText = item.querySelector('.threadly-message-text');
+                
+                readMoreBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (messageText.classList.contains('expanded')) {
+                        messageText.classList.remove('expanded');
+                        readMoreBtn.textContent = 'See More';
+                    } else {
+                        messageText.classList.add('expanded');
+                        readMoreBtn.textContent = 'See Less';
+                    }
+                });
+            }
+            
+            if (msg.element && document.body.contains(msg.element)) {
+                // Only enable scroll behavior if not in selection mode
+                if (!isInSelectionMode) {
+                    item.style.cursor = 'pointer';
+                    item.title = 'Click to scroll to message';
+                    item.addEventListener('click', () => {
+                        msg.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        const originalBg = msg.element.style.backgroundColor;
+                        msg.element.style.transition = 'background-color 0.3s ease';
+                        msg.element.style.backgroundColor = getPlatformHighlightColor();
+                        setTimeout(() => {
+                            msg.element.style.backgroundColor = originalBg;
+                        }, 1500);
+                    });
+                } else {
+                    // In selection mode, just show it's clickable for the checkbox
+                    item.style.cursor = 'default';
+                }
+            }
+            fragment.appendChild(item);
+        });
+        messageList.appendChild(fragment);
+        } catch (error) {
+            console.error('Threadly: Error rendering collection messages:', error);
+            // Show error state
+            if (messageList) {
+                messageList.innerHTML = `
+                    <button class="threadly-back-button" onclick="renderCollectionsView()">← Back to Collections</button>
+                    <div class="threadly-empty-state">Error loading collection messages. Please try again.</div>
+                `;
+            }
+        }
+    }
+    
+    function returnToMainMessages() {
+        if (!messageList) return;
+        
+        // Reset flag
+        isInCollectionsView = false;
+        
+        // Return to main messages view
+        filterMessages(searchInput.value);
+    }
+    
+    function updateCollectionMessageCounts() {
+        // Update message counts for each collection
+        collections.forEach(collection => {
+            const messageCount = allMessages.filter(message => message.collectionId === collection.id).length;
+            collection.messageCount = messageCount;
+        });
+        
+        // Save updated collections
+        saveCollectionsToStorage(collections);
+    }
 
     function generateCollectionId() {
         return 'col_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -1303,6 +1741,9 @@
             // Update global favorites if needed
             await updateGlobalFavorites();
             
+            // Update collection message counts
+            updateCollectionMessageCounts();
+            
             console.log('Threadly: Deleted collection:', collectionName);
             
             // Show confirmation toast
@@ -1328,6 +1769,9 @@
             
             // Update global favorites if needed
             await updateGlobalFavorites();
+            
+            // Update collection message counts
+            updateCollectionMessageCounts();
             
             console.log('Threadly: Assigned', messageIds.length, 'messages to collection');
             
@@ -1360,6 +1804,9 @@
             
             // Update global favorites
             await updateGlobalFavorites();
+            
+            // Update collection message counts
+            updateCollectionMessageCounts();
             
             // Exit selection mode
             exitSelectionMode();
@@ -1554,6 +2001,9 @@
             
             // Load collections
             collections = await loadCollectionsFromStorage();
+            
+            // Update collection message counts
+            updateCollectionMessageCounts();
             
             if (panel && panel.classList.contains('threadly-expanded')) {
                 renderMessages(allMessages);
@@ -1821,11 +2271,8 @@
         // Show checkboxes on starred messages
         document.body.classList.add('selection-mode');
         
-        // Show contextual action bar
-        const contextualActions = document.getElementById('threadly-contextual-actions');
-        if (contextualActions) {
-            contextualActions.style.display = 'flex';
-        }
+        // Morph the navbar from YOU | AI | FAV to ADD | BACK
+        morphNavbarToSelectionMode();
         
         // Update select button to show it's in close mode
         const selectBtn = document.getElementById('threadly-select-btn');
@@ -1846,14 +2293,17 @@
         isInSelectionMode = false;
         selectedMessageIds = [];
         
+        // Reset assign mode
+        isAssigningMode = false;
+        
         // Hide checkboxes
         document.body.classList.remove('selection-mode');
         
-        // Hide contextual action bar
-        const contextualActions = document.getElementById('threadly-contextual-actions');
-        if (contextualActions) {
-            contextualActions.style.display = 'none';
-        }
+        // Remove SAVED state
+        document.body.classList.remove('saved-state');
+        
+        // Restore the navbar from ADD | BACK to YOU | AI | FAV
+        restoreNavbarFromSelectionMode();
         
         // Uncheck all checkboxes
         const checkboxes = document.querySelectorAll('.threadly-message-checkbox');
@@ -1876,6 +2326,237 @@
         console.log('Threadly: Exited selection mode');
     }
     
+    // Function to morph navbar to selection mode (ADD | BACK)
+    function morphNavbarToSelectionMode() {
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) return;
+        
+        // Store original content for restoration
+        if (!toggleBar.dataset.originalContent) {
+            toggleBar.dataset.originalContent = toggleBar.innerHTML;
+        }
+        
+        // Morph to ADD | BACK
+        toggleBar.innerHTML = `
+            <div class="threadly-toggle-label add">ADD</div>
+            <div class="threadly-toggle-label back">BACK</div>
+        `;
+        
+        // Add event listeners for the new labels
+        const addLabel = toggleBar.querySelector('.add');
+        const backLabel = toggleBar.querySelector('.back');
+        
+        if (addLabel) {
+            addLabel.addEventListener('click', () => {
+                // Enter assign mode - show assignment navbar
+                isAssigningMode = true;
+                showAssignmentNavbar();
+            });
+        }
+        
+        if (backLabel) {
+            backLabel.addEventListener('click', () => {
+                // Exit selection mode
+                exitSelectionMode();
+            });
+        }
+        
+        // Add smooth morphing animation class
+        toggleBar.classList.add('morphed');
+    }
+    
+    // Function to restore navbar from selection mode
+    function restoreNavbarFromSelectionMode() {
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) return;
+        
+        // Restore original content
+        if (toggleBar.dataset.originalContent) {
+            toggleBar.innerHTML = toggleBar.dataset.originalContent;
+            
+            // Re-attach the event listener since innerHTML change might have removed it
+            toggleBar.addEventListener('click', handleToggleBarClick);
+            
+            // Restore the current filter state highlighting
+            restoreFilterStateHighlighting();
+        }
+        
+        // Remove morphing animation class
+        toggleBar.classList.remove('morphed');
+    }
+    
+    // Separate function for toggle bar click handling
+    async function handleToggleBarClick(e) {
+        console.log('Threadly: Toggle bar clicked:', e.target.className, e.target.textContent);
+        if (e.target.classList.contains('threadly-toggle-label')) {
+            if (e.target.classList.contains('you')) {
+                console.log('Threadly: YOU clicked, calling selectFilterState(user)');
+                await selectFilterState('user');
+            } else if (e.target.classList.contains('ai')) {
+                console.log('Threadly: AI clicked, calling selectFilterState(assistant)');
+                await selectFilterState('assistant');
+            } else if (e.target.classList.contains('fav')) {
+                console.log('Threadly: FAV clicked, calling selectFilterState(favorites)');
+                await selectFilterState('favorites');
+            }
+        }
+    }
+    
+    // Function to restore filter state highlighting after navbar restoration
+    function restoreFilterStateHighlighting() {
+        console.log('Threadly: Restoring filter state highlighting, current state:', messageFilterState);
+        
+        // Update the toggle segment position based on current filter state
+        if (toggleSegment) {
+            toggleSegment.classList.remove('user', 'assistant', 'fav', 'collection');
+            const newClass = messageFilterState === 'user' ? 'user' : 
+                           messageFilterState === 'assistant' ? 'assistant' : 
+                           messageFilterState === 'favorites' ? 'fav' : 'collection';
+            toggleSegment.classList.add(newClass);
+            console.log('Threadly: Restored toggle segment class:', newClass, 'Classes:', toggleSegment.className);
+        }
+        
+        // Update panel data-filter attribute for CSS targeting
+        if (panel) {
+            panel.setAttribute('data-filter', messageFilterState);
+        }
+        
+        // Update metaball wrapper state for consistent behavior
+        const metaballWrapper = document.querySelector('.threadly-metaball-wrapper');
+        if (metaballWrapper) {
+            metaballWrapper.classList.remove('stateA');
+            metaballWrapper.classList.add('stateB');
+        }
+    }
+    
+    // Assignment Navbar Management
+    function showAssignmentNavbar() {
+        // Morph to SAVED state with smooth animation
+        morphToSavedState();
+        
+        // Transform the navbar to assignment mode
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) return;
+        
+        // Store current content if not already stored
+        if (!toggleBar.dataset.originalContent) {
+            toggleBar.dataset.originalContent = toggleBar.innerHTML;
+        }
+        
+        // Show assignment navbar (State A: ADD NEW | CANCEL)
+        toggleBar.innerHTML = `
+            <div class="threadly-toggle-label add-new">ADD NEW</div>
+            <div class="threadly-toggle-label cancel">CANCEL</div>
+        `;
+        
+        // Add event listeners
+        const addNewLabel = toggleBar.querySelector('.add-new');
+        const cancelLabel = toggleBar.querySelector('.cancel');
+        
+        if (addNewLabel) {
+            addNewLabel.addEventListener('click', () => {
+                enterInputMode();
+            });
+        }
+        
+        if (cancelLabel) {
+            cancelLabel.addEventListener('click', () => {
+                cancelAssignment();
+            });
+        }
+        
+        // Add morphing animation class
+        toggleBar.classList.add('assignment-mode');
+    }
+    
+    function enterInputMode() {
+        // Transform to input mode (State B: Text Input | + Button)
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) return;
+        
+        toggleBar.innerHTML = `
+            <input type="text" class="threadly-collection-input" 
+                   placeholder="Type collection name..." 
+                   id="threadly-collection-name-input">
+            <button class="threadly-add-collection-btn" id="threadly-add-collection-btn">
+                <span class="threadly-plus-icon">+</span>
+            </button>
+        `;
+        
+        // Add event listeners
+        const input = document.getElementById('threadly-collection-name-input');
+        const addBtn = document.getElementById('threadly-add-collection-btn');
+        
+        if (input && addBtn) {
+            // Focus input
+            setTimeout(() => input.focus(), 100);
+            
+            // Enter key support
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    createAndAssignCollection();
+                }
+            });
+            
+            // Add button click
+            addBtn.addEventListener('click', createAndAssignCollection);
+        }
+        
+        // Add input mode class
+        toggleBar.classList.add('input-mode');
+    }
+    
+    async function createAndAssignCollection() {
+        const input = document.getElementById('threadly-collection-name-input');
+        if (!input) return;
+        
+        const collectionName = input.value.trim();
+        if (!collectionName) {
+            console.warn('Threadly: Collection name cannot be empty');
+            return;
+        }
+        
+        try {
+            // Create the collection
+            const newCollection = await createCollection(collectionName);
+            
+            if (newCollection && newCollection.id) {
+                // Assign selected messages to the new collection
+                await assignSelectedMessagesToCollection(newCollection.id);
+                
+                // Show success message
+                showToast(`Added ${selectedMessageIds.length} message(s) to "${collectionName}"`);
+            }
+        } catch (error) {
+            console.error('Threadly: Error creating collection and assigning messages:', error);
+            showToast('Error creating collection');
+        }
+    }
+    
+    function cancelAssignment() {
+        // Exit assignment mode and restore normal state
+        isAssigningMode = false;
+        
+        // Restore original navbar
+        restoreNavbarFromSelectionMode();
+        
+        // Remove SAVED state
+        document.body.classList.remove('saved-state');
+        
+        console.log('Threadly: Assignment cancelled');
+    }
+    
+    function morphToSavedState() {
+        // Add morph animation class
+        document.body.classList.add('morphing-to-saved');
+        
+        // Simulate UI state change with animation
+        setTimeout(() => {
+            document.body.classList.remove('morphing-to-saved');
+            document.body.classList.add('saved-state');
+        }, 400);
+    }
+    
     // --- Checkbox Multipurpose Button --- //
     function toggleSelectionMode() {
         if (isInSelectionMode) {
@@ -1890,7 +2571,7 @@
         const checkboxContainers = document.querySelectorAll('.threadly-message-checkbox-container');
         checkboxContainers.forEach(container => {
             if (isInSelectionMode) {
-                // In selection mode, show checkboxes for starred messages
+                // In selection mode, show checkboxes for all messages
                 container.style.display = 'block';
                 
                 // Add event listener for checkbox changes
@@ -2191,6 +2872,15 @@
 
     // --- Metaball Search Bar Functions --- //
     function handleSearchFocus(e) {
+        // If we're in collections view, return to main messages first
+        if (isInCollectionsView) {
+            isInCollectionsView = false;
+            // Small delay to ensure the flag is reset before filtering
+            setTimeout(() => {
+                filterMessages(searchInput.value);
+            }, 50);
+        }
+        
         // Get the parent wrapper and switch to expanded state
         const wrapper = searchInput.closest('.threadly-metaball-wrapper');
         if (wrapper) {
@@ -2201,6 +2891,15 @@
     }
 
     function handleSearchBlur(e) {
+        // If we're in collections view, return to main messages first
+        if (isInCollectionsView) {
+            isInCollectionsView = false;
+            // Small delay to ensure the flag is reset before filtering
+            setTimeout(() => {
+                filterMessages(searchInput.value);
+            }, 50);
+        }
+        
         // Get the parent wrapper and switch to compact state if input is empty
         const wrapper = searchInput.closest('.threadly-metaball-wrapper');
         if (wrapper && !searchInput.value.trim()) {
@@ -2212,6 +2911,15 @@
 
     // Add input event listener to handle text changes
     function handleSearchInput(e) {
+        // If we're in collections view, return to main messages first
+        if (isInCollectionsView) {
+            isInCollectionsView = false;
+            // Small delay to ensure the flag is reset before filtering
+            setTimeout(() => {
+                filterMessages(searchInput.value);
+            }, 50);
+        }
+        
         const wrapper = searchInput.closest('.threadly-metaball-wrapper');
         if (wrapper) {
             // If there's text, ensure expanded state
@@ -2224,6 +2932,15 @@
 
     // --- Legacy Fluid Search Bar Functions (for FAV mode) --- //
     function handleSearchClick(e) {
+        // If we're in collections view, return to main messages first
+        if (isInCollectionsView) {
+            isInCollectionsView = false;
+            // Small delay to ensure the flag is reset before filtering
+            setTimeout(() => {
+                filterMessages(searchInput.value);
+            }, 50);
+        }
+        
         if (messageFilterState === 'favorites' && !searchInput.classList.contains('expanded')) {
             expandSearch();
             e.stopPropagation();
@@ -2231,6 +2948,15 @@
     }
 
     function handleSearchKeydown(e) {
+        // If we're in collections view, return to main messages first
+        if (isInCollectionsView) {
+            isInCollectionsView = false;
+            // Small delay to ensure the flag is reset before filtering
+            setTimeout(() => {
+                filterMessages(searchInput.value);
+            }, 50);
+        }
+        
         if (e.key === 'Escape' && messageFilterState === 'favorites' && searchInput.classList.contains('expanded')) {
             collapseSearch();
         }
