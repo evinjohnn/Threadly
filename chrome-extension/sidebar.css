@@ -326,9 +326,9 @@
 }
 
 .threadly-platform-indicator[data-platform="perplexity"] {
-    background: linear-gradient(135deg, #14b8a6, #0d9488);
+    background: transparent;
     color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid transparent;
 }
 
 .threadly-platform-indicator[data-platform="grok"] {
@@ -414,7 +414,7 @@
     flex: 1; /* Changed from flex-grow: 1 to flex: 1 */
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 8px 12px 80px 18px; /* Added bottom padding for toggle */
+    padding: 8px 10px 80px 16px; /* Consistent top padding for uniform spacing */
     min-height: 0; /* Important for flexbox scrolling */
     max-height: calc(100% - 60px); /* Ensure it doesn't exceed available space */
     height: 0; /* Force flexbox to calculate height properly */
@@ -442,9 +442,9 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 .threadly-message-item {
-    padding: 12px;
-    margin-bottom: 10px;
-    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-left: 4px solid var(--threadly-primary-accent);
@@ -458,12 +458,39 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Copy button and See More styling - bold, no underline, same accent color */
+.threadly-copy-btn,
+.threadly-read-more {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Collection header styling - matches text card blur and spacing */
+.threadly-collection-header {
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    margin-bottom: 8px !important;
+}
+
+/* Make Copy text extra bold and remove any glow effects */
+.threadly-copy-btn {
+    font-weight: 900 !important;
+    text-shadow: none !important;
+}
+
+.threadly-copy-btn:hover,
+.threadly-read-more:hover {
+    opacity: 0.8;
+}
+
 /* Message header with role and star button */
 .threadly-message-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .threadly-message-left {
@@ -529,9 +556,9 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 .threadly-platform-badge[data-original-platform="perplexity"] {
-    background: #14b8a6;
+    background: transparent;
     color: white;
-    border: 1px solid rgba(20, 184, 166, 0.3);
+    border: 1px solid transparent;
 }
 
 .threadly-platform-badge[data-original-platform="grok"] {
@@ -652,7 +679,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-message-item[data-role="user"] {
-    border-left-color: #14b8a6;
+    border-left-color: transparent;
 }
 
 #threadly-panel[data-platform="grok"] .threadly-message-item[data-role="user"] {
@@ -684,6 +711,12 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     max-height: none;
 }
 
+/* Hide See More button when text is not actually truncated */
+.threadly-message-text:not(.expanded) {
+    max-height: 4.5em;
+    overflow: hidden;
+}
+
 .threadly-read-more {
     color: var(--threadly-primary-accent);
     cursor: pointer;
@@ -691,7 +724,13 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     font-size: 0.85rem;
     margin-top: 8px;
     display: inline-block;
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.threadly-read-more:hover {
+    opacity: 0.8;
+    transform: translateY(-1px);
 }
 
 /* Default hover styling removed - now handled by platform-specific rules */
@@ -734,11 +773,11 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-read-more {
-    color: #14b8a6;
+    color: transparent;
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-read-more:hover {
-    color: #14b8a6;
+    color: transparent;
     text-decoration: underline;
 }
 
@@ -896,7 +935,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-toggle-label:hover {
-    color: #14b8a6;
+    color: transparent;
 }
 
 #threadly-panel[data-platform="grok"] .threadly-toggle-label:hover {
@@ -946,8 +985,8 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-toggle-segment {
-    background: linear-gradient(135deg, #14b8a6, #0d9488);
-    box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+    background: transparent;
+    box-shadow: none;
 }
 
 #threadly-panel[data-platform="grok"] .threadly-toggle-segment {
@@ -1010,11 +1049,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-noise-gradient {
-    background: linear-gradient(to top, 
-        rgba(20, 184, 166, 0.2) 0%,
-        rgba(20, 184, 166, 0.1) 40%,
-        rgba(20, 184, 166, 0.04) 70%,
-        transparent 100%);
+    background: transparent;
 }
 
 #threadly-panel[data-platform="grok"] .threadly-noise-gradient {
@@ -1087,9 +1122,9 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     width: var(--search-pill-compact-width); /* Use CSS variable for width */
     height: var(--bulb-size); /* match bulb height exactly */
     
-    /* Glass effect for search input */
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    /* Glass effect for search input - matches other components */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -1210,33 +1245,57 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     will-change: transform;
 }
 
+/* Default state: Regular square (no hover effects when not in selection mode) */
+.threadly-circle-bulb.square[data-mode="select"]:hover .xbox-side {
+    transform: none !important; /* No transformation on hover when not in selection mode */
+}
+
+/* Also disable hover effects for the entire bulb when not in selection mode */
+.threadly-circle-bulb.square[data-mode="select"]:hover {
+    background: transparent !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* No movement/scale for selection bulb even in selection mode */
+.threadly-circle-bulb.square[data-mode="close"]:hover {
+    transform: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
 .threadly-circle-bulb.square .xbox-side.top    { top: 0; left: 0; right: 0; height: var(--stroke); }
 .threadly-circle-bulb.square .xbox-side.bottom { bottom: 0; left: 0; right: 0; height: var(--stroke); }
 .threadly-circle-bulb.square .xbox-side.left   { left: 0; top: 0; bottom: 0; width: var(--stroke); }
 .threadly-circle-bulb.square .xbox-side.right  { right: 0; top: 0; bottom: 0; width: var(--stroke); }
 
-/* Hover morph: Square → X when in selection mode */
-.threadly-circle-bulb.square:hover .xbox-side.top {
+/* Hover morph: Square → X ONLY when in selection mode */
+.threadly-circle-bulb.square[data-mode="close"]:hover .xbox-side.top {
     transform: translateY(calc((var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleX(var(--diag-scale));
 }
 
-.threadly-circle-bulb.square:hover .xbox-side.right {
+.threadly-circle-bulb.square[data-mode="close"]:hover .xbox-side.right {
     transform: translateX(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleY(var(--diag-scale));
 }
 
-.threadly-circle-bulb.square:hover .xbox-side.bottom {
+.threadly-circle-bulb.square[data-mode="close"]:hover .xbox-side.bottom {
     transform: translateY(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleX(var(--diag-scale));
 }
 
-.threadly-circle-bulb.square:hover .xbox-side.left {
+.threadly-circle-bulb.square[data-mode="close"]:hover .xbox-side.left {
     transform: translateX(calc((var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleY(var(--diag-scale));
 }
 
-/* Hover effects for bulbs */
+/* Hover effects for bulbs - removed movement/scale for selection bulb */
 .threadly-circle-bulb:hover {
     background: rgba(255, 255, 255, 0.12);
-    transform: scale(1.1);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* No movement/scale for selection bulb on hover */
+.threadly-circle-bulb.square:hover {
+    transform: none !important;
+    background: transparent !important;
 }
 
 /* Special fill animation for saved icon (first bulb) - simplified like reference code */
@@ -1244,14 +1303,14 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     transition: fill 800ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
 }
 
-/* Hover effect for checkbox - change color on hover */
-.threadly-circle-bulb.square:hover .xbox-side {
-    background: var(--threadly-primary-accent) !important;
+/* Hover effect for checkbox - change color on hover (only in selection mode) */
+.threadly-circle-bulb.square[data-mode="close"]:hover .xbox-side {
+    background: #ff4444 !important; /* Red color when hovering in selection mode (destructive nature) */
 }
 
 /* Ensure checkbox is always visible with proper color */
 .threadly-circle-bulb.square .xbox-side {
-    background: white !important;
+    background: white !important; /* White color by default */
 }
 
 .threadly-circle-bulb:hover svg {
@@ -1405,8 +1464,8 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-circle-bulb:hover svg {
-    fill: #14b8a6;
-    stroke: #14b8a6;
+    fill: transparent;
+    stroke: transparent;
     transition: fill 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
@@ -1416,8 +1475,8 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-metaball-wrapper.stateA .threadly-search-pill {
-    border-color: #14b8a6;
-    box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2);
+    border-color: transparent;
+    box-shadow: none;
 }
 
 #threadly-panel[data-platform="grok"] .threadly-circle-bulb:hover svg {
@@ -1729,7 +1788,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .xbox-side {
-    background: rgba(20, 184, 166, 0.8);
+    background: rgba(255, 255, 255, 0.2);
 }
 
 #threadly-panel[data-platform="grok"] .xbox-side {
@@ -1794,9 +1853,9 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-message-checkbox:checked {
-    background: #14b8a6;
-    border-color: #14b8a6;
-    box-shadow: 0 0 8px rgba(20, 184, 166, 0.3);
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
 }
 
 #threadly-panel[data-platform="grok"] .threadly-message-checkbox:checked {
@@ -2497,12 +2556,12 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-saved-manager-popover {
-    border-color: rgba(20, 184, 166, 0.2);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-collection-name-input:focus {
-    border-color: #14b8a6;
-    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+    border-color: transparent;
+    box-shadow: none;
 }
 
 #threadly-panel[data-platform="grok"] .threadly-saved-manager-popover {
@@ -2521,4 +2580,530 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 #threadly-panel[data-platform="copilot"] .threadly-collection-name-input:focus {
     border-color: #0078d4;
     box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.1);
+}
+
+/* --- Enhanced Selection Mode Styles --- */
+.selection-mode .text-card {
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.selection-mode .text-card.selected {
+    border-color: transparent;
+    background: transparent;
+}
+
+.card-checkbox {
+    display: none;
+}
+
+.selection-mode .card-checkbox {
+    display: block;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+/* --- Bottom Navbar Styles --- */
+.threadly-bottom-navbar {
+    position: relative;
+    margin: 20px auto;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 35px;
+    padding: 8px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 300px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 2147483641;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.threadly-bottom-navbar[style*="display: flex"] {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Navbar Button Styles */
+.navbar-button {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.navbar-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.02);
+}
+
+.navbar-button:active {
+    transform: scale(0.98);
+}
+
+/* Navbar Input Styles */
+.navbar-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 16px 24px;
+    font-size: 16px;
+    color: white;
+    border-radius: 25px;
+}
+
+.navbar-input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.navbar-input:focus {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Add Collection Button Styles */
+.add-collection-btn {
+    background: transparent;
+    border: none;
+    width: 52px;
+    height: 52px;
+    border-radius: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.add-collection-btn:hover {
+    background: transparent;
+    transform: scale(1.1);
+}
+
+.add-collection-btn:active {
+    transform: scale(0.95);
+}
+
+.plus-icon {
+    color: white;
+    font-size: 24px;
+    font-weight: 300;
+    line-height: 1;
+}
+
+/* --- Morph Animation Styles --- */
+@keyframes morphToSaved {
+    0% { 
+        transform: translateY(0) scale(1); 
+        background: transparent;
+    }
+    50% { 
+        transform: translateY(-20px) scale(1.05); 
+        background: transparent;
+    }
+    100% { 
+        transform: translateY(0) scale(1); 
+        background: transparent;
+    }
+}
+
+.morphing-to-saved {
+    animation: morphToSaved 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.saved-state {
+    background: transparent !important;
+    border-color: transparent !important;
+}
+
+.saved-state .threadly-content {
+    background: transparent;
+    border: none;
+}
+
+.saved-state {
+    background: transparent !important;
+    border-color: transparent !important;
+}
+
+.saved-state .threadly-header {
+    background: transparent;
+    border-bottom-color: transparent;
+}
+
+.saved-state .threadly-search-row {
+    background: transparent;
+}
+
+.saved-state .threadly-toggle-container {
+    background: transparent;
+    border-color: transparent;
+}
+
+/* --- Enhanced Message Selection Styles --- */
+.selection-mode .threadly-message-item {
+    border: 2px solid transparent;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    cursor: pointer;
+    position: relative;
+}
+
+.selection-mode .threadly-message-item:hover {
+    border-color: transparent;
+    background: transparent;
+}
+
+.selection-mode .threadly-message-item.selected {
+    border-color: transparent;
+    background: transparent;
+    transform: scale(1.01);
+}
+
+.selection-mode .threadly-message-item.selected::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: transparent;
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0.3;
+}
+
+/* --- Selection Mode Checkbox Enhancement --- */
+.selection-mode .threadly-message-checkbox-container {
+    display: flex !important;
+    opacity: 1;
+    transform: scale(1);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.selection-mode .threadly-message-checkbox {
+    transform: scale(1.1);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.selection-mode .threadly-message-checkbox:checked {
+    transform: scale(1.2);
+    box-shadow: none;
+}
+
+/* --- Contextual Actions Enhancement --- */
+.selection-mode .threadly-contextual-actions {
+    display: flex !important;
+    opacity: 1;
+    transform: scale(1);
+    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background: transparent;
+    border-color: transparent;
+}
+
+.selection-mode .threadly-action-btn:not(:disabled) {
+    background: transparent;
+    color: white;
+    border: 1px solid transparent;
+}
+
+.selection-mode .threadly-action-btn:not(:disabled):hover {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+
+/* --- Smooth State Transitions --- */
+.threadly-panel {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.threadly-panel * {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* --- Platform-Specific Selection Colors --- */
+#threadly-panel[data-platform="chatgpt"] .selection-mode .threadly-message-item.selected {
+    border-color: #9ca3af;
+    background: rgba(156, 163, 175, 0.1);
+}
+
+#threadly-panel[data-platform="gemini"] .selection-mode .threadly-message-item.selected {
+    border-color: #4285f4;
+    background: rgba(66, 133, 244, 0.1);
+}
+
+#threadly-panel[data-platform="claude"] .selection-mode .threadly-message-item.selected {
+    border-color: #ff6b35;
+    background: rgba(255, 107, 53, 0.1);
+}
+
+#threadly-panel[data-platform="ai-studio"] .selection-mode .threadly-message-item.selected {
+    border-color: #4285f4;
+    background: rgba(66, 133, 244, 0.1);
+}
+
+#threadly-panel[data-platform="perplexity"] .selection-mode .threadly-message-item.selected {
+    border-color: transparent;
+    background: transparent;
+}
+
+#threadly-panel[data-platform="grok"] .selection-mode .threadly-message-item.selected {
+    border-color: #1f2937;
+    background: rgba(31, 41, 55, 0.1);
+}
+
+#threadly-panel[data-platform="copilot"] .selection-mode .threadly-message-item.selected {
+    border-color: #0078d4;
+    background: rgba(0, 120, 212, 0.1);
+}
+
+/* --- Collection Back Button Styles --- */
+.threadly-back-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 12px 20px;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.threadly-back-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateX(-2px);
+}
+
+.threadly-back-button:active {
+    transform: translateX(-1px);
+}
+
+/* --- Collection Tag Styles --- */
+.threadly-collection-tag {
+    display: inline-block;
+    background: var(--threadly-primary-accent);
+    color: #111;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 12px;
+    margin-top: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* --- Collection Pill Styles --- */
+.threadly-collection-pill {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    padding: 16px 24px;
+    margin: 12px 0;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.threadly-collection-pill::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+}
+
+.threadly-collection-pill:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: transparent;
+}
+
+.threadly-collection-pill:hover::before {
+    opacity: 0.1;
+}
+
+.threadly-collection-pill:active {
+    transform: translateY(0);
+}
+
+.collection-pill-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.collection-pill-arrow {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 300;
+    transition: all 0.3s ease;
+}
+
+.threadly-collection-pill:hover .collection-pill-arrow {
+    color: white;
+    transform: translateX(3px);
+}
+
+.collection-pill-add {
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 400;
+    transition: all 0.3s ease;
+    background: transparent;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.threadly-collection-pill:hover .collection-pill-add {
+    color: white;
+    background: transparent;
+    transform: scale(1.1);
+}
+
+/* Platform-specific collection pill colors */
+#threadly-panel[data-platform="chatgpt"] .threadly-collection-pill {
+    background: rgba(156, 163, 175, 0.15);
+    border-color: rgba(156, 163, 175, 0.3);
+}
+
+#threadly-panel[data-platform="gemini"] .threadly-collection-pill {
+    background: rgba(66, 133, 244, 0.15);
+    border-color: rgba(66, 133, 244, 0.3);
+}
+
+#threadly-panel[data-platform="claude"] .threadly-collection-pill {
+    background: rgba(255, 107, 53, 0.15);
+    border-color: rgba(255, 107, 53, 0.3);
+}
+
+#threadly-panel[data-platform="ai-studio"] .threadly-collection-pill {
+    background: rgba(66, 133, 244, 0.15);
+    border-color: rgba(66, 133, 244, 0.3);
+}
+
+#threadly-panel[data-platform="perplexity"] .threadly-collection-pill {
+    background: transparent;
+    border-color: transparent;
+}
+
+#threadly-panel[data-platform="grok"] .threadly-collection-pill {
+    background: rgba(31, 41, 55, 0.15);
+    border-color: rgba(31, 41, 55, 0.3);
+}
+
+#threadly-panel[data-platform="copilot"] .threadly-collection-pill {
+    background: rgba(0, 120, 212, 0.15);
+    border-color: rgba(0, 120, 212, 0.3);
+}
+
+/* --- Assignment View Styles --- */
+.assignment-view {
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- Collection Header Styles --- */
+.threadly-collection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.threadly-collection-header h3 {
+    margin: 0;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.threadly-collection-header p {
+    margin: 5px 0 0 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+}
+
+.existing-collections-list {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.existing-collections-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.existing-collections-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.existing-collections-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.existing-collection-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.existing-collection-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+}
+
+.existing-collection-item:hover::before {
+    opacity: 0.1;
 }

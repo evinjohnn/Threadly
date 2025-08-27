@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Threadly Selection Mode Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .test-title {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .test-button {
+            background: #14b8a6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .test-button:hover {
+            background: #0f766e;
+            transform: scale(1.05);
+        }
+        
+        .test-button:active {
+            transform: scale(0.95);
+        }
+        
+        .test-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            padding: 12px 20px;
+            color: white;
+            font-size: 16px;
+            margin: 10px;
+            outline: none;
+        }
+        
+        .test-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .test-message {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .test-message:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .test-message.selected {
+            border-color: #14b8a6;
+            background: rgba(20, 184, 166, 0.1);
+        }
+        
+        .test-checkbox {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .test-checkbox:checked {
+            background: #14b8a6;
+            border-color: #14b8a6;
+        }
+        
+        .test-checkbox:checked::after {
+            content: '✓';
+            color: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .selection-mode .test-message {
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .selection-mode .test-checkbox {
+            display: block;
+        }
+        
+        .test-checkbox {
+            display: none;
+        }
+        
+        .test-status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-weight: 500;
+        }
+        
+        .test-actions {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .test-bottom-navbar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 35px;
+            padding: 8px;
+            min-width: 300px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            z-index: 1000;
+        }
+        
+        .navbar-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .navbar-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.02);
+        }
+        
+        .navbar-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            padding: 16px 24px;
+            font-size: 16px;
+            color: white;
+            border-radius: 25px;
+        }
+        
+        .navbar-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .add-collection-btn {
+            background: #14b8a6;
+            border: none;
+            width: 52px;
+            height: 52px;
+            border-radius: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        
+        .add-collection-btn:hover {
+            background: #0f766e;
+            transform: scale(1.1);
+        }
+        
+        .plus-icon {
+            color: white;
+            font-size: 24px;
+            font-weight: 300;
+            line-height: 1;
+        }
+        
+        /* Test Collection Pills */
+        .test-collections {
+            margin: 20px 0;
+        }
+        
+        .test-collection-pill {
+            background: rgba(20, 184, 166, 0.15);
+            border: 2px solid rgba(20, 184, 166, 0.3);
+            border-radius: 25px;
+            padding: 16px 24px;
+            margin: 12px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .test-collection-pill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(20, 184, 166, 0.8);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+        
+        .test-collection-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-color: rgba(20, 184, 166, 0.8);
+        }
+        
+        .test-collection-pill:hover::before {
+            opacity: 0.1;
+        }
+        
+        .test-collection-pill:active {
+            transform: translateY(0);
+        }
+        
+        .collection-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .collection-arrow {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 300;
+            transition: all 0.3s ease;
+        }
+        
+        .test-collection-pill:hover .collection-arrow {
+            color: white;
+            transform: translateX(3px);
+        }
+        
+        /* Collection View Styles */
+        .collection-view {
+            display: none;
+        }
+        
+        .collection-view.active {
+            display: block;
+        }
+        
+        .collection-messages {
+            margin-top: 20px;
+        }
+        
+        .collection-message {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .collection-message:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="test-title">Threadly Selection Mode Test</h1>
+        
+        <div class="test-section">
+            <h3>Selection Mode Controls</h3>
+            <button class="test-button" onclick="toggleSelectionMode()">Toggle Selection Mode</button>
+            <button class="test-button" onclick="clearSelection()">Clear Selection</button>
+            <div class="test-status" id="status">Selection mode is OFF</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Collections</h3>
+            <div class="test-collections">
+                <div class="test-collection-pill" data-collection-id="1">
+                    <span class="collection-name">Work Notes</span>
+                    <span class="collection-arrow">></span>
+                </div>
+                <div class="test-collection-pill" data-collection-id="2">
+                    <span class="collection-name">Personal Ideas</span>
+                    <span class="collection-arrow">></span>
+                </div>
+                <div class="test-collection-pill" data-collection-id="3">
+                    <span class="collection-name">Learning Resources</span>
+                    <span class="collection-arrow">></span>
+                </div>
+            </div>
+            <div class="test-status" id="collection-status">Click on a collection to view its messages</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Messages</h3>
+            <div class="test-message" data-id="1">
+                <input type="checkbox" class="test-checkbox" data-id="1">
+                <h4>User Message #1</h4>
+                <p>This is a test user message to demonstrate the selection mode functionality. Click to select/deselect.</p>
+            </div>
+            
+            <div class="test-message" data-id="2">
+                <input type="checkbox" class="test-checkbox" data-id="2">
+                <h4>AI Response #1</h4>
+                <p>This is a test AI response message. You can select multiple messages to organize them into collections.</p>
+            </div>
+            
+            <div class="test-message" data-id="3">
+                <input type="checkbox" class="test-checkbox" data-id="3">
+                <h4>User Message #2</h4>
+                <p>Another user message for testing purposes. The selection mode allows you to organize your chat history.</p>
+            </div>
+            
+            <div class="test-message" data-id="4">
+                <input type="checkbox" class="test-checkbox" data-id="4">
+                <h4>AI Response #2</h4>
+                <p>This AI response demonstrates how the selection system works with different types of content.</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Actions</h3>
+            <div class="test-actions">
+                <button class="test-button" onclick="assignToCollection()" id="assignBtn" disabled>Assign To (0)</button>
+                <button class="test-button" onclick="unstarMessages()" id="unstarBtn" disabled>Unstar (0)</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bottom Navbar for Assignment Mode -->
+    <div class="test-bottom-navbar" id="bottomNavbar">
+        <!-- Content will be dynamically populated -->
+    </div>
+    
+    <script>
+        let isSelectionMode = false;
+        let selectedMessages = new Set();
+        
+        function toggleSelectionMode() {
+            isSelectionMode = !isSelectionMode;
+            document.body.classList.toggle('selection-mode', isSelectionMode);
+            
+            const status = document.getElementById('status');
+            if (isSelectionMode) {
+                status.textContent = 'Selection mode is ON - Click messages to select them';
+                status.style.background = 'rgba(20, 184, 166, 0.2)';
+            } else {
+                status.textContent = 'Selection mode is OFF';
+                status.style.background = 'rgba(255, 255, 255, 0.1)';
+                clearSelection();
+            }
+            
+            updateActionButtons();
+        }
+        
+        function clearSelection() {
+            selectedMessages.clear();
+            document.querySelectorAll('.test-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            document.querySelectorAll('.test-message').forEach(message => {
+                message.classList.remove('selected');
+            });
+            updateActionButtons();
+        }
+        
+        function updateActionButtons() {
+            const assignBtn = document.getElementById('assignBtn');
+            const unstarBtn = document.getElementById('unstarBtn');
+            
+            const count = selectedMessages.size;
+            assignBtn.disabled = count === 0;
+            unstarBtn.disabled = count === 0;
+            
+            assignBtn.textContent = `Assign To (${count})`;
+            unstarBtn.textContent = `Unstar (${count})`;
+        }
+        
+        function assignToCollection() {
+            if (selectedMessages.size === 0) return;
+            
+            // Show assignment navbar
+            showAssignmentNavbar();
+        }
+        
+        function unstarMessages() {
+            if (selectedMessages.size === 0) return;
+            
+            alert(`Unstarred ${selectedMessages.size} message(s)`);
+            clearSelection();
+        }
+        
+        function showAssignmentNavbar() {
+            const navbar = document.getElementById('bottomNavbar');
+            navbar.innerHTML = `
+                <button class="navbar-button" onclick="enterInputMode()">ADD NEW</button>
+                <button class="navbar-button" onclick="cancelAssignment()">CANCEL</button>
+            `;
+            navbar.style.display = 'flex';
+        }
+        
+        function enterInputMode() {
+            const navbar = document.getElementById('bottomNavbar');
+            navbar.innerHTML = `
+                <input type="text" class="navbar-input" placeholder="Type collection name..." id="collectionNameInput">
+                <button class="add-collection-btn" onclick="addNewCollection()">
+                    <span class="plus-icon">+</span>
+                </button>
+            `;
+            
+            setTimeout(() => {
+                const input = document.getElementById('collectionNameInput');
+                if (input) {
+                    input.focus();
+                    input.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            addNewCollection();
+                        }
+                    });
+                }
+            }, 100);
+        }
+        
+        function addNewCollection() {
+            const input = document.getElementById('collectionNameInput');
+            const name = input.value.trim();
+            
+            if (!name) return;
+            
+            alert(`Created collection "${name}" with ${selectedMessages.size} message(s)`);
+            cancelAssignment();
+        }
+        
+        function cancelAssignment() {
+            const navbar = document.getElementById('bottomNavbar');
+            navbar.style.display = 'none';
+        }
+        
+        // Add click handlers for messages
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.test-message').forEach(message => {
+                message.addEventListener('click', function() {
+                    if (!isSelectionMode) return;
+                    
+                    const checkbox = this.querySelector('.test-checkbox');
+                    const messageId = this.dataset.id;
+                    
+                    if (checkbox.checked) {
+                        checkbox.checked = false;
+                        selectedMessages.delete(messageId);
+                        this.classList.remove('selected');
+                    } else {
+                        checkbox.checked = true;
+                        selectedMessages.add(messageId);
+                        this.classList.add('selected');
+                    }
+                    
+                    updateActionButtons();
+                });
+            });
+            
+            // Add click handlers for collection pills
+            document.querySelectorAll('.test-collection-pill').forEach(pill => {
+                pill.addEventListener('click', function() {
+                    const collectionId = this.dataset.collectionId;
+                    const collectionName = this.querySelector('.collection-name').textContent;
+                    viewCollection(collectionId, collectionName);
+                });
+            });
+        });
+        
+        // Function to view a collection
+        function viewCollection(collectionId, collectionName) {
+            // Hide test messages and show collection view
+            const testMessages = document.querySelector('.test-section:nth-child(3)');
+            const testCollections = document.querySelector('.test-section:nth-child(2)');
+            
+            if (testMessages) testMessages.style.display = 'none';
+            if (testCollections) testCollections.style.display = 'none';
+            
+            // Create collection view
+            const collectionView = document.createElement('div');
+            collectionView.className = 'test-section collection-view active';
+            collectionView.innerHTML = `
+                <h3>Collection: ${collectionName}</h3>
+                <button class="test-button" onclick="backToCollections()">← Back to Collections</button>
+                <div class="collection-messages">
+                    <div class="collection-message">
+                        <h4>Sample Message #1</h4>
+                        <p>This is a sample message saved to the "${collectionName}" collection. It demonstrates how messages are displayed when viewing a collection.</p>
+                    </div>
+                    <div class="collection-message">
+                        <h4>Sample Message #2</h4>
+                        <p>Another sample message in the "${collectionName}" collection. You can see how the collection view works with multiple messages.</p>
+                    </div>
+                    <div class="collection-message">
+                        <h4>Sample Message #3</h4>
+                        <p>This is the third sample message in the "${collectionName}" collection. The collection view properly displays all saved messages.</p>
+                    </div>
+                </div>
+            `;
+            
+            // Insert after the first section
+            const firstSection = document.querySelector('.test-section');
+            firstSection.parentNode.insertBefore(collectionView, firstSection.nextSibling);
+            
+            // Update status
+            const status = document.getElementById('collection-status');
+            if (status) {
+                status.textContent = `Viewing collection: ${collectionName}`;
+                status.style.background = 'rgba(20, 184, 166, 0.2)';
+            }
+        }
+        
+        // Function to go back to collections
+        function backToCollections() {
+            // Remove collection view
+            const collectionView = document.querySelector('.collection-view');
+            if (collectionView) {
+                collectionView.remove();
+            }
+            
+            // Show test messages and collections again
+            const testMessages = document.querySelector('.test-section:nth-child(3)');
+            const testCollections = document.querySelector('.test-section:nth-child(2)');
+            
+            if (testMessages) testMessages.style.display = 'block';
+            if (testCollections) testCollections.style.display = 'block';
+            
+            // Update status
+            const status = document.getElementById('collection-status');
+            if (status) {
+                status.textContent = 'Click on a collection to view its messages';
+                status.style.background = 'rgba(255, 255, 255, 0.1)';
+            }
+        }
+
+        // Test the new assignment flow
+        function testAssignmentFlow() {
+            console.log('Testing assignment flow...');
+            
+            // Simulate entering assignment mode
+            const navbar = document.getElementById('bottomNavbar');
+            if (navbar) {
+                navbar.innerHTML = '';
+                
+                // Create assignment view similar to the real implementation
+                const assignmentView = document.createElement('div');
+                assignmentView.className = 'assignment-view';
+                assignmentView.style.cssText = `
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                    width: 100%;
+                    padding: 20px;
+                    background: rgba(0, 0, 0, 0.3);
+                    border-radius: 16px;
+                    backdrop-filter: blur(20px);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                `;
+
+                // Add title
+                const title = document.createElement('div');
+                title.textContent = 'Assign to Collection';
+                title.style.cssText = `
+                    color: white;
+                    font-size: 16px;
+                    font-weight: 600;
+                    text-align: center;
+                    margin-bottom: 8px;
+                `;
+                assignmentView.appendChild(title);
+
+                // Add existing collections (simulated)
+                const subtitle = document.createElement('div');
+                subtitle.textContent = 'Choose existing collection:';
+                subtitle.style.cssText = `
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 14px;
+                    text-align: center;
+                    margin-bottom: 12px;
+                `;
+                assignmentView.appendChild(subtitle);
+
+                // Create existing collections list
+                const collectionsList = document.createElement('div');
+                collectionsList.style.cssText = `
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    margin-bottom: 16px;
+                `;
+
+                // Add sample collections
+                const sampleCollections = [
+                    { name: 'Work Notes', count: 5 },
+                    { name: 'Personal Ideas', count: 3 },
+                    { name: 'Research', count: 8 }
+                ];
+
+                sampleCollections.forEach((collection, index) => {
+                    const collectionItem = document.createElement('div');
+                    collectionItem.style.cssText = `
+                        background: rgba(20, 184, 166, 0.3);
+                        border: 1px solid rgba(20, 184, 166, 0.6);
+                        border-radius: 20px;
+                        padding: 12px 16px;
+                        cursor: pointer;
+                        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    `;
+
+                    const collectionName = document.createElement('span');
+                    collectionName.textContent = collection.name;
+                    collectionName.style.cssText = `
+                        color: white;
+                        font-size: 14px;
+                        font-weight: 500;
+                    `;
+
+                    const messageCount = document.createElement('span');
+                    messageCount.textContent = `${collection.count} messages`;
+                    messageCount.style.cssText = `
+                        color: rgba(255, 255, 255, 0.8);
+                        font-size: 12px;
+                    `;
+
+                    collectionItem.appendChild(collectionName);
+                    collectionItem.appendChild(messageCount);
+
+                    // Add hover effect
+                    collectionItem.addEventListener('mouseenter', () => {
+                        collectionItem.style.transform = 'translateY(-2px)';
+                        collectionItem.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.15)';
+                    });
+
+                    collectionItem.addEventListener('mouseleave', () => {
+                        collectionItem.style.transform = 'translateY(0)';
+                        collectionItem.style.boxShadow = 'none';
+                    });
+
+                    // Add click handler
+                    collectionItem.addEventListener('click', () => {
+                        alert(`Would assign messages to "${collection.name}"`);
+                    });
+
+                    collectionsList.appendChild(collectionItem);
+                });
+
+                assignmentView.appendChild(collectionsList);
+
+                // Add divider
+                const divider = document.createElement('div');
+                divider.style.cssText = `
+                    height: 1px;
+                    background: rgba(255, 255, 255, 0.2);
+                    margin: 8px 0;
+                `;
+                assignmentView.appendChild(divider);
+
+                // Add subtitle for new collection
+                const newCollectionSubtitle = document.createElement('div');
+                newCollectionSubtitle.textContent = 'Or create new collection:';
+                newCollectionSubtitle.style.cssText = `
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 14px;
+                    text-align: center;
+                    margin-bottom: 12px;
+                `;
+                assignmentView.appendChild(newCollectionSubtitle);
+
+                // Create button container
+                const buttonContainer = document.createElement('div');
+                buttonContainer.style.cssText = `
+                    display: flex;
+                    gap: 12px;
+                    justify-content: center;
+                `;
+
+                // ADD NEW button
+                const addNewBtn = document.createElement('button');
+                addNewBtn.textContent = 'ADD NEW';
+                addNewBtn.style.cssText = `
+                    background: rgba(20, 184, 166, 0.8);
+                    border: 1px solid rgba(20, 184, 166, 0.6);
+                    color: white;
+                    padding: 12px 24px;
+                    border-radius: 20px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 600;
+                    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                `;
+
+                addNewBtn.addEventListener('click', () => {
+                    alert('Would enter input mode to create new collection');
+                });
+
+                // CANCEL button
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = 'CANCEL';
+                cancelBtn.style.cssText = `
+                    background: rgba(239, 68, 68, 0.8);
+                    border: 1px solid rgba(239, 68, 68, 0.6);
+                    color: white;
+                    padding: 12px 24px;
+                    border-radius: 20px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 600;
+                    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                `;
+
+                cancelBtn.addEventListener('click', () => {
+                    alert('Would cancel assignment');
+                });
+
+                buttonContainer.appendChild(addNewBtn);
+                buttonContainer.appendChild(cancelBtn);
+                assignmentView.appendChild(buttonContainer);
+
+                navbar.appendChild(assignmentView);
+                navbar.style.display = 'flex';
+            }
+        }
+
+        // Add test button for assignment flow
+        const testAssignmentBtn = document.createElement('button');
+        testAssignmentBtn.textContent = 'Test Assignment Flow';
+        testAssignmentBtn.style.cssText = `
+            background: rgba(139, 92, 246, 0.8);
+            border: 1px solid rgba(139, 92, 246, 0.6);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 10px;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        `;
+        testAssignmentBtn.addEventListener('click', testAssignmentFlow);
+        document.body.appendChild(testAssignmentBtn);
+
+        function testCurrentAssignmentFlow() {
+            console.log('Testing current assignment flow...');
+            
+            // Simulate the assignment flow
+            const navbar = document.getElementById('bottomNavbar');
+            if (navbar) {
+                // Clear and show assignment navbar
+                navbar.innerHTML = '';
+                
+                // Create sample collections for testing
+                const sampleCollections = [
+                    { id: '1', name: 'Work Notes', messageIds: ['msg1', 'msg2'] },
+                    { id: '2', name: 'Personal Ideas', messageIds: ['msg3'] }
+                ];
+                
+                // Store in localStorage for testing
+                localStorage.setItem('threadly_collections', JSON.stringify(sampleCollections));
+                
+                // Show assignment navbar (this should display existing collections)
+                showAssignmentNavbar();
+                
+                console.log('Assignment navbar should now show existing collections');
+            }
+        }
+    </script>
+</body>
+</html>

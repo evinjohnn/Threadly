@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Assignment Flow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .debug-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .log-output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>Debug Assignment Flow</h1>
+    
+    <div class="debug-panel">
+        <h3>Test Steps</h3>
+        <button class="test-button" onclick="testStep1()">Step 1: Create Sample Collections</button>
+        <button class="test-button" onclick="testStep2()">Step 2: Simulate Selection Mode</button>
+        <button class="test-button" onclick="testStep3()">Step 3: Enter Assignment Mode</button>
+        <button class="test-button" onclick="testStep4()">Step 4: Test Assignment Navbar</button>
+        <button class="test-button" onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div class="debug-panel">
+        <h3>Current State</h3>
+        <div id="currentState"></div>
+    </div>
+    
+    <div class="debug-panel">
+        <h3>Console Log</h3>
+        <div id="logOutput" class="log-output"></div>
+    </div>
+    
+    <script>
+        // Mock the Chrome extension environment
+        window.chrome = {
+            runtime: {
+                getURL: (url) => url
+            }
+        };
+        
+        // Mock localStorage
+        if (!window.localStorage) {
+            window.localStorage = {
+                data: {},
+                getItem: function(key) {
+                    return this.data[key] || null;
+                },
+                setItem: function(key, value) {
+                    this.data[key] = value;
+                },
+                removeItem: function(key) {
+                    delete this.data[key];
+                }
+            };
+        }
+        
+        // Mock functions that might not exist
+        window.showToast = function(message) {
+            log(`Toast: ${message}`);
+        };
+        
+        // Global variables to track state
+        let selectedMessageIds = [];
+        let isAssigningMode = false;
+        let currentPlatformId = 'chatgpt';
+        
+        // Logging function
+        function log(message) {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            logOutput.textContent += `[${timestamp}] ${message}\n`;
+            logOutput.scrollTop = logOutput.scrollTop + 1000;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('logOutput').textContent = '';
+        }
+        
+        function updateState() {
+            const stateDiv = document.getElementById('currentState');
+            stateDiv.innerHTML = `
+                <div class="status info">
+                    <strong>Selected Messages:</strong> ${selectedMessageIds.length}
+                </div>
+                <div class="status info">
+                    <strong>Assignment Mode:</strong> ${isAssigningMode ? 'ON' : 'OFF'}
+                </div>
+                <div class="status info">
+                    <strong>Platform:</strong> ${currentPlatformId}
+                </div>
+                <div class="status info">
+                    <strong>Collections in localStorage:</strong> ${JSON.parse(localStorage.getItem('threadly_collections') || '[]').length}
+                </div>
+            `;
+        }
+        
+        // Test Step 1: Create sample collections
+        function testStep1() {
+            log('=== Step 1: Creating sample collections ===');
+            
+            const sampleCollections = [
+                { id: '1', name: 'Work Notes', messageIds: ['msg1', 'msg2'] },
+                { id: '2', name: 'Personal Ideas', messageIds: ['msg3'] },
+                { id: '3', name: 'Project Ideas', messageIds: [] }
+            ];
+            
+            localStorage.setItem('threadly_collections', JSON.stringify(sampleCollections));
+            log(`Created ${sampleCollections.length} sample collections`);
+            
+            updateState();
+        }
+        
+        // Test Step 2: Simulate selection mode
+        function testStep2() {
+            log('=== Step 2: Simulating selection mode ===');
+            
+            selectedMessageIds = ['msg1', 'msg2', 'msg3'];
+            log(`Selected ${selectedMessageIds.length} messages: ${selectedMessageIds.join(', ')}`);
+            
+            updateState();
+        }
+        
+        // Test Step 3: Enter assignment mode
+        function testStep3() {
+            log('=== Step 3: Entering assignment mode ===');
+            
+            if (selectedMessageIds.length === 0) {
+                log('ERROR: No messages selected!');
+                return;
+            }
+            
+            isAssigningMode = true;
+            log('Set isAssigningMode to true');
+            
+            // Simulate morphing to saved state
+            log('Simulating morphToSavedState...');
+            
+            // Simulate showing assignment navbar
+            log('Simulating showAssignmentNavbar...');
+            testStep4();
+            
+            updateState();
+        }
+        
+        // Test Step 4: Test assignment navbar
+        function testStep4() {
+            log('=== Step 4: Testing assignment navbar ===');
+            
+            // Create a mock navbar element
+            let navbar = document.getElementById('mock-navbar');
+            if (!navbar) {
+                navbar = document.createElement('div');
+                navbar.id = 'mock-navbar';
+                navbar.style.cssText = `
+                    background: rgba(0, 0, 0, 0.8);
+                    color: white;
+                    padding: 20px;
+                    border-radius: 10px;
+                    margin: 20px 0;
+                    font-family: monospace;
+                `;
+                document.body.appendChild(navbar);
+            }
+            
+            // Get existing collections
+            const collections = JSON.parse(localStorage.getItem('threadly_collections') || '[]');
+            log(`Found ${collections.length} collections in localStorage`);
+            
+            if (collections.length === 0) {
+                navbar.innerHTML = '<p>No collections found. Please create some first.</p>';
+                return;
+            }
+            
+            // Create the assignment view
+            let assignmentViewHTML = `
+                <h4>Assign to Collection</h4>
+                <p>Choose existing collection:</p>
+                <div style="margin: 15px 0;">
+            `;
+            
+            collections.forEach((collection, index) => {
+                const color = getPlatformCollectionColor(index);
+                assignmentViewHTML += `
+                    <div style="
+                        background: ${color};
+                        border: 1px solid ${color.replace('0.3', '0.6')};
+                        border-radius: 20px;
+                        padding: 12px 16px;
+                        margin: 8px 0;
+                        cursor: pointer;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    " onclick="assignToCollection('${collection.id}')">
+                        <span>${collection.name}</span>
+                        <span style="opacity: 0.8;">${collection.messageIds?.length || 0} messages</span>
+                    </div>
+                `;
+            });
+            
+            assignmentViewHTML += `
+                </div>
+                <hr style="margin: 20px 0; border-color: rgba(255,255,255,0.2);">
+                <p>Or create new collection:</p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button onclick="createNewCollection()" style="
+                        background: rgba(20, 184, 166, 0.8);
+                        border: 1px solid rgba(20, 184, 166, 0.6);
+                        color: white;
+                        padding: 12px 24px;
+                        border-radius: 20px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        font-weight: 600;
+                    ">ADD NEW</button>
+                    <button onclick="cancelAssignment()" style="
+                        background: rgba(239, 68, 68, 0.8);
+                        border: 1px solid rgba(239, 68, 68, 0.6);
+                        color: white;
+                        padding: 12px 24px;
+                        border-radius: 20px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        font-weight: 600;
+                    ">CANCEL</button>
+                </div>
+            `;
+            
+            navbar.innerHTML = assignmentViewHTML;
+            log('Assignment navbar created successfully');
+        }
+        
+        // Mock platform collection color function
+        function getPlatformCollectionColor(index = 0) {
+            const PLATFORM_COLORS = {
+                'chatgpt': 'rgba(156, 163, 175, 0.3)',
+                'gemini': 'rgba(66, 133, 244, 0.3)',
+                'claude': 'rgba(255, 107, 53, 0.3)',
+                'ai-studio': 'rgba(66, 133, 244, 0.3)',
+                'perplexity': 'rgba(20, 184, 166, 0.3)',
+                'grok': 'rgba(31, 41, 55, 0.3)',
+                'copilot': 'rgba(0, 120, 212, 0.3)'
+            };
+            
+            const baseColor = PLATFORM_COLORS[currentPlatformId] || 'rgba(20, 184, 166, 0.3)';
+            
+            if (index === 0) return baseColor;
+            
+            const variations = [
+                baseColor.replace('0.3', '0.4'),
+                baseColor.replace('0.3', '0.5'),
+                baseColor.replace('0.3', '0.6'),
+                baseColor.replace('0.3', '0.7')
+            ];
+            
+            return variations[index % variations.length] || baseColor;
+        }
+        
+        // Mock assignment functions
+        function assignToCollection(collectionId) {
+            log(`Assigning messages to collection ${collectionId}`);
+            
+            const collections = JSON.parse(localStorage.getItem('threadly_collections') || '[]');
+            const collection = collections.find(c => c.id === collectionId);
+            
+            if (collection) {
+                // Add selected messages to collection
+                selectedMessageIds.forEach(id => {
+                    if (!collection.messageIds.includes(id)) {
+                        collection.messageIds.push(id);
+                    }
+                });
+                
+                localStorage.setItem('threadly_collections', JSON.stringify(collections));
+                log(`Successfully assigned messages to "${collection.name}"`);
+                
+                // Reset state
+                isAssigningMode = false;
+                selectedMessageIds = [];
+                updateState();
+                
+                // Remove navbar
+                const navbar = document.getElementById('mock-navbar');
+                if (navbar) navbar.remove();
+                
+            } else {
+                log(`ERROR: Collection ${collectionId} not found`);
+            }
+        }
+        
+        function createNewCollection() {
+            log('Creating new collection...');
+            const name = prompt('Enter collection name:');
+            if (name) {
+                const collections = JSON.parse(localStorage.getItem('threadly_collections') || '[]');
+                const newCollection = {
+                    id: Date.now().toString(),
+                    name: name,
+                    messageIds: [...selectedMessageIds]
+                };
+                collections.push(newCollection);
+                localStorage.setItem('threadly_collections', JSON.stringify(collections));
+                log(`Created new collection "${name}" with ${selectedMessageIds.length} messages`);
+                
+                // Reset state
+                isAssigningMode = false;
+                selectedMessageIds = [];
+                updateState();
+                
+                // Remove navbar
+                const navbar = document.getElementById('mock-navbar');
+                if (navbar) navbar.remove();
+            }
+        }
+        
+        function cancelAssignment() {
+            log('Canceling assignment...');
+            isAssigningMode = false;
+            selectedMessageIds = [];
+            updateState();
+            
+            // Remove navbar
+            const navbar = document.getElementById('mock-navbar');
+            if (navbar) navbar.remove();
+        }
+        
+        // Initialize
+        updateState();
+        log('Debug page loaded. Click the test steps in order.');
+    </script>
+</body>
+</html>
