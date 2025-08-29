@@ -84,11 +84,51 @@
         'gemini': 'rgba(66, 133, 244, 0.3)',         // Gemini blue
         'claude': 'rgba(255, 107, 53, 0.3)',         // Claude orange
         'ai-studio': 'rgba(66, 133, 244, 0.3)',      // AI Studio blue
-        'perplexity': 'rgba(255, 255, 255, 0.3)',     // Perplexity white
+        'perplexity': 'rgba(32, 178, 170, 0.3)',      // Perplexity teal
         'grok': 'rgba(31, 41, 55, 0.3)',             // Grok dark gray
         'copilot': 'rgba(0, 120, 212, 0.3)'          // Copilot blue
     };
     
+    // Function to get platform-specific header colors
+    function getPlatformHeaderColor() {
+        const platform = currentPlatformId;
+        const schemes = {
+            'chatgpt': {
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: 'rgba(255, 255, 255, 0.1)'
+            },
+            'claude': {
+                background: 'rgba(255, 165, 0, 0.08)',
+                border: 'rgba(255, 165, 0, 0.1)'
+            },
+            'gemini': {
+                background: 'rgba(66, 133, 244, 0.08)',
+                border: 'rgba(66, 133, 244, 0.1)'
+            },
+            'ai-studio': {
+                background: 'rgba(66, 133, 244, 0.08)',
+                border: 'rgba(66, 133, 244, 0.1)'
+            },
+            'perplexity': {
+                background: 'rgba(32, 178, 170, 0.08)',
+                border: 'rgba(32, 178, 170, 0.1)'
+            },
+            'grok': {
+                background: 'rgba(31, 41, 55, 0.08)',
+                border: 'rgba(31, 41, 55, 0.1)'
+            },
+            'copilot': {
+                background: 'rgba(0, 120, 212, 0.08)',
+                border: 'rgba(0, 120, 212, 0.1)'
+            },
+            'default': {
+                background: 'rgba(0, 123, 255, 0.08)',
+                border: 'rgba(0, 123, 255, 0.1)'
+            }
+        };
+        return schemes[platform] || schemes['default'];
+    }
+
     // Function to get platform-specific collection color
     function getPlatformCollectionColor(index = 0) {
         const baseColor = PLATFORM_COLORS[currentPlatformId] || 'rgba(255, 255, 255, 0.3)';
@@ -692,7 +732,8 @@
                 timestamp: Date.now(),
                 role: msg.role,
                 isFavorited: msg.isFavorited || false,
-                collectionIds: msg.collectionIds || [] // Use collectionIds array instead of collectionId
+                collectionIds: msg.collectionIds || [], // Use collectionIds array instead of collectionId
+                platform: currentPlatformId // Add platform information
             }));
             
             if (storableMessages.length > 0) {
@@ -777,7 +818,18 @@
                     // This is a message storage key
                     const messages = value;
                     console.log('Threadly: Loading messages from key:', key, 'count:', messages.length);
-                    allMessages.push(...messages);
+                    
+                    // Extract platform from storage key and add to messages
+                    const platformFromKey = key.split('_')[1]; // Extract platform from threadly_platform_pathname
+                    console.log('Threadly: Extracted platform from key:', platformFromKey, 'for storage key:', key);
+                    
+                    const messagesWithPlatform = messages.map(msg => ({
+                        ...msg,
+                        platform: msg.platform || platformFromKey // Use stored platform or extract from key
+                    }));
+                    
+                    console.log('Threadly: Sample message with platform:', messagesWithPlatform[0]);
+                    allMessages.push(...messagesWithPlatform);
                 }
             }
             
@@ -1034,8 +1086,30 @@
             if (msg.isFavorited) {
                 item.classList.add('favorited');
                 item.setAttribute('data-starred', 'true');
+                // Set left border color based on the original platform where message was pinned
+                let leftBorderColor;
+                if (msg.originalPlatform && msg.originalPlatform !== currentPlatformId) {
+                    // Use the original platform's accent color
+                    const originalPlatformColors = {
+                        'chatgpt': 'rgba(156, 163, 175, 0.8)',
+                        'gemini': 'rgba(66, 133, 244, 0.8)',
+                        'claude': 'rgba(255, 107, 53, 0.8)',
+                        'ai-studio': 'rgba(66, 133, 244, 0.8)',
+                        'perplexity': 'rgba(32, 178, 170, 0.8)',
+                        'grok': 'rgba(31, 41, 55, 0.8)',
+                        'copilot': 'rgba(0, 120, 212, 0.8)'
+                    };
+                    leftBorderColor = originalPlatformColors[msg.originalPlatform] || 'rgba(0, 191, 174, 0.8)';
+                } else {
+                    // Use current platform's accent color
+                    leftBorderColor = getPlatformHighlightColor().replace('0.2', '0.8');
+                }
+                item.style.borderLeft = `4px solid ${leftBorderColor}`;
             } else {
                 item.setAttribute('data-starred', 'false');
+                // Set platform-specific left border color for regular messages
+                const platformAccentColor = getPlatformHighlightColor().replace('0.2', '0.8');
+                item.style.borderLeft = `4px solid ${platformAccentColor}`;
             }
             
             // Check if message is longer than 10 words
@@ -1256,11 +1330,31 @@
         
         const fragment = document.createDocumentFragment();
         favorites.forEach((fav, index) => {
-            const item = document.createElement('div');
-            item.className = 'threadly-message-item favorited';
-            item.dataset.role = fav.role;
-            item.dataset.messageId = fav.id || `global_fav_${index}`;
-            item.setAttribute('data-starred', 'true');
+                    const item = document.createElement('div');
+        item.className = 'threadly-message-item favorited';
+        item.dataset.role = fav.role;
+        item.dataset.messageId = fav.id || `global_fav_${index}`;
+        item.setAttribute('data-starred', 'true');
+        
+        // Set left border color based on the original platform where message was pinned
+        let leftBorderColor;
+        if (fav.originalPlatform && fav.originalPlatform !== currentPlatformId) {
+            // Use the original platform's accent color
+            const originalPlatformColors = {
+                'chatgpt': 'rgba(156, 163, 175, 0.8)',
+                'gemini': 'rgba(66, 133, 244, 0.8)',
+                'claude': 'rgba(255, 107, 53, 0.8)',
+                'ai-studio': 'rgba(66, 133, 244, 0.8)',
+                'perplexity': 'rgba(32, 178, 170, 0.8)',
+                'grok': 'rgba(31, 41, 55, 0.8)',
+                'copilot': 'rgba(0, 120, 212, 0.8)'
+            };
+            leftBorderColor = originalPlatformColors[fav.originalPlatform] || 'rgba(0, 191, 174, 0.8)';
+        } else {
+            // Use current platform's accent color
+            leftBorderColor = getPlatformHighlightColor().replace('0.2', '0.8');
+        }
+        item.style.borderLeft = `4px solid ${leftBorderColor}`;
             
             // Get platform accent color (use original platform if available)
             const platformColor = fav.originalPlatform ? 
@@ -1894,6 +1988,31 @@
             const allPlatformMessages = await loadAllMessagesFromAllPlatforms();
             console.log('Threadly: All platform messages loaded:', allPlatformMessages.length);
             
+            // Load global favorites to ensure proper favorite state for all platform messages
+            const globalFavorites = await loadFavoritesFromStorage();
+            console.log('Threadly: Processing', allPlatformMessages.length, 'platform messages for favorites');
+            
+            allPlatformMessages.forEach((message, idx) => {
+                const isFavorited = globalFavorites.some(fav => 
+                    fav.content === message.content && fav.role === message.role
+                );
+                message.isFavorited = isFavorited;
+                if (isFavorited) {
+                    message.originalPlatform = globalFavorites.find(fav => 
+                        fav.content === message.content && fav.role === message.role
+                    )?.platform;
+                }
+                
+                // Debug first few messages
+                if (idx < 3) {
+                    console.log('Threadly: Message', idx, 'platform info:', {
+                        platform: message.platform,
+                        originalPlatform: message.originalPlatform,
+                        content: message.content.substring(0, 30)
+                    });
+                }
+            });
+            
             const collectionMessages = allPlatformMessages.filter(message => {
                 const hasCollectionId = message.collectionIds && message.collectionIds.includes(collectionId);
                 const isInCollectionMessageIds = collection.messageIds && collection.messageIds.includes(message.id || message.content);
@@ -1909,6 +2028,9 @@
                 return hasCollectionId || isInCollectionMessageIds;
             });
             
+            console.log('Threadly: Final collection messages to render:', collectionMessages.length);
+            console.log('Threadly: Sample collection message platform:', collectionMessages[0]?.platform);
+            
             console.log('Threadly: Filtered collection messages:', collectionMessages.length);
             
             // Clear message list first
@@ -1917,17 +2039,21 @@
             // Create header with collection info and back button
             const headerDiv = document.createElement('div');
             headerDiv.className = 'threadly-collection-header';
+            // Get platform-specific color for header
+            const headerPlatformColor = getPlatformHeaderColor();
+            
             headerDiv.style.cssText = `
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 padding: 16px;
-                background: rgba(255, 255, 255, 0.08);
+                background: ${headerPlatformColor.background};
                 border-radius: 12px;
                 margin-bottom: 8px;
                 backdrop-filter: blur(4px);
                 -webkit-backdrop-filter: blur(4px);
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                border: 1px solid ${headerPlatformColor.border};
             `;
             
             const collectionInfo = document.createElement('div');
@@ -2002,13 +2128,35 @@
             collectionMessages.forEach((msg, index) => {
                 const item = document.createElement('div');
                 item.className = 'threadly-message-item';
+                if (msg.isFavorited) {
+                    item.classList.add('favorited');
+                }
                 item.dataset.role = msg.role || 'user';
                 item.dataset.messageId = msg.id;
                 
-                                    // Use the same styling as main message items
+                                    // Use the same styling as main message items, but preserve the left border accent
+                    let leftBorderColor;
+                    if (msg.platform && msg.platform !== currentPlatformId) {
+                        // Use the platform's accent color from where the message was added to collection
+                        const originalPlatformColors = {
+                            'chatgpt': 'rgba(156, 163, 175, 0.8)',
+                            'gemini': 'rgba(66, 133, 244, 0.8)',
+                            'claude': 'rgba(255, 107, 53, 0.8)',
+                            'ai-studio': 'rgba(66, 133, 244, 0.8)',
+                            'perplexity': 'rgba(32, 178, 170, 0.8)',
+                            'grok': 'rgba(31, 41, 55, 0.8)',
+                            'copilot': 'rgba(0, 120, 212, 0.8)'
+                        };
+                        leftBorderColor = originalPlatformColors[msg.platform] || 'rgba(0, 191, 174, 0.8)';
+                    } else {
+                        // Use current platform's accent color for messages from current platform
+                        leftBorderColor = getPlatformHighlightColor().replace('0.2', '0.8');
+                    }
+                    
                     item.style.cssText = `
                         background: rgba(255, 255, 255, 0.08);
                         border: 1px solid rgba(255, 255, 255, 0.1);
+                        border-left: 4px solid ${leftBorderColor};
                         border-radius: 10px;
                         padding: 10px;
                         margin-bottom: 8px;
@@ -2018,16 +2166,20 @@
                         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
                     `;
                     
-                    // Add hover effect (same as main message items)
+                    // Add hover effect (same as main message items) - preserve left border accent
                     item.addEventListener('mouseenter', () => {
                         item.style.background = 'rgba(255, 255, 255, 0.12)';
-                        item.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                        item.style.borderTopColor = 'rgba(255, 255, 255, 0.2)';
+                        item.style.borderRightColor = 'rgba(255, 255, 255, 0.2)';
+                        item.style.borderBottomColor = 'rgba(255, 255, 255, 0.2)';
                         item.style.transform = 'translateY(-1px)';
                     });
                     
                     item.addEventListener('mouseleave', () => {
                         item.style.background = 'rgba(255, 255, 255, 0.08)';
-                        item.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                        item.style.borderTopColor = 'rgba(255, 255, 255, 0.1)';
+                        item.style.borderRightColor = 'rgba(255, 255, 255, 0.1)';
+                        item.style.borderBottomColor = 'rgba(255, 255, 255, 0.1)';
                         item.style.transform = 'translateY(0)';
                     });
                 
@@ -2038,6 +2190,20 @@
                 const roleText = (msg.role === 'user' || msg.role === 'assistant') 
                     ? (msg.role === 'user' ? `You (#${index + 1})` : `AI (#${index + 1})`)
                     : `Message #${index + 1}`;
+                
+                // Add platform indicator for collection messages (similar to FAV state)
+                let platformIndicator = '';
+                console.log('Threadly: Platform check for message:', {
+                    msgPlatform: msg.platform,
+                    currentPlatformId: currentPlatformId,
+                    isDifferent: msg.platform && msg.platform !== currentPlatformId
+                });
+                
+                if (msg.platform && msg.platform !== currentPlatformId) {
+                    const platformName = PLATFORM_CONFIG[msg.platform]?.name || msg.platform;
+                    platformIndicator = `<span class="threadly-platform-badge" data-original-platform="${msg.platform}">${platformName}</span>`;
+                    console.log('Threadly: Added platform indicator:', platformName, 'for platform:', msg.platform);
+                }
                 
                 // Check if message is longer than 10 words
                 const wordCount = (msg.content || '').trim().split(/\s+/).length;
@@ -2064,19 +2230,22 @@
                                 color: ${platformColor};
                                 font-weight: 600;
                                 font-size: 14px;
-                            ">${roleText}</div>
+                                display: flex;
+                                align-items: center;
+                                gap: 8px;
+                            ">${roleText}${platformIndicator}</div>
                         </div>
                         <div class="threadly-message-right">
-                            <button class="threadly-star-btn" title="Add to favorites" style="
+                            <button class="threadly-star-btn ${msg.isFavorited ? 'starred' : ''}" title="${msg.isFavorited ? 'Remove from favorites' : 'Add to favorites'}" style="
                                 background: none;
                                 border: none;
-                                color: ${platformColor};
+                                color: ${msg.isFavorited ? platformColor : 'rgba(255, 255, 255, 0.6)'};
                                 cursor: pointer;
                                 font-size: 18px;
                                 padding: 4px;
                                 transition: all 0.3s ease;
                             ">
-                                <span class="threadly-star-icon">☆</span>
+                                <span class="threadly-star-icon">${msg.isFavorited ? '★' : '☆'}</span>
                             </button>
                         </div>
                     </div>
@@ -2109,18 +2278,31 @@
 
                 // Add star button event listener
                 const starBtn = item.querySelector('.threadly-star-btn');
-                starBtn.addEventListener('click', (e) => {
+                starBtn.addEventListener('click', async (e) => {
                     e.stopPropagation();
-                    // Toggle star state
-                    const starIcon = starBtn.querySelector('.threadly-star-icon');
-                    if (starIcon.textContent === '☆') {
-                        starIcon.textContent = '★';
-                        starIcon.style.color = platformColor;
-                        starBtn.title = 'Remove from favorites';
-                    } else {
-                        starIcon.textContent = '☆';
-                        starIcon.style.color = platformColor;
-                        starBtn.title = 'Add to favorites';
+                    
+                    try {
+                        // Use the existing toggleFavorite function
+                        await toggleFavorite(msg, index);
+                        
+                        // Update UI based on new state
+                        if (msg.isFavorited) {
+                            starBtn.classList.add('starred');
+                            starBtn.style.color = platformColor;
+                            starBtn.title = 'Remove from favorites';
+                            const starIcon = starBtn.querySelector('.threadly-star-icon');
+                            starIcon.textContent = '★';
+                        } else {
+                            starBtn.classList.remove('starred');
+                            starBtn.style.color = 'rgba(255, 255, 255, 0.6)';
+                            starBtn.title = 'Add to favorites';
+                            const starIcon = starBtn.querySelector('.threadly-star-icon');
+                            starIcon.textContent = '☆';
+                        }
+                        
+                        console.log('Threadly: Message', msg.isFavorited ? 'favorited' : 'unfavorited');
+                    } catch (error) {
+                        console.error('Threadly: Error toggling favorite:', error);
                     }
                 });
 
@@ -2405,17 +2587,41 @@
         toast.className = 'threadly-toast';
         toast.textContent = message;
         
-        // Add to panel
-        const panel = document.getElementById('threadly-panel');
-        if (panel) {
-            panel.appendChild(toast);
+        // Find the search container and search pill to hide
+        const searchContainer = document.querySelector('.threadly-search-container');
+        const searchPill = document.querySelector('.threadly-search-pill');
+        
+        if (searchContainer && searchPill) {
+            // Hide the search pill
+            searchPill.style.opacity = '0';
+            searchPill.style.visibility = 'hidden';
             
-            // Remove after 3 seconds
+            // Position toast over the search container
+            searchContainer.style.position = 'relative';
+            searchContainer.appendChild(toast);
+            
+            // Remove toast and restore search pill after 3 seconds
             setTimeout(() => {
                 if (toast.parentNode) {
                     toast.parentNode.removeChild(toast);
                 }
+                // Restore the search pill
+                searchPill.style.opacity = '1';
+                searchPill.style.visibility = 'visible';
             }, 3000);
+        } else {
+            // Fallback to panel if search container not found
+            const panel = document.getElementById('threadly-panel');
+            if (panel) {
+                panel.appendChild(toast);
+                
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 3000);
+            }
         }
     }
 
@@ -2561,7 +2767,7 @@
             'gemini': 'rgba(66, 133, 244, 0.2)',
             'claude': 'rgba(255, 107, 53, 0.2)',
             'ai-studio': 'rgba(66, 133, 244, 0.2)',
-            'perplexity': 'rgba(255, 255, 255, 0.2)',
+            'perplexity': 'rgba(32, 178, 170, 0.2)',
             'grok': 'rgba(31, 41, 55, 0.2)',
             'copilot': 'rgba(0, 120, 212, 0.2)'
         };

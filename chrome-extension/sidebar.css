@@ -447,7 +447,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-left: 4px solid var(--threadly-primary-accent);
+    /* Left border accent color now set via JavaScript for platform-specific colors */
     word-break: break-word;
     font-size: 0.9rem;
     transition: all 0.2s ease;
@@ -556,9 +556,9 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 .threadly-platform-badge[data-original-platform="perplexity"] {
-    background: transparent;
+    background: #20b2aa;
     color: white;
-    border: 1px solid transparent;
+    border: 1px solid rgba(32, 178, 170, 0.3);
 }
 
 .threadly-platform-badge[data-original-platform="grok"] {
@@ -613,9 +613,8 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
 }
 
-/* Favorited message styling */
+/* Favorited message styling - gold tint background, platform-specific left border */
 .threadly-message-item.favorited {
-    border-left-color: #ffd700;
     background: rgba(255, 215, 0, 0.05);
     box-shadow: 0 2px 12px rgba(255, 215, 0, 0.1);
 }
@@ -625,41 +624,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: 0 4px 16px rgba(255, 215, 0, 0.15);
 }
 
-/* Platform-specific favorited message colors */
-#threadly-panel[data-platform="chatgpt"] .threadly-message-item.favorited {
-    border-left-color: #ffd700;
-    background: rgba(255, 215, 0, 0.05);
-}
-
-#threadly-panel[data-platform="gemini"] .threadly-message-item.favorited {
-    border-left-color: #ffd700;
-    background: rgba(255, 215, 0, 0.05);
-}
-
-#threadly-panel[data-platform="claude"] .threadly-message-item.favorited {
-    border-left-color: #ffd700;
-    background: rgba(255, 215, 0, 0.05);
-}
-
-#threadly-panel[data-platform="ai-studio"] .threadly-message-item.favorited {
-    border-left-color: #ffd700;
-    background: rgba(255, 215, 0, 0.05);
-}
-
-#threadly-panel[data-platform="perplexity"] .threadly-message-item.favorited {
-    border-left-color: #ffd700;
-    background: rgba(255, 215, 0, 0.05);
-}
-
-#threadly-panel[data-platform="grok"] .threadly-message-item.favorited {
-    border-left-color: #ffd700;
-    background: rgba(255, 215, 0, 0.05);
-}
-
-#threadly-panel[data-platform="copilot"] .threadly-message-item.favorited {
-    border-left-color: #ffd700;
-    background: rgba(255, 215, 0, 0.05);
-}
+/* Platform-specific favorited message colors - removed, now handled by JavaScript */
 
 /* Platform-specific user message accent colors */
 #threadly-panel[data-platform="chatgpt"] .threadly-message-item[data-role="user"] {
@@ -773,11 +738,11 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-read-more {
-    color: transparent;
+    color: #20b2aa;
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-read-more:hover {
-    color: transparent;
+    color: #20b2aa;
     text-decoration: underline;
 }
 
@@ -1113,8 +1078,8 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     align-items: center;
     padding: 0.6rem 1rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all var(--transition-speed) ease;
     overflow: hidden;
     z-index: 2;
@@ -1122,10 +1087,10 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     width: var(--search-pill-compact-width); /* Use CSS variable for width */
     height: var(--bulb-size); /* match bulb height exactly */
     
-    /* Glass effect for search input - matches other components */
+    /* Glass effect - matches text card blur */
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Search input inside pill */
@@ -1190,7 +1155,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     cursor: pointer;
     flex-shrink: 0;
     
-    /* Glass effect */
+    /* Glass effect - matches text card blur */
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -2175,24 +2140,29 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     font-style: italic;
 }
 
-/* Toast notifications */
+/* Toast notifications - same size as contracted search bar pill */
 .threadly-toast {
     position: absolute;
-    top: 20px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    background: rgba(42, 42, 42, 0.95);
+    transform: translate(-50%, -50%);
+    width: var(--search-pill-compact-width);
+    height: var(--bulb-size);
+    background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 12px 20px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--threadly-text-primary);
-    font-size: 0.85rem;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     z-index: 1000;
     
-    /* Glass effect */
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    /* Glass effect - matches text card blur */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     
     /* Animation */
     animation: threadly-toast-in 0.3s ease-out;
@@ -2201,11 +2171,11 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 @keyframes threadly-toast-in {
     from {
         opacity: 0;
-        transform: translateX(-50%) translateY(-20px);
+        transform: translate(-50%, -50%) scale(0.95);
     }
     to {
         opacity: 1;
-        transform: translateX(-50%) translateY(0);
+        transform: translate(-50%, -50%) scale(1);
     }
 }
 
