@@ -1210,23 +1210,28 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     will-change: transform;
 }
 
-/* Default state: Regular square (no hover effects when not in selection mode) */
-.threadly-circle-bulb.square[data-mode="select"]:hover .xbox-side {
-    transform: none !important; /* No transformation on hover when not in selection mode */
+/* ALL HOVER EFFECTS REMOVED */
+
+/* Selection bulb active state - square to X transformation when clicked */
+.threadly-circle-bulb.square[data-mode="close"] .xbox-side.top {
+    transform: translateY(calc((var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleX(var(--diag-scale));
 }
 
-/* Also disable hover effects for the entire bulb when not in selection mode */
-.threadly-circle-bulb.square[data-mode="select"]:hover {
-    background: transparent !important;
-    transform: none !important;
-    box-shadow: none !important;
+.threadly-circle-bulb.square[data-mode="close"] .xbox-side.right {
+    transform: translateX(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleY(var(--diag-scale));
 }
 
-/* No movement/scale for selection bulb even in selection mode */
-.threadly-circle-bulb.square[data-mode="close"]:hover {
-    transform: none !important;
-    background: transparent !important;
-    box-shadow: none !important;
+.threadly-circle-bulb.square[data-mode="close"] .xbox-side.bottom {
+    transform: translateY(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleX(var(--diag-scale));
+}
+
+.threadly-circle-bulb.square[data-mode="close"] .xbox-side.left {
+    transform: translateX(calc((var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleY(var(--diag-scale));
+}
+
+/* Red color for X when in close mode */
+.threadly-circle-bulb.square[data-mode="close"] .xbox-side {
+    background: #ff4444 !important;
 }
 
 .threadly-circle-bulb.square .xbox-side.top    { top: 0; left: 0; right: 0; height: var(--stroke); }
@@ -1234,55 +1239,25 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 .threadly-circle-bulb.square .xbox-side.left   { left: 0; top: 0; bottom: 0; width: var(--stroke); }
 .threadly-circle-bulb.square .xbox-side.right  { right: 0; top: 0; bottom: 0; width: var(--stroke); }
 
-/* Hover morph: Square → X ONLY when in selection mode */
-.threadly-circle-bulb.square[data-mode="close"]:hover .xbox-side.top {
-    transform: translateY(calc((var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleX(var(--diag-scale));
-}
+/* Hover morph: Square → X ONLY when in selection mode - REMOVED */
 
-.threadly-circle-bulb.square[data-mode="close"]:hover .xbox-side.right {
-    transform: translateX(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleY(var(--diag-scale));
-}
+/* Hover effects for bulbs - REMOVED */
 
-.threadly-circle-bulb.square[data-mode="close"]:hover .xbox-side.bottom {
-    transform: translateY(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleX(var(--diag-scale));
-}
-
-.threadly-circle-bulb.square[data-mode="close"]:hover .xbox-side.left {
-    transform: translateX(calc((var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleY(var(--diag-scale));
-}
-
-/* Hover effects for bulbs - removed movement/scale for selection bulb */
-.threadly-circle-bulb:hover {
-    background: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* No movement/scale for selection bulb on hover */
-.threadly-circle-bulb.square:hover {
-    transform: none !important;
-    background: transparent !important;
-}
+/* No movement/scale for selection bulb on hover - REMOVED */
 
 /* Special fill animation for saved icon (first bulb) - simplified like reference code */
 .threadly-circle-bulb:first-child svg {
     transition: fill 800ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
 }
 
-/* Hover effect for checkbox - change color on hover (only in selection mode) */
-.threadly-circle-bulb.square[data-mode="close"]:hover .xbox-side {
-    background: #ff4444 !important; /* Red color when hovering in selection mode (destructive nature) */
-}
+/* Hover effect for checkbox - REMOVED */
 
 /* Ensure checkbox is always visible with proper color */
 .threadly-circle-bulb.square .xbox-side {
     background: white !important; /* White color by default */
 }
 
-.threadly-circle-bulb:hover svg {
-    fill: var(--threadly-primary-accent);
-    stroke: var(--threadly-primary-accent);
-    transition: fill 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
+/* .threadly-circle-bulb:hover svg - REMOVED */
 
 /* Advanced fill animation for saved icon - simplified like reference code */
 .threadly-circle-bulb:first-child svg {
@@ -1362,12 +1337,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     }
 }
 
-/* Platform-specific bulb colors */
-#threadly-panel[data-platform="chatgpt"] .threadly-circle-bulb:hover svg {
-    fill: #9ca3af;
-    stroke: #9ca3af;
-    transition: fill 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
+/* Platform-specific bulb colors - REMOVED */
 
 /* Platform-specific saved icon fill animation - simplified like reference code */
 #threadly-panel[data-platform="chatgpt"] .threadly-circle-bulb:first-child svg {
@@ -1380,11 +1350,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.2);
 }
 
-#threadly-panel[data-platform="gemini"] .threadly-circle-bulb:hover svg {
-    fill: #4285f4;
-    stroke: #4285f4;
-    transition: fill 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
+/* REMOVED */
 
 /* Platform-specific saved icon fill animation - simplified like reference code */
 #threadly-panel[data-platform="gemini"] .threadly-circle-bulb:first-child svg {
@@ -1396,11 +1362,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
 }
 
-#threadly-panel[data-platform="claude"] .threadly-circle-bulb:hover svg {
-    fill: #ff6b35;
-    stroke: #ff6b35;
-    transition: fill 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
+/* REMOVED */
 
 /* Platform-specific saved icon fill animation - simplified like reference code */
 #threadly-panel[data-platform="claude"] .threadly-circle-bulb:first-child svg {
@@ -1412,11 +1374,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
 }
 
-#threadly-panel[data-platform="ai-studio"] .threadly-circle-bulb:hover svg {
-    fill: #4285f4;
-    stroke: #4285f4;
-    transition: fill 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
+/* REMOVED */
 
 /* Platform-specific saved icon fill animation - simplified like reference code */
 #threadly-panel[data-platform="ai-studio"] .threadly-circle-bulb:first-child svg {
@@ -1428,11 +1386,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
 }
 
-#threadly-panel[data-platform="perplexity"] .threadly-circle-bulb:hover svg {
-    fill: transparent;
-    stroke: transparent;
-    transition: fill 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
+/* REMOVED */
 
 /* Platform-specific saved icon fill animation - simplified like reference code */
 #threadly-panel[data-platform="perplexity"] .threadly-circle-bulb:first-child svg {
@@ -1444,11 +1398,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: none;
 }
 
-#threadly-panel[data-platform="grok"] .threadly-circle-bulb:hover svg {
-    fill: #1f2937;
-    stroke: #1f2937;
-    transition: fill 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
+/* REMOVED */
 
 /* Platform-specific saved icon fill animation - simplified like reference code */
 #threadly-panel[data-platform="grok"] .threadly-circle-bulb:first-child svg {
@@ -1460,11 +1410,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: 0 0 0 2px rgba(31, 41, 55, 0.2);
 }
 
-#threadly-panel[data-platform="copilot"] .threadly-circle-bulb:hover svg {
-    fill: #0078d4;
-    stroke: #0078d4;
-    transition: fill 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
+/* REMOVED */
 
 /* Platform-specific saved icon fill animation - simplified like reference code */
 #threadly-panel[data-platform="copilot"] .threadly-circle-bulb:first-child svg {
@@ -1654,11 +1600,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     -webkit-tap-highlight-color: transparent;
     transition: box-shadow var(--duration) var(--easing);
 }
-.xbox-label:hover { 
-    box-shadow: var(--shadow); 
-    transform: scale(1.05);
-    transition: all 0.2s ease;
-}
+/* .xbox-label:hover - REMOVED */
 
 /* Keyboard focus */
 .xbox-input:focus-visible + .xbox-label { outline: var(--focus); outline-offset: 4px; }
@@ -1706,29 +1648,11 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 .xbox-side.left   { inset: 0 auto 0 0; inline-size: var(--stroke); block-size: 100%; }
 .xbox-side.right  { inset: 0 0 0 auto; inline-size: var(--stroke); block-size: 100%; }
 
-/* Micro-stagger */
-.xbox-side.top, .xbox-side.bottom { transition-delay: var(--stagger-a); }
-.xbox-side.left, .xbox-side.right { transition-delay: var(--stagger-b); }
+/* Micro-stagger - REMOVED */
 
-/* Hover morph: Square → X, reusing SAME sides */
-.xbox-label:hover .xbox-side.top {
-    transform: translateY(calc((var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleX(var(--diag-scale));
-}
-.xbox-label:hover .xbox-side.right {
-    transform: translateX(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleY(var(--diag-scale));
-}
-.xbox-label:hover .xbox-side.bottom {
-    transform: translateY(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleX(var(--diag-scale));
-}
-.xbox-label:hover .xbox-side.left {
-    transform: translateX(calc((var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleY(var(--diag-scale));
-}
+/* Hover morph: Square → X, reusing SAME sides - REMOVED */
 
-/* Maintain morph while checked */
-.xbox-input:checked + .xbox-label:hover .xbox-side.top    { transform: translateY(calc((var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleX(var(--diag-scale)); }
-.xbox-input:checked + .xbox-label:hover .xbox-side.right  { transform: translateX(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleY(var(--diag-scale)); }
-.xbox-input:checked + .xbox-label:hover .xbox-side.bottom { transform: translateY(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleX(var(--diag-scale)); }
-.xbox-input:checked + .xbox-label:hover .xbox-side.left   { transform: translateX(calc((var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleY(var(--diag-scale)); }
+/* Maintain morph while checked - REMOVED */
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
@@ -1781,10 +1705,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     flex-shrink: 0;
 }
 
-.threadly-message-checkbox:hover {
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: scale(1.1);
-}
+/* .threadly-message-checkbox:hover - REMOVED */
 
 .threadly-message-checkbox:checked {
     background: var(--threadly-primary-accent);
