@@ -326,9 +326,9 @@
 }
 
 .threadly-platform-indicator[data-platform="perplexity"] {
-    background: transparent;
+    background: #20b2aa;
     color: white;
-    border: 1px solid transparent;
+    border: 1px solid rgba(32, 178, 170, 0.3);
 }
 
 .threadly-platform-indicator[data-platform="grok"] {
@@ -404,9 +404,6 @@
 }
 
 /* Legacy search input styles - now handled by metaball design */
-#threadly-search-input {
-    /* Styles are now handled by .threadly-search-pill input */
-}
 
 /* Platform-specific search input focus colors - now handled by metaball design */
 
@@ -644,7 +641,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-message-item[data-role="user"] {
-    border-left-color: transparent;
+    border-left-color: #20b2aa;
 }
 
 #threadly-panel[data-platform="grok"] .threadly-message-item[data-role="user"] {
@@ -882,32 +879,121 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     user-select: none;
 }
 
-/* Platform-specific toggle label hover colors */
-#threadly-panel[data-platform="chatgpt"] .threadly-toggle-label:hover {
+/* Platform-specific toggle label hover colors - ONLY for inactive labels */
+/* When YOU is active, only AI and FAV should show hover effects */
+#threadly-panel[data-filter="user"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-filter="user"] .threadly-toggle-label.ai:hover,
+#threadly-panel[data-filter="user"] .threadly-toggle-label.fav:hover {
+    color: var(--threadly-text-primary);
+    transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* When AI is active, only YOU and FAV should show hover effects */
+#threadly-panel[data-filter="assistant"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-filter="assistant"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-filter="assistant"] .threadly-toggle-label.fav:hover {
+    color: var(--threadly-text-primary);
+    transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* When FAV is active, only YOU and AI should show hover effects */
+#threadly-panel[data-filter="favorites"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-filter="favorites"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-filter="favorites"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-filter="favorites"] .threadly-toggle-label.ai:hover {
+    color: var(--threadly-text-primary);
+    transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* Platform-specific hover colors for inactive labels */
+#threadly-panel[data-platform="chatgpt"][data-filter="user"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="chatgpt"][data-filter="user"] .threadly-toggle-label.ai:hover,
+#threadly-panel[data-platform="chatgpt"][data-filter="user"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="chatgpt"][data-filter="assistant"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="chatgpt"][data-filter="assistant"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="chatgpt"][data-filter="assistant"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="chatgpt"][data-filter="favorites"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="chatgpt"][data-filter="favorites"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="chatgpt"][data-filter="favorites"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="chatgpt"][data-filter="favorites"] .threadly-toggle-label.ai:hover {
     color: #9ca3af;
 }
 
-#threadly-panel[data-platform="gemini"] .threadly-toggle-label:hover {
+#threadly-panel[data-platform="gemini"][data-filter="user"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="gemini"][data-filter="user"] .threadly-toggle-label.ai:hover,
+#threadly-panel[data-platform="gemini"][data-filter="user"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="gemini"][data-filter="assistant"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="gemini"][data-filter="assistant"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="gemini"][data-filter="assistant"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="gemini"][data-filter="favorites"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="gemini"][data-filter="favorites"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="gemini"][data-filter="favorites"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="gemini"][data-filter="favorites"] .threadly-toggle-label.ai:hover {
     color: #4285f4;
 }
 
-#threadly-panel[data-platform="claude"] .threadly-toggle-label:hover {
+#threadly-panel[data-platform="claude"][data-filter="user"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="claude"][data-filter="user"] .threadly-toggle-label.ai:hover,
+#threadly-panel[data-platform="claude"][data-filter="user"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="claude"][data-filter="assistant"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="claude"][data-filter="assistant"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="claude"][data-filter="assistant"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="claude"][data-filter="favorites"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="claude"][data-filter="favorites"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="claude"][data-filter="favorites"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="claude"][data-filter="favorites"] .threadly-toggle-label.ai:hover {
     color: #ff6b35;
 }
 
-#threadly-panel[data-platform="ai-studio"] .threadly-toggle-label:hover {
+#threadly-panel[data-platform="ai-studio"][data-filter="user"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="ai-studio"][data-filter="user"] .threadly-toggle-label.ai:hover,
+#threadly-panel[data-platform="ai-studio"][data-filter="user"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="ai-studio"][data-filter="assistant"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="ai-studio"][data-filter="assistant"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="ai-studio"][data-filter="assistant"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="ai-studio"][data-filter="favorites"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="ai-studio"][data-filter="favorites"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="ai-studio"][data-filter="favorites"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="ai-studio"][data-filter="favorites"] .threadly-toggle-label.ai:hover {
     color: #4285f4;
 }
 
-#threadly-panel[data-platform="perplexity"] .threadly-toggle-label:hover {
-    color: transparent;
+#threadly-panel[data-platform="perplexity"][data-filter="user"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="perplexity"][data-filter="user"] .threadly-toggle-label.ai:hover,
+#threadly-panel[data-platform="perplexity"][data-filter="user"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="perplexity"][data-filter="assistant"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="perplexity"][data-filter="assistant"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="perplexity"][data-filter="assistant"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="perplexity"][data-filter="favorites"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="perplexity"][data-filter="favorites"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="perplexity"][data-filter="favorites"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="perplexity"][data-filter="favorites"] .threadly-toggle-label.ai:hover {
+    color: #20b2aa;
 }
 
-#threadly-panel[data-platform="grok"] .threadly-toggle-label:hover {
+#threadly-panel[data-platform="grok"][data-filter="user"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="grok"][data-filter="user"] .threadly-toggle-label.ai:hover,
+#threadly-panel[data-platform="grok"][data-filter="user"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="grok"][data-filter="assistant"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="grok"][data-filter="assistant"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="grok"][data-filter="assistant"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="grok"][data-filter="favorites"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="grok"][data-filter="favorites"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="grok"][data-filter="favorites"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="grok"][data-filter="favorites"] .threadly-toggle-label.ai:hover {
     color: #1f2937;
 }
 
-#threadly-panel[data-platform="copilot"] .threadly-toggle-label:hover {
+#threadly-panel[data-platform="copilot"][data-filter="user"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="copilot"][data-filter="user"] .threadly-toggle-label.ai:hover,
+#threadly-panel[data-platform="copilot"][data-filter="user"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="copilot"][data-filter="assistant"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="copilot"][data-filter="assistant"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="copilot"][data-filter="assistant"] .threadly-toggle-label.fav:hover,
+#threadly-panel[data-platform="copilot"][data-filter="favorites"] .threadly-toggle-label.user:hover,
+#threadly-panel[data-platform="copilot"][data-filter="favorites"] .threadly-toggle-label.you:hover,
+#threadly-panel[data-platform="copilot"][data-filter="favorites"] .threadly-toggle-label.assistant:hover,
+#threadly-panel[data-platform="copilot"][data-filter="favorites"] .threadly-toggle-label.ai:hover {
     color: #0078d4;
 }
 
@@ -950,8 +1036,8 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-toggle-segment {
-    background: transparent;
-    box-shadow: none;
+    background: linear-gradient(135deg, #20b2aa, #17a2b8);
+    box-shadow: 0 2px 8px rgba(32, 178, 170, 0.3);
 }
 
 #threadly-panel[data-platform="grok"] .threadly-toggle-segment {
@@ -1014,7 +1100,11 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-noise-gradient {
-    background: transparent;
+    background: linear-gradient(to top, 
+        rgba(32, 178, 170, 0.2) 0%,
+        rgba(32, 178, 170, 0.1) 40%,
+        rgba(32, 178, 170, 0.04) 70%,
+        transparent 100%);
 }
 
 #threadly-panel[data-platform="grok"] .threadly-noise-gradient {
@@ -1394,8 +1484,8 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-metaball-wrapper.stateA .threadly-search-pill {
-    border-color: transparent;
-    box-shadow: none;
+    border-color: #20b2aa;
+    box-shadow: 0 0 0 2px rgba(32, 178, 170, 0.2);
 }
 
 /* REMOVED */
@@ -1677,7 +1767,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .xbox-side {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(32, 178, 170, 0.8);
 }
 
 #threadly-panel[data-platform="grok"] .xbox-side {
@@ -1739,9 +1829,9 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-message-checkbox:checked {
-    background: transparent;
-    border-color: transparent;
-    box-shadow: none;
+    background: #20b2aa;
+    border-color: #20b2aa;
+    box-shadow: 0 0 8px rgba(32, 178, 170, 0.3);
 }
 
 #threadly-panel[data-platform="grok"] .threadly-message-checkbox:checked {
@@ -2447,12 +2537,12 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-saved-manager-popover {
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(32, 178, 170, 0.2);
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-collection-name-input:focus {
-    border-color: transparent;
-    box-shadow: none;
+    border-color: #20b2aa;
+    box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
 }
 
 #threadly-panel[data-platform="grok"] .threadly-saved-manager-popover {
@@ -2750,8 +2840,8 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .selection-mode .threadly-message-item.selected {
-    border-color: transparent;
-    background: transparent;
+    border-color: #20b2aa;
+    background: rgba(32, 178, 170, 0.1);
 }
 
 #threadly-panel[data-platform="grok"] .selection-mode .threadly-message-item.selected {
@@ -2910,8 +3000,8 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 #threadly-panel[data-platform="perplexity"] .threadly-collection-pill {
-    background: transparent;
-    border-color: transparent;
+    background: rgba(32, 178, 170, 0.15);
+    border-color: rgba(32, 178, 170, 0.3);
 }
 
 #threadly-panel[data-platform="grok"] .threadly-collection-pill {
