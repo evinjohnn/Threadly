@@ -2661,6 +2661,17 @@
         toast.className = 'threadly-toast';
         toast.textContent = message;
         
+        // Calculate dynamic width based on message length
+        const baseWidth = 200; // Minimum width
+        const charWidth = 8; // Approximate width per character
+        const maxWidth = 400; // Maximum width
+        const dynamicWidth = Math.min(Math.max(message.length * charWidth, baseWidth), maxWidth);
+        
+        // Apply dynamic width
+        toast.style.width = `${dynamicWidth}px`;
+        toast.style.minWidth = `${baseWidth}px`;
+        toast.style.maxWidth = `${maxWidth}px`;
+        
         // Find the search container and search pill to hide
         const searchContainer = document.querySelector('.threadly-search-container');
         const searchPill = document.querySelector('.threadly-search-pill');
@@ -3679,7 +3690,7 @@
             console.log('Threadly: Created new collection:', collectionName);
             
             // Show success feedback
-            showToast(`Collection "${collectionName}" created successfully!`);
+            showToast(`"${collectionName}" created!`);
             
             // Stay in SAVED state and re-render collections with a small delay for smooth transition
             setTimeout(async () => {
