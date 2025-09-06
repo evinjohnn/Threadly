@@ -62,7 +62,7 @@
     
     // Saved button state management (like React useState)
     let savedButtonActive = false; // persisted state via click
-    let savedButtonHover = false;  // transient state via hover
+    // savedButtonHover removed - SAVED button only changes on click, not hover
     
     // Assignment mode state management
     let isAssigningMode = false; // track if we're in collection assignment mode
@@ -153,26 +153,42 @@
         updateSavedButtonVisualState();
     }
     
-    function setSavedButtonHover(hover) {
-        savedButtonHover = hover;
-        updateSavedButtonVisualState();
-    }
+    // setSavedButtonHover function removed - SAVED button only changes on click, not hover
     
     function updateSavedButtonVisualState() {
         const savedBulb = document.getElementById('threadly-saved-bulb');
-        if (!savedBulb) return;
+        if (!savedBulb) {
+            console.log('Threadly: SAVED bulb not found!');
+            return;
+        }
         
         const svg = savedBulb.querySelector('svg');
-        if (!svg) return;
+        if (!svg) {
+            console.log('Threadly: SVG not found in SAVED bulb!');
+            return;
+        }
         
-        const isFilled = savedButtonActive || savedButtonHover;
+        const isFilled = savedButtonActive;
+        
+        console.log('Threadly: updateSavedButtonVisualState - active:', savedButtonActive, 'isFilled:', isFilled);
         
         if (isFilled) {
-            svg.style.fill = getPlatformSavedIconColor();
-            svg.style.stroke = getPlatformSavedIconColor();
+            // Create solid filled bookmark shape
+            svg.innerHTML = `
+                <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" 
+                      fill="#ffffff" 
+                      stroke="none" />
+            `;
+            console.log('Threadly: Set to SOLID FILLED state');
         } else {
-            svg.style.fill = 'none';
-            svg.style.stroke = 'var(--threadly-text-secondary)';
+            // Create hollow outline bookmark shape
+            svg.innerHTML = `
+                <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" 
+                      fill="none" 
+                      stroke="#ffffff" 
+                      stroke-width="2" />
+            `;
+            console.log('Threadly: Set to HOLLOW OUTLINE state');
         }
         
         // Update accessibility attributes
@@ -581,6 +597,11 @@
         });
         
         searchInput.addEventListener('input', async (e) => {
+            // Only handle main search input, not collection name input
+            if (e.target.id !== 'threadly-search-input') {
+                return;
+            }
+            
             // If we're in collections view, return to main messages first
             if (isInCollectionsView) {
                 isInCollectionsView = false;
@@ -624,14 +645,29 @@
             
             savedBulb.addEventListener('click', (e) => {
                 e.preventDefault();
+                // Toggle the visual state - like selection button (square ↔ X)
+                console.log('Threadly: SAVED bulb clicked - current state:', savedButtonActive);
                 setSavedButtonActive(!savedButtonActive);
-                renderCollectionsView();
-                morphNavbarToSavedState();
+                console.log('Threadly: SAVED bulb clicked - new state:', savedButtonActive);
+                
+                if (!savedButtonActive) {
+                    // If deactivating (click 2), return to previous active state
+                    console.log('Threadly: Returning to previous state:', messageFilterState);
+                    console.log('Threadly: Calling resetNavbarToOriginal');
+                    resetNavbarToOriginal();
+                    
+                    // Return message area to normal view
+                    console.log('Threadly: Calling returnToMainMessages');
+                    returnToMainMessages();
+                } else {
+                    // If activating (click 1), show collections view
+                    console.log('Threadly: Entering SAVED state');
+                    renderCollectionsView();
+                    morphNavbarToSavedState();
+                }
             });
             
-            // Add hover event listeners for smooth fill animation
-            savedBulb.addEventListener('mouseenter', () => setSavedButtonHover(true));
-            savedBulb.addEventListener('mouseleave', () => setSavedButtonHover(false));
+            // Hover event listeners removed - SAVED button only changes on click, not hover
             
             // Add keyboard support
             savedBulb.addEventListener('keydown', (e) => {
@@ -1068,6 +1104,15 @@
 
     // --- Enhanced Rendering --- //
     function renderMessages(messagesToRender) {
+        console.log('Threadly: renderMessages called with', messagesToRender.length, 'messages, isInCollectionsView:', isInCollectionsView);
+        
+        // Check if we're in input mode (typing collection name) - if so, don't render messages
+        const isInInputMode = document.querySelector('#collectionNameInput');
+        if (isInInputMode && isInCollectionsView) {
+            console.log('Threadly: renderMessages - in input mode, keeping collections view');
+            return;
+        }
+        
         if (!messageList) return;
         
         // Clear existing content completely
@@ -1255,9 +1300,19 @@
         selectFilterState('favorites');
     }
     
-    async function filterMessages(query) {
-        // If we're in collections view, return to main messages first
-        if (isInCollectionsView) {
+    async function filterMessages(query, forceExitCollections = true) {
+        console.log('Threadly: filterMessages called with query:', query, 'forceExitCollections:', forceExitCollections, 'isInCollectionsView:', isInCollectionsView);
+        
+        // Check if we're in input mode (typing collection name) - if so, don't switch away from collections view
+        const isInInputMode = document.querySelector('#collectionNameInput');
+        if (isInInputMode && isInCollectionsView) {
+            console.log('Threadly: filterMessages - in input mode, keeping collections view');
+            return;
+        }
+        
+        // If we're in collections view, return to main messages first (unless explicitly told not to)
+        if (isInCollectionsView && forceExitCollections) {
+            console.log('Threadly: filterMessages - exiting collections view');
             isInCollectionsView = false;
         }
         
@@ -2088,23 +2143,25 @@
                 backButton.style.background = 'transparent';
             });
             
-            backButton.addEventListener('click', () => {
-                console.log('Threadly: Back button clicked, going to collections view');
+            backButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Threadly: Back button clicked, exiting SAVED state');
                 console.log('Threadly: Current panel state:', panel?.classList.toString());
                 console.log('Threadly: Current isInCollectionsView:', isInCollectionsView);
+                console.log('Threadly: Previous state to return to:', messageFilterState);
                 
-                // Go back to collections view (SAVED state)
-                isInCollectionsView = true;
+                // Exit SAVED state (equivalent to click 2 on SAVED button)
+                setSavedButtonActive(false);
+                isInCollectionsView = false;
                 
-                // Ensure panel stays expanded when going back to collections
-                if (panel && !panel.classList.contains('threadly-expanded')) {
-                    panel.classList.add('threadly-expanded');
-                    console.log('Threadly: Added threadly-expanded class to panel');
-                }
+                // Return to previous active state
+                console.log('Threadly: Calling resetNavbarToOriginal');
+                resetNavbarToOriginal();
                 
-                console.log('Threadly: About to call renderCollectionsView(false)');
-                renderCollectionsView(false);
-                console.log('Threadly: renderCollectionsView completed');
+                // Return message area to normal view
+                console.log('Threadly: Calling returnToMainMessages');
+                returnToMainMessages();
             });
             
             headerDiv.appendChild(collectionInfo);
@@ -2386,8 +2443,23 @@
                 // Add event listener for the back button
                 const backButton = messageList.querySelector('.threadly-back-button');
                 if (backButton) {
-                    backButton.addEventListener('click', () => {
-                        renderCollectionsView();
+                    backButton.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Threadly: Back button clicked, exiting SAVED state');
+                        console.log('Threadly: Previous state to return to:', messageFilterState);
+                        
+                        // Exit SAVED state (equivalent to click 2 on SAVED button)
+                        setSavedButtonActive(false);
+                        isInCollectionsView = false;
+                        
+                        // Return to previous active state
+                        console.log('Threadly: Calling resetNavbarToOriginal');
+                        resetNavbarToOriginal();
+                        
+                        // Return message area to normal view
+                        console.log('Threadly: Calling returnToMainMessages');
+                        returnToMainMessages();
                     });
                 }
             }
@@ -3309,7 +3381,7 @@
             
             labels[0].textContent = 'ADD NEW';
             labels[0].className = 'threadly-toggle-label add';
-            labels[1].textContent = 'CANCEL';
+            labels[1].textContent = 'BACK';
             labels[1].className = 'threadly-toggle-label back';
             
             // Hide any additional labels
@@ -3345,7 +3417,31 @@
                     toggleSegment.style.width = 'calc(50% - 2px)';
                     toggleSegment.classList.add('cancel');
                 }
-                handleCancelClick();
+                
+                // BACK button - completely rebuilt from scratch
+                console.log('Threadly: BACK clicked - rebuilding from scratch');
+                
+                // Deactivate SAVED state
+                setSavedButtonActive(false);
+                resetNavbarToOriginal();
+                
+                // Set filter state WITHOUT calling selectFilterState (which sets isInCollectionsView = false)
+                const panel = document.getElementById('threadly-panel');
+                if (panel) {
+                    panel.setAttribute('data-filter', messageFilterState);
+                }
+                
+                // Update toggle segment position manually
+                const toggleSegment = document.querySelector('.threadly-toggle-segment');
+                if (toggleSegment) {
+                    toggleSegment.classList.remove('user', 'assistant', 'fav', 'collection');
+                    toggleSegment.classList.add(messageFilterState === 'user' ? 'user' : messageFilterState === 'assistant' ? 'assistant' : messageFilterState === 'favorites' ? 'fav' : 'collection');
+                }
+                
+                // Filter messages without changing isInCollectionsView
+                filterMessages(searchInput.value);
+                
+                console.log('Threadly: BACK - returned to previous state');
             });
         }
 
@@ -3355,17 +3451,49 @@
     // Function to handle ADD NEW button click
     function handleAddNewClick() {
         console.log('Threadly: ADD NEW clicked');
+        
+        // Ensure we stay in collections view when entering input mode
+        if (!isInCollectionsView) {
+            console.log('Threadly: ADD NEW - ensuring collections view is active');
+            renderCollectionsView();
+        }
+        
         morphNavbarToInputMode();
+    }
+
+    // Function to cancel saved state - same pattern as selection mode
+    function cancelSavedState() {
+        exitSavedState();
+    }
+
+    // Function to exit saved state - same pattern as exitAssignmentMode
+    function exitSavedState() {
+        // Reset navbar to original YOU AI FAV state
+        resetNavbarToOriginal();
+        
+        // Set YOU state as active (user messages)
+        selectFilterState('user');
+        
+        // DO NOT call setSavedButtonActive(false) - this closes the extension!
+        // Just reset the navbar and go to YOU state
+        
+        console.log('Threadly: Exited saved state - returned to YOU state');
     }
 
     // Function to handle CANCEL button click
     function handleCancelClick() {
         console.log('Threadly: CANCEL clicked');
+        
+        // Reset navbar to original YOU AI FAV state
         resetNavbarToOriginal();
-        // Exit saved state and return to normal view
+        
+        // Exit saved state
         setSavedButtonActive(false);
-        // Close the expanded panel
-        togglePanel(false);
+        
+        // Set YOU state as active (user messages)
+        selectFilterState('user');
+        
+        console.log('Threadly: CANCEL - returned to YOU state');
     }
 
     // Function to morph navbar to input mode (pill with + button inside)
@@ -3380,29 +3508,17 @@
         // Add morphing class for smooth transition
         toggleBar.classList.add('morphing-to-input');
         
-        // Get the existing labels
-        const labels = toggleBar.querySelectorAll('.threadly-toggle-label');
-        
-        // Transform the first label (ADD NEW) into input field
-        if (labels[0]) {
-            labels[0].innerHTML = `<input type="text" class="threadly-collection-input" placeholder="Type collection name..." id="collectionNameInput">`;
-            labels[0].className = 'threadly-toggle-label input-field';
-            labels[0].style.left = '0';
-            labels[0].style.width = 'calc(100% - 60px)';
-        }
-        
-        // Transform the second label (CANCEL) into + button
-        if (labels[1]) {
-            labels[1].innerHTML = `<button class="threadly-add-collection-btn" id="addCollectionBtn"><span class="plus-icon">+</span></button>`;
-            labels[1].className = 'threadly-toggle-label add-button';
-            labels[1].style.left = 'calc(100% - 60px)';
-            labels[1].style.width = '60px';
-        }
-        
-        // Hide any additional labels
-        for (let i = 2; i < labels.length; i++) {
-            labels[i].style.display = 'none';
-        }
+        // Create seamless input field and add button layout
+        toggleBar.innerHTML = `
+            <div class="threadly-toggle-label input-field">
+                <input type="text" class="threadly-collection-input" placeholder="Type collection name..." id="collectionNameInput">
+            </div>
+            <div class="threadly-toggle-label add-button">
+                <button class="threadly-add-collection-btn" id="addCollectionBtn">
+                    <span class="plus-icon">+</span>
+                </button>
+            </div>
+        `;
 
         // Add event listeners
         const input = toggleBar.querySelector('#collectionNameInput');
@@ -3415,8 +3531,8 @@
                 }
             });
             input.addEventListener('blur', () => {
-                // Optional: return to ADD NEW | CANCEL if input is empty
-                if (!input.value.trim()) {
+                // Only return to ADD NEW | CANCEL if input is empty AND we're not in SAVED state
+                if (!input.value.trim() && !savedButtonActive) {
                     morphNavbarToSavedState();
                 }
             });
@@ -3425,12 +3541,23 @@
         }
         
         if (addBtn) {
-            addBtn.addEventListener('click', addNewCollection);
+            addBtn.addEventListener('click', (e) => {
+                // Add click animation
+                addBtn.classList.add('clicked');
+                
+                // Remove animation class after animation completes
+                setTimeout(() => {
+                    addBtn.classList.remove('clicked');
+                }, 300); // Match animation duration
+                
+                // Call the original function
+                addNewCollection();
+            });
         }
 
         // Add click outside handler to return to ADD NEW | CANCEL state
         const clickOutsideHandler = (e) => {
-            if (!toggleBar.contains(e.target)) {
+            if (!toggleBar.contains(e.target) && !savedButtonActive) {
                 morphNavbarToSavedState();
                 document.removeEventListener('click', clickOutsideHandler);
             }
@@ -3453,8 +3580,14 @@
             return;
         }
 
-        // Remove morphing classes
+        // Check if we're returning from input mode to add animation
+        const isReturningFromInput = toggleBar.classList.contains('morphing-to-input');
+        
+        // Remove morphing classes and add return animation class if needed
         toggleBar.classList.remove('morphed', 'morphing-to-input');
+        if (isReturningFromInput) {
+            toggleBar.classList.add('returning-from-input');
+        }
         
         // Reset to original HTML
         toggleBar.innerHTML = `
@@ -3464,8 +3597,31 @@
             <span class="threadly-toggle-label fav">FAV</span>
         `;
 
+        // Set the segment class based on current filter state
+        const segment = document.getElementById('threadly-toggle-segment');
+        if (segment) {
+            segment.classList.remove('user', 'assistant', 'fav', 'collection');
+            segment.classList.add(messageFilterState === 'user' ? 'user' : messageFilterState === 'assistant' ? 'assistant' : messageFilterState === 'favorites' ? 'fav' : 'collection');
+            console.log('Threadly: Set segment class to:', messageFilterState);
+        }
+
+        // Set panel data-filter attribute for CSS targeting
+        const panel = document.getElementById('threadly-panel');
+        if (panel) {
+            panel.setAttribute('data-filter', messageFilterState);
+            console.log('Threadly: Set panel data-filter to:', messageFilterState);
+        }
+
         // Re-add original event listeners
         addToggleBarEventListeners();
+
+        // Remove return animation class after animation completes
+        if (isReturningFromInput) {
+            setTimeout(() => {
+                toggleBar.classList.remove('returning-from-input');
+                console.log('Threadly: Return animation completed');
+            }, 400); // Match the animation duration
+        }
 
         console.log('Threadly: Navbar reset to original state');
     }
@@ -3522,9 +3678,14 @@
             
             console.log('Threadly: Created new collection:', collectionName);
             
-            // Reset navbar and re-render collections
-            resetNavbarToOriginal();
-            await renderCollectionsView();
+            // Show success feedback
+            showToast(`Collection "${collectionName}" created successfully!`);
+            
+            // Stay in SAVED state and re-render collections with a small delay for smooth transition
+            setTimeout(async () => {
+                morphNavbarToSavedState();
+                await renderCollectionsView();
+            }, 100);
             
         } catch (error) {
             console.error('Threadly: Error creating collection:', error);
@@ -3577,7 +3738,15 @@
         // Add event listener for the add button
         const addBtn = bottomNavbar.querySelector('#add-collection-btn');
         if (addBtn) {
-            addBtn.addEventListener('click', async () => {
+            addBtn.addEventListener('click', async (e) => {
+                // Add click animation
+                addBtn.classList.add('clicked');
+                
+                // Remove animation class after animation completes
+                setTimeout(() => {
+                    addBtn.classList.remove('clicked');
+                }, 300); // Match animation duration
+                
                 await addNewCollection();
             });
         }
@@ -3599,39 +3768,6 @@
         console.log('Threadly: Entered input mode for new collection');
     }
 
-    // Function to add new collection
-    async function addNewCollection() {
-        console.log('Threadly: addNewCollection called');
-        
-        const input = document.querySelector('#collectionNameInput');
-        if (!input) {
-            console.error('Threadly: Collection name input not found');
-            return;
-        }
-        
-        const name = input.value.trim();
-        if (!name) {
-            console.log('Threadly: No collection name provided');
-            return;
-        }
-        
-        try {
-            // Create new collection
-            const newCollection = await createCollection(name);
-            console.log('Threadly: Created new collection:', newCollection);
-            
-            // Assign selected messages to the new collection
-            await assignMessagesToCollection(newCollection.id);
-            console.log('Threadly: Assigned messages to new collection');
-            
-            // Show success message
-            showSuccessMessage(`Created "${name}" and added messages`);
-            
-        } catch (error) {
-            console.error('Threadly: Error creating collection:', error);
-            showToast('Error creating collection');
-        }
-    }
 
     // Function to show assignment navbar
     async function showAssignmentNavbar() {
@@ -3872,7 +4008,17 @@
         // Add event listener for the add button
         const addBtn = bottomNavbar.querySelector('#add-collection-btn');
         if (addBtn) {
-            addBtn.addEventListener('click', addNewCollection);
+            addBtn.addEventListener('click', (e) => {
+                // Add click animation
+                addBtn.classList.add('clicked');
+                
+                // Remove animation class after animation completes
+                setTimeout(() => {
+                    addBtn.classList.remove('clicked');
+                }, 300); // Match animation duration
+                
+                addNewCollection();
+            });
         }
         
         // Focus on input
@@ -3891,33 +4037,6 @@
         }, 100);
     }
 
-    // Function to add new collection
-    async function addNewCollection() {
-        const input = document.getElementById('collectionNameInput');
-        if (!input) return;
-        
-        const name = input.value.trim();
-        if (!name) return;
-        
-        try {
-            // Create new collection
-            const newCollection = await createCollection(name);
-            
-            // Assign selected messages to the new collection
-            await assignToCollection(selectedMessageIds, newCollection.id);
-            
-            // Show success message
-            showSuccessMessage(`Added to "${name}"`);
-            
-            // Exit assignment mode
-            exitAssignmentMode();
-            
-            console.log('Threadly: Created collection and assigned messages:', name);
-        } catch (error) {
-            console.error('Threadly: Error creating collection:', error);
-            showToast('Error creating collection');
-        }
-    }
 
     // Function to cancel assignment
     function cancelAssignment() {
@@ -4045,118 +4164,22 @@
         console.log('Threadly: Final selected messages:', selectedMessageIds);
     }
 
-    // --- Enhanced Event Listeners --- //
-    function addEventListeners() {
-        panel.addEventListener('click', (e) => {
-            if (e.target.closest('.threadly-close') || e.target.closest('#threadly-search-input') || e.target.closest('.threadly-message-item')) {
-                return;
-            }
-            if (!panel.classList.contains('threadly-expanded')) {
-                togglePanel(true);
-            }
-        });
-        
-        closeButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            togglePanel(false);
-        });
-        
-        searchInput.addEventListener('input', async (e) => {
-            // If we're in collections view, return to main messages first
-            if (isInCollectionsView) {
-                isInCollectionsView = false;
-            }
-            await filterMessages(e.target.value);
-        });
-        
-        // Add click listeners for each label to allow direct selection
-        toggleBar.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('threadly-toggle-label')) {
-                if (e.target.classList.contains('user') || e.target.classList.contains('you')) {
-                    await selectFilterState('user');
-                } else if (e.target.classList.contains('assistant') || e.target.classList.contains('ai')) {
-                    await selectFilterState('assistant');
-                } else if (e.target.classList.contains('fav')) {
-                    await selectFilterState('favorites');
-                }
-            }
-        });
-        
-        // Add event listeners for contextual action buttons
-        document.getElementById('threadly-assign-btn').addEventListener('click', () => {
-            // Enter assign mode
-            enterAssignmentMode();
-        });
-        document.getElementById('threadly-unstar-btn').addEventListener('click', unstarMessages);
-        
-        // Add event listener for select bulb
-        const selectBulb = document.getElementById('threadly-select-bulb');
-        if (selectBulb) {
-            selectBulb.addEventListener('click', toggleSelectionMode);
-        }
-        
-        // Add event listener for saved bulb
-        const savedBulb = document.getElementById('threadly-saved-bulb');
-        if (savedBulb) {
-            // Set initial accessibility attributes
-            savedBulb.setAttribute('aria-pressed', savedButtonActive);
-            savedBulb.setAttribute('title', savedButtonActive ? 'Saved' : 'Save');
-            savedBulb.setAttribute('data-testid', 'saved-button');
-            
-            savedBulb.addEventListener('click', (e) => {
-                e.preventDefault();
-                setSavedButtonActive(!savedButtonActive);
-                renderCollectionsView();
-                morphNavbarToSavedState();
-            });
-            
-            // Add hover event listeners for smooth fill animation
-            savedBulb.addEventListener('mouseenter', () => setSavedButtonHover(true));
-            savedBulb.addEventListener('mouseleave', () => setSavedButtonHover(false));
-            
-            // Add keyboard support
-            savedBulb.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setSavedButtonActive(!savedButtonActive);
-                    renderCollectionsView();
-                    morphNavbarToSavedState();
-                }
-            });
-        }
-        
-        // Add metaball search bar behavior
-        if (searchInput) {
-            searchInput.addEventListener('focus', handleSearchFocus);
-            searchInput.addEventListener('blur', handleSearchBlur);
-            searchInput.addEventListener('input', handleSearchInput);
-            searchInput.addEventListener('click', handleSearchClick);
-        }
-        
-        // Add escape key handler for search
-        document.addEventListener('keydown', handleSearchKeydown);
-        
-        // Add escape key handler for collections view
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && isInCollectionsView) {
-                returnToMainMessages();
-            }
-        });
-        
-        // Add escape key handler for selection mode
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && isInSelectionMode) {
-                exitSelectionMode();
-            }
-        });
-        
-        document.addEventListener('click', handleClickOutside);
-    }
 
     // --- Metaball Search Bar Functions --- //
     function handleSearchFocus(e) {
+        console.log('Threadly: handleSearchFocus called with target:', e.target, 'target.id:', e.target.id);
+        
+        // Only handle main search input, not collection name input
+        if (e.target.id !== 'threadly-search-input') {
+            console.log('Threadly: handleSearchFocus - not main search input, returning');
+            return;
+        }
+        
+        console.log('Threadly: handleSearchFocus - main search input focused, isInCollectionsView:', isInCollectionsView);
+        
         // If we're in collections view, return to main messages first
         if (isInCollectionsView) {
+            console.log('Threadly: handleSearchFocus - exiting collections view');
             isInCollectionsView = false;
             // Small delay to ensure the flag is reset before filtering
             setTimeout(() => {
@@ -4174,6 +4197,11 @@
     }
 
     function handleSearchBlur(e) {
+        // Only handle main search input, not collection name input
+        if (e.target.id !== 'threadly-search-input') {
+            return;
+        }
+        
         // If we're in collections view, return to main messages first
         if (isInCollectionsView) {
             isInCollectionsView = false;
@@ -4194,6 +4222,11 @@
 
     // Add input event listener to handle text changes
     function handleSearchInput(e) {
+        // Only handle main search input, not collection name input
+        if (e.target.id !== 'threadly-search-input') {
+            return;
+        }
+        
         // If we're in collections view, return to main messages first
         if (isInCollectionsView) {
             isInCollectionsView = false;
@@ -4231,6 +4264,11 @@
     }
 
     function handleSearchKeydown(e) {
+        // Don't handle keydown events when typing in collection input
+        if (e.target.id === 'collectionNameInput') {
+            return;
+        }
+        
         // If we're in collections view, return to main messages first
         if (isInCollectionsView) {
             isInCollectionsView = false;
