@@ -1826,84 +1826,8 @@
         
         messageList.appendChild(fragment);
         
-        // Add bottom navbar with ADD NEW and CANCEL buttons if in assignment mode
-        if (isAssigningMode) {
-            const bottomNavbar = document.createElement('div');
-            bottomNavbar.className = 'threadly-bottom-navbar';
-            bottomNavbar.style.cssText = `
-                display: flex;
-                justify-content: center;
-                gap: 12px;
-                margin-top: 20px;
-                padding: 16px;
-            `;
-            
-            // ADD NEW button
-            const addNewBtn = document.createElement('button');
-            addNewBtn.textContent = 'ADD NEW';
-            addNewBtn.className = 'navbar-button';
-            addNewBtn.style.cssText = `
-                background: transparent;
-                border: 1px solid transparent;
-                color: white;
-                padding: 12px 24px;
-                border-radius: 20px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 600;
-                transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            `;
-            
-            addNewBtn.addEventListener('mouseenter', () => {
-                addNewBtn.style.background = 'transparent';
-                addNewBtn.style.transform = 'translateY(-2px)';
-            });
-            
-            addNewBtn.addEventListener('mouseleave', () => {
-                addNewBtn.style.background = 'transparent';
-                addNewBtn.style.transform = 'translateY(0)';
-            });
-            
-            addNewBtn.addEventListener('click', () => {
-                enterInputMode();
-            });
-            
-            // CANCEL button
-            const cancelBtn = document.createElement('button');
-            cancelBtn.textContent = 'CANCEL';
-            cancelBtn.className = 'navbar-button';
-            cancelBtn.style.cssText = `
-                background: rgba(239, 68, 68, 0.8);
-                border: 1px solid rgba(239, 68, 68, 0.6);
-                color: white;
-                padding: 12px 24px;
-                border-radius: 20px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 600;
-                transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            `;
-            
-            cancelBtn.addEventListener('mouseenter', () => {
-                cancelBtn.style.background = 'rgba(239, 68, 68, 1)';
-                cancelBtn.style.transform = 'translateY(-2px)';
-            });
-            
-            cancelBtn.addEventListener('mouseleave', () => {
-                cancelBtn.style.background = 'rgba(239, 68, 68, 0.8)';
-                cancelBtn.style.transform = 'translateY(0)';
-            });
-            
-            cancelBtn.addEventListener('click', () => {
-                cancelAssignment();
-            });
-            
-            bottomNavbar.appendChild(addNewBtn);
-            bottomNavbar.appendChild(cancelBtn);
-            messageList.appendChild(bottomNavbar);
-            
-            console.log('Threadly: Added bottom navbar with ADD NEW and CANCEL buttons');
-        }
+        // Note: Bottom navbar is now handled by the main navbar morphing
+        // No need to create separate bottom navbar here
         
         } catch (error) {
             console.error('Threadly: Error rendering collections view:', error);
@@ -3331,6 +3255,9 @@
         isAssigningMode = true;
         console.log('Threadly: Set isAssigningMode to true');
         
+        // Set SAVED button as active to show collections
+        setSavedButtonActive(true);
+        
         // Morph UI to SAVED state with animation
         morphToSavedState();
         console.log('Threadly: Called morphToSavedState');
@@ -3339,7 +3266,60 @@
         await renderCollectionsView(true); // true = isAssigning mode
         console.log('Threadly: Switched to SAVED state with assignment mode');
         
+        // Morph navbar to show ADD NEW | CANCEL for assignment mode
+        morphNavbarToAssignmentMode();
         console.log('Threadly: Entered assignment mode');
+    }
+
+    // Function to morph navbar to assignment mode (ADD NEW | CANCEL)
+    function morphNavbarToAssignmentMode() {
+        console.log('Threadly: morphNavbarToAssignmentMode called');
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) {
+            console.error('Threadly: Toggle bar not found');
+            return;
+        }
+
+        // Add morphing class for smooth transition
+        toggleBar.classList.add('morphing-to-assignment');
+        
+        // Create ADD NEW | CANCEL layout
+        toggleBar.innerHTML = `
+            <div class="threadly-toggle-label add">
+                <span class="threadly-toggle-text">ADD NEW</span>
+            </div>
+            <div class="threadly-toggle-label cancel">
+                <span class="threadly-toggle-text">CANCEL</span>
+            </div>
+        `;
+
+        // Add event listeners
+        const labels = toggleBar.querySelectorAll('.threadly-toggle-label');
+        const toggleSegment = document.querySelector('.threadly-toggle-segment');
+        
+        if (labels[0]) {
+            labels[0].addEventListener('click', () => {
+                // Move highlight bubble to ADD NEW
+                if (toggleSegment) {
+                    toggleSegment.style.left = '2px';
+                    toggleSegment.style.width = 'calc(50% - 2px)';
+                }
+                handleAddNewClick();
+            });
+        }
+        if (labels[1]) {
+            labels[1].addEventListener('click', () => {
+                // Move highlight bubble to CANCEL
+                if (toggleSegment) {
+                    toggleSegment.style.left = 'calc(50% + 2px)';
+                    toggleSegment.style.width = 'calc(50% - 2px)';
+                    toggleSegment.classList.add('cancel');
+                }
+                cancelAssignment();
+            });
+        }
+
+        console.log('Threadly: Navbar morphed to assignment mode');
     }
 
     // Function to morph UI to SAVED state
@@ -4051,7 +4031,24 @@
 
     // Function to cancel assignment
     function cancelAssignment() {
-        exitAssignmentMode();
+        console.log('Threadly: cancelAssignment called');
+        
+        // Reset assignment mode
+        isAssigningMode = false;
+        
+        // Reset SAVED button state
+        setSavedButtonActive(false);
+        
+        // Reset navbar to original state
+        resetNavbarToOriginal();
+        
+        // Exit selection mode
+        exitSelectionMode();
+        
+        // Return to main messages
+        returnToMainMessages();
+        
+        console.log('Threadly: Assignment cancelled');
     }
 
     // Function to exit assignment mode
@@ -4393,19 +4390,22 @@
         await updateCollectionMessageCounts();
 
         // Show success message
-        showSuccessMessage(`Messages assigned to "${collection.name}"`);
+        showToast(`Messages added to "${collection.name}"`);
 
-        // Exit assignment mode and selection mode
-        exitAssignmentMode();
+        // Reset assignment mode
+        isAssigningMode = false;
+        
+        // Reset SAVED button state
+        setSavedButtonActive(false);
+        
+        // Reset navbar to original state
+        resetNavbarToOriginal();
+        
+        // Exit selection mode
         exitSelectionMode();
 
-        // Refresh the collections view to show updated message counts
-        if (isInCollectionsView) {
-            renderCollectionsView();
-        } else {
-            // If not in collections view, refresh the main view
-            filterMessages(searchInput.value);
-        }
+        // Return to main messages
+        returnToMainMessages();
         
         console.log('Threadly: Successfully assigned messages to collection:', collection.name);
     }

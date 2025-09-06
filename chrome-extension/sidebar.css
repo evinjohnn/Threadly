@@ -3149,6 +3149,79 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     position: relative;
 }
 
+/* Assignment mode navbar morphing */
+.threadly-toggle-bar.morphing-to-assignment {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 2px;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.threadly-toggle-bar.morphing-to-assignment:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 
+        0 12px 40px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.threadly-toggle-bar.morphing-to-assignment .threadly-toggle-label {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    flex: 1;
+    height: 100%;
+    position: relative;
+    cursor: pointer;
+}
+
+.threadly-toggle-bar.morphing-to-assignment .threadly-toggle-label .threadly-toggle-text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    transition: all 0.3s ease;
+}
+
+.threadly-toggle-bar.morphing-to-assignment .threadly-toggle-label.add:hover {
+    background: rgba(16, 185, 129, 0.8) !important;
+    color: white !important;
+    box-shadow: 
+        0 0 20px rgba(16, 185, 129, 0.4),
+        0 0 40px rgba(16, 185, 129, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+    transform: translateY(-1px);
+}
+
+.threadly-toggle-bar.morphing-to-assignment .threadly-toggle-label.cancel:hover {
+    background: rgba(239, 68, 68, 0.8) !important;
+    color: white !important;
+    box-shadow: 
+        0 0 20px rgba(239, 68, 68, 0.4),
+        0 0 40px rgba(239, 68, 68, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+    transform: translateY(-1px);
+}
+
 .threadly-toggle-label.input-field .threadly-collection-input {
     width: 100%;
     background: transparent;
