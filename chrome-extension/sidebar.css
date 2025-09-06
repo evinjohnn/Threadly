@@ -1887,25 +1887,162 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* Selection mode ADD | BACK labels */
-.threadly-toggle-label.add {
-    color: var(--threadly-primary-accent);
-    font-weight: 600;
+/* Fly-in animation for ADD NEW and CANCEL labels */
+.threadly-toggle-label.add,
+.threadly-toggle-label.back {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.threadly-toggle-label.add:hover {
-    color: var(--threadly-primary-accent-hover);
-    transform: scale(1.05);
+/* Morphing to input mode animation */
+.threadly-toggle-bar.morphing-to-input {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.threadly-input-pill {
+    animation: inputPillIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes inputPillIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.9) translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Selection mode ADD | BACK labels */
+.threadly-toggle-label.add {
+    color: #10b981;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 14px;
+    background: transparent;
+    border: none;
+    position: absolute;
+    z-index: 3;
+    height: 28px;
+    width: calc(50% - 2px);
+    left: 2px;
+    top: 2px;
+    transform: none;
+    transform-origin: center;
 }
 
 .threadly-toggle-label.back {
-    color: var(--threadly-text-secondary);
-    font-weight: 500;
+    color: #ef4444;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 14px;
+    background: transparent;
+    border: none;
+    position: absolute;
+    z-index: 3;
+    height: 28px;
+    width: calc(50% - 2px);
+    left: calc(50% + 2px);
+    top: 2px;
+    transform: none;
+    transform-origin: center;
 }
 
-.threadly-toggle-label.back:hover {
-    color: var(--threadly-text-primary);
+/* Remove default highlight bubble for ADD NEW and CANCEL */
+.threadly-toggle-bar.morphed .threadly-toggle-segment {
+    display: none;
+}
+
+/* Strong green glowing hover effect for ADD NEW - matching selection mode */
+.threadly-toggle-label.add:hover {
+    color: white;
+    background: rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 24px rgba(16, 185, 129, 0.9);
     transform: scale(1.05);
+}
+
+/* Strong red glowing hover effect for CANCEL - matching selection mode */
+.threadly-toggle-label.back:hover {
+    color: white;
+    background: rgba(239, 68, 68, 0.6);
+    box-shadow: 0 0 24px rgba(239, 68, 68, 0.9);
+    transform: scale(1.05);
+}
+
+/* Ensure stable positioning for ADD NEW and CANCEL labels */
+.threadly-toggle-bar.morphed .threadly-toggle-label.add,
+.threadly-toggle-bar.morphed .threadly-toggle-label.back {
+    position: absolute !important;
+    transform: none !important;
+    transform-origin: center !important;
+}
+
+/* Reset positioning when not in morphed state */
+.threadly-toggle-bar:not(.morphed) .threadly-toggle-label.add,
+.threadly-toggle-bar:not(.morphed) .threadly-toggle-label.back {
+    display: none !important;
+}
+
+/* Ensure proper positioning for original labels after reset */
+.threadly-toggle-bar .threadly-toggle-label.you,
+.threadly-toggle-bar .threadly-toggle-label.user {
+    left: 16.67% !important;
+    transform: translate(-50%, -50%) !important;
+    position: absolute !important;
+    z-index: 2 !important;
+}
+
+.threadly-toggle-bar .threadly-toggle-label.ai,
+.threadly-toggle-bar .threadly-toggle-label.assistant {
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    position: absolute !important;
+    z-index: 2 !important;
+}
+
+.threadly-toggle-bar .threadly-toggle-label.fav {
+    left: 83.33% !important;
+    transform: translate(-50%, -50%) !important;
+    position: absolute !important;
+    z-index: 2 !important;
+}
+
+/* Ensure toggle segment is visible and properly positioned after reset */
+.threadly-toggle-bar:not(.morphed) .threadly-toggle-segment {
+    display: block !important;
+    position: absolute !important;
+    width: calc(33.333% - 2px) !important;
+    height: 28px !important;
+    background: var(--threadly-primary-accent) !important;
+    border-radius: 14px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 1 !important;
+    left: 2px !important;
+    top: 2px !important;
 }
 
 
@@ -2869,6 +3006,167 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+/* --- Input Mode Styles --- */
+.threadly-toggle-bar.morphing-to-input {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 2px;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.threadly-toggle-bar.morphing-to-input:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.threadly-toggle-bar.morphing-to-input:focus-within {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Input field within navbar label */
+.threadly-toggle-label.input-field {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    transition: all 0.3s ease !important;
+}
+
+.threadly-toggle-label.input-field .threadly-collection-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 6px 12px;
+    font-size: 14px;
+    color: white;
+    border-radius: 14px;
+    transition: all 0.3s ease;
+    height: 100%;
+    font-weight: 500;
+}
+
+/* Remove all focus outlines and blue borders */
+.threadly-toggle-label.input-field .threadly-collection-input:focus {
+    outline: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.threadly-toggle-label.input-field .threadly-collection-input:focus-visible {
+    outline: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.threadly-toggle-label.input-field .threadly-collection-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 400;
+    font-style: italic;
+}
+
+/* Add button within navbar label */
+.threadly-toggle-label.add-button {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s ease !important;
+}
+
+.threadly-toggle-label.add-button .threadly-add-collection-btn {
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+}
+
+.threadly-add-collection-btn:hover {
+    background: linear-gradient(135deg, #0f766e, #0d9488);
+    transform: scale(1.1);
+    box-shadow: 0 4px 20px rgba(20, 184, 166, 0.6);
+}
+
+.threadly-add-collection-btn:active {
+    transform: scale(0.95);
+}
+
+.threadly-add-collection-btn .plus-icon {
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+    transition: transform 0.3s ease;
+}
+
+.threadly-add-collection-btn:hover .plus-icon {
+    transform: rotate(180deg);
+}
+
+/* Ripple effect for add button */
+.threadly-add-collection-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.threadly-add-collection-btn:active::before {
+    width: 100%;
+    height: 100%;
+}
+
+/* Ripple effect for add button */
+.threadly-add-collection-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.threadly-add-collection-btn:active::after {
+    width: 70px;
+    height: 70px;
 }
 
 .threadly-back-button:hover {

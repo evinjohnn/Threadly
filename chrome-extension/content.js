@@ -626,6 +626,7 @@
                 e.preventDefault();
                 setSavedButtonActive(!savedButtonActive);
                 renderCollectionsView();
+                morphNavbarToSavedState();
             });
             
             // Add hover event listeners for smooth fill animation
@@ -638,6 +639,7 @@
                     e.preventDefault();
                     setSavedButtonActive(!savedButtonActive);
                     renderCollectionsView();
+                    morphNavbarToSavedState();
                 }
             });
         }
@@ -3276,6 +3278,259 @@
         }
     }
 
+    // Function to morph navbar to saved state (ADD NEW | CANCEL)
+    function morphNavbarToSavedState() {
+        console.log('Threadly: morphNavbarToSavedState called');
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) {
+            console.error('Threadly: Toggle bar not found');
+            return;
+        }
+
+        // Add morphing class for animation
+        toggleBar.classList.add('morphed');
+        
+        // Update the toggle segment for highlight bubble
+        const toggleSegment = toggleBar.querySelector('.threadly-toggle-segment');
+        if (toggleSegment) {
+            toggleSegment.className = 'threadly-toggle-segment';
+            toggleSegment.style.left = '2px';
+            toggleSegment.style.width = 'calc(50% - 2px)';
+        }
+        
+        // Update the labels to show only 2 sections (50/50 split)
+        const labels = toggleBar.querySelectorAll('.threadly-toggle-label');
+        if (labels.length >= 2) {
+            // Add fly-in animation by setting initial state
+            labels[0].style.opacity = '0';
+            labels[0].style.transform = 'translateY(20px) scale(0.9)';
+            labels[1].style.opacity = '0';
+            labels[1].style.transform = 'translateY(20px) scale(0.9)';
+            
+            labels[0].textContent = 'ADD NEW';
+            labels[0].className = 'threadly-toggle-label add';
+            labels[1].textContent = 'CANCEL';
+            labels[1].className = 'threadly-toggle-label back';
+            
+            // Hide any additional labels
+            for (let i = 2; i < labels.length; i++) {
+                labels[i].style.display = 'none';
+            }
+            
+            // Animate in with fly-in effect
+            setTimeout(() => {
+                labels[0].style.opacity = '1';
+                labels[0].style.transform = 'translateY(0) scale(1)';
+                labels[1].style.opacity = '1';
+                labels[1].style.transform = 'translateY(0) scale(1)';
+            }, 50);
+        }
+
+        // Add event listeners for the new buttons
+        if (labels[0]) {
+            labels[0].addEventListener('click', () => {
+                // Move highlight bubble to ADD NEW
+                if (toggleSegment) {
+                    toggleSegment.style.left = '2px';
+                    toggleSegment.style.width = 'calc(50% - 2px)';
+                }
+                handleAddNewClick();
+            });
+        }
+        if (labels[1]) {
+            labels[1].addEventListener('click', () => {
+                // Move highlight bubble to CANCEL
+                if (toggleSegment) {
+                    toggleSegment.style.left = 'calc(50% + 2px)';
+                    toggleSegment.style.width = 'calc(50% - 2px)';
+                    toggleSegment.classList.add('cancel');
+                }
+                handleCancelClick();
+            });
+        }
+
+        console.log('Threadly: Navbar morphed to saved state');
+    }
+
+    // Function to handle ADD NEW button click
+    function handleAddNewClick() {
+        console.log('Threadly: ADD NEW clicked');
+        morphNavbarToInputMode();
+    }
+
+    // Function to handle CANCEL button click
+    function handleCancelClick() {
+        console.log('Threadly: CANCEL clicked');
+        resetNavbarToOriginal();
+        // Exit saved state and return to normal view
+        setSavedButtonActive(false);
+        // Close the expanded panel
+        togglePanel(false);
+    }
+
+    // Function to morph navbar to input mode (pill with + button inside)
+    function morphNavbarToInputMode() {
+        console.log('Threadly: morphNavbarToInputMode called');
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) {
+            console.error('Threadly: Toggle bar not found');
+            return;
+        }
+
+        // Add morphing class for smooth transition
+        toggleBar.classList.add('morphing-to-input');
+        
+        // Get the existing labels
+        const labels = toggleBar.querySelectorAll('.threadly-toggle-label');
+        
+        // Transform the first label (ADD NEW) into input field
+        if (labels[0]) {
+            labels[0].innerHTML = `<input type="text" class="threadly-collection-input" placeholder="Type collection name..." id="collectionNameInput">`;
+            labels[0].className = 'threadly-toggle-label input-field';
+            labels[0].style.left = '0';
+            labels[0].style.width = 'calc(100% - 60px)';
+        }
+        
+        // Transform the second label (CANCEL) into + button
+        if (labels[1]) {
+            labels[1].innerHTML = `<button class="threadly-add-collection-btn" id="addCollectionBtn"><span class="plus-icon">+</span></button>`;
+            labels[1].className = 'threadly-toggle-label add-button';
+            labels[1].style.left = 'calc(100% - 60px)';
+            labels[1].style.width = '60px';
+        }
+        
+        // Hide any additional labels
+        for (let i = 2; i < labels.length; i++) {
+            labels[i].style.display = 'none';
+        }
+
+        // Add event listeners
+        const input = toggleBar.querySelector('#collectionNameInput');
+        const addBtn = toggleBar.querySelector('#addCollectionBtn');
+        
+        if (input) {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addNewCollection();
+                }
+            });
+            input.addEventListener('blur', () => {
+                // Optional: return to ADD NEW | CANCEL if input is empty
+                if (!input.value.trim()) {
+                    morphNavbarToSavedState();
+                }
+            });
+            // Focus the input
+            setTimeout(() => input.focus(), 100);
+        }
+        
+        if (addBtn) {
+            addBtn.addEventListener('click', addNewCollection);
+        }
+
+        // Add click outside handler to return to ADD NEW | CANCEL state
+        const clickOutsideHandler = (e) => {
+            if (!toggleBar.contains(e.target)) {
+                morphNavbarToSavedState();
+                document.removeEventListener('click', clickOutsideHandler);
+            }
+        };
+        
+        // Add the click outside handler after a small delay to prevent immediate triggering
+        setTimeout(() => {
+            document.addEventListener('click', clickOutsideHandler);
+        }, 100);
+
+        console.log('Threadly: Navbar morphed to input mode');
+    }
+
+    // Function to reset navbar to original state
+    function resetNavbarToOriginal() {
+        console.log('Threadly: resetNavbarToOriginal called');
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) {
+            console.error('Threadly: Toggle bar not found');
+            return;
+        }
+
+        // Remove morphing classes
+        toggleBar.classList.remove('morphed', 'morphing-to-input');
+        
+        // Reset to original HTML
+        toggleBar.innerHTML = `
+            <div class="threadly-toggle-segment" id="threadly-toggle-segment"></div>
+            <span class="threadly-toggle-label you">YOU</span>
+            <span class="threadly-toggle-label ai">AI</span>
+            <span class="threadly-toggle-label fav">FAV</span>
+        `;
+
+        // Re-add original event listeners
+        addToggleBarEventListeners();
+
+        console.log('Threadly: Navbar reset to original state');
+    }
+
+    // Function to add toggle bar event listeners
+    function addToggleBarEventListeners() {
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) return;
+
+        // Add click listeners for each label to allow direct selection
+        toggleBar.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('threadly-toggle-label')) {
+                if (e.target.classList.contains('user') || e.target.classList.contains('you')) {
+                    await selectFilterState('user');
+                } else if (e.target.classList.contains('assistant') || e.target.classList.contains('ai')) {
+                    await selectFilterState('assistant');
+                } else if (e.target.classList.contains('fav')) {
+                    await selectFilterState('favorites');
+                }
+            }
+        });
+    }
+
+    // Function to add new collection
+    async function addNewCollection() {
+        const input = document.getElementById('collectionNameInput');
+        if (!input) {
+            console.error('Threadly: Collection name input not found');
+            return;
+        }
+
+        const collectionName = input.value.trim();
+        if (!collectionName) {
+            console.log('Threadly: No collection name provided');
+            return;
+        }
+
+        try {
+            // Create new collection
+            const newCollection = {
+                id: 'collection_' + Date.now(),
+                name: collectionName,
+                createdAt: Date.now(),
+                platform: currentPlatformId,
+                messageIds: []
+            };
+
+            // Load existing collections
+            let collections = await loadCollectionsFromStorage();
+            collections.push(newCollection);
+            
+            // Save to storage
+            await saveCollectionsToStorage(collections);
+            
+            console.log('Threadly: Created new collection:', collectionName);
+            
+            // Reset navbar and re-render collections
+            resetNavbarToOriginal();
+            await renderCollectionsView();
+            
+        } catch (error) {
+            console.error('Threadly: Error creating collection:', error);
+        }
+    }
+
     // Function to enter input mode for new collection
     function enterInputMode() {
         console.log('Threadly: enterInputMode called');
@@ -3852,6 +4107,7 @@
                 e.preventDefault();
                 setSavedButtonActive(!savedButtonActive);
                 renderCollectionsView();
+                morphNavbarToSavedState();
             });
             
             // Add hover event listeners for smooth fill animation
@@ -3864,6 +4120,7 @@
                     e.preventDefault();
                     setSavedButtonActive(!savedButtonActive);
                     renderCollectionsView();
+                    morphNavbarToSavedState();
                 }
             });
         }
