@@ -1,9 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Threadly",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "Enhances major AI chat platforms with an auto-loading sidebar for advanced thread management and features.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "activeTab", "tabs"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Threadly Prompt Refiner"
+  },
   "content_scripts": [
     {
       "matches": [
@@ -18,13 +22,13 @@
         "https://perplexity.ai/*",
         "https://www.perplexity.ai/*"
       ],
-      "js": ["content.js"],
+      "js": ["api-handler.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["sidebar.css", "Borel/Borel-Regular.ttf"],
+      "resources": ["sidebar.css", "Borel/Borel-Regular.ttf", "popup.html", "popup.js", "api-handler.js"],
       "matches": [
         "https://chat.openai.com/*",
         "https://copilot.microsoft.com/*",

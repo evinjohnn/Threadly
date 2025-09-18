@@ -26,6 +26,11 @@
             chatContainer: 'div[style*="flex-direction: column;"], main',
             userSelector: 'div.user-message, [data-role="user"]',
         },
+        'x-ai': {
+            name: 'X.AI',
+            chatContainer: 'div[style*="flex-direction: column;"], main',
+            userSelector: 'div.user-message, [data-role="user"]',
+        },
         'ai-studio': {
             name: 'AI Studio',
             chatContainer: 'main, .chat-container, .chat-interface, [role="main"], .conversation-container',
@@ -202,15 +207,16 @@
             'gemini': '#4285f4',
             'claude': '#ff6b35',
             'ai-studio': '#4285f4',
-            'perplexity': '#ffffff',
+            'perplexity': '#20b2aa',
             'grok': '#1f2937',
+            'x-ai': '#1f2937',
             'copilot': '#0078d4'
         };
         return platformColors[currentPlatformId] || 'var(--threadly-primary-accent)';
     }
 
     // --- DOM Elements --- //
-    let container, panel, closeButton, messageList, searchInput, platformIndicator, toggleBar, toggleSegment;
+    let container, panel, closeButton, messageList, searchInput, platformIndicator, toggleBar, toggleSegment, scrollIndicator;
 
     // --- Enhanced Platform Detection --- //
     function detectPlatform() {
@@ -225,7 +231,7 @@
             'claude.ai': 'claude',
             'gemini.google.com': 'gemini',
             'grok.com': 'grok',
-            'x.ai': 'grok',
+            'x.ai': 'x-ai',
             'aistudio.google.com': 'ai-studio',
             'perplexity.ai': 'perplexity',
             'www.perplexity.ai': 'perplexity',
@@ -242,6 +248,128 @@
         
         console.log('Threadly: Unknown platform');
         return 'unknown';
+    }
+
+
+    // --- Simple Navigation Dots --- //
+    function createScrollIndicator() {
+        if (scrollIndicator) {
+            scrollIndicator.remove();
+        }
+        
+        scrollIndicator = document.createElement('div');
+        scrollIndicator.id = 'threadly-scroll-indicator';
+        scrollIndicator.className = `threadly-scroll-indicator ${currentPlatformId}`;
+        scrollIndicator.style.display = 'flex';
+        scrollIndicator.classList.add('visible');
+        
+        document.body.appendChild(scrollIndicator);
+        console.log('Threadly: Navigation dots created and visible');
+    }
+    
+    function updateScrollIndicator(messages) {
+        console.log('Threadly: updateScrollIndicator called with', messages?.length || 0, 'messages');
+        
+        if (!scrollIndicator) {
+            createScrollIndicator();
+        }
+        
+        // Clear existing dots
+        scrollIndicator.innerHTML = '';
+        
+        if (!messages || messages.length === 0) {
+            console.log('Threadly: No messages, keeping dots visible but empty');
+            scrollIndicator.style.display = 'flex';
+            scrollIndicator.classList.add('visible');
+            return;
+        }
+        
+        // Only show dots for user messages
+        const userMessages = messages.filter(msg => msg.role === 'user');
+        console.log('Threadly: Found', userMessages.length, 'user messages');
+        
+        if (userMessages.length === 0) {
+            console.log('Threadly: No user messages, hiding dots');
+            scrollIndicator.style.display = 'none';
+            scrollIndicator.classList.remove('visible');
+            return;
+        }
+        
+        // Create dots for each user message
+        userMessages.forEach((msg, index) => {
+            const dot = document.createElement('div');
+            dot.className = 'threadly-scroll-dot';
+            dot.dataset.messageIndex = messages.indexOf(msg);
+            dot.title = `Jump to user message ${index + 1}`;
+            
+            // Apply platform-specific color
+            const platformColor = getPlatformSavedIconColor();
+            dot.style.setProperty('--platform-color', platformColor);
+            
+            // Add click handler with event propagation control
+            dot.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                scrollToMessage(msg, messages.indexOf(msg));
+            });
+            
+            // Also add mousedown to capture interaction early
+            dot.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            });
+            
+            scrollIndicator.appendChild(dot);
+        });
+        
+        // Ensure indicator is visible
+        scrollIndicator.style.display = 'flex';
+        scrollIndicator.classList.add('visible');
+        
+        console.log('Threadly: Navigation dots updated with', userMessages.length, 'dots');
+    }
+    
+    function scrollToMessage(message, index) {
+        if (!message.element || !document.body.contains(message.element)) {
+            console.warn('Threadly: Message element not found for scroll');
+            return;
+        }
+        
+        // Scroll to the message
+        message.element.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+        });
+        
+        // Highlight the message
+        const originalBg = message.element.style.backgroundColor;
+        const originalTransition = message.element.style.transition;
+        message.element.style.transition = 'background-color 0.3s ease';
+        message.element.style.backgroundColor = getPlatformHighlightColor();
+        
+        // Update active dot
+        updateActiveScrollDot(index);
+        
+        // Reset highlight after delay
+        setTimeout(() => {
+            message.element.style.backgroundColor = originalBg;
+            message.element.style.transition = originalTransition;
+        }, 1500);
+        
+        console.log('Threadly: Scrolled to message', index + 1);
+    }
+    
+    function updateActiveScrollDot(activeIndex) {
+        if (!scrollIndicator) return;
+        
+        const dots = scrollIndicator.querySelectorAll('.threadly-scroll-dot');
+        dots.forEach((dot, index) => {
+            if (index === activeIndex) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        });
     }
 
     // --- Enhanced UI Injection --- //
@@ -710,7 +838,11 @@
     
     function handleClickOutside(e) {
         // Don't close panel if we're in collections view (SAVED state)
-        if (panel.classList.contains('threadly-expanded') && !panel.contains(e.target) && !isInCollectionsView) {
+        // Also don't close if clicking on navigation dots
+        if (panel.classList.contains('threadly-expanded') && 
+            !panel.contains(e.target) && 
+            !isInCollectionsView &&
+            !e.target.closest('#threadly-scroll-indicator')) {
             togglePanel(false);
         }
     }
@@ -722,6 +854,8 @@
             panel.style.top = `${newTop}px`;
             panel.style.bottom = 'auto';
             panel.classList.add('threadly-expanded');
+            
+            
             setTimeout(async () => {
                 await updateAndSaveConversation();
             }, 300);
@@ -729,6 +863,7 @@
             panel.classList.remove('threadly-expanded');
             panel.style.top = '10vh';
             panel.style.bottom = 'auto';
+            
             
             // Clear message list when closing to prevent text size issues
             if (messageList) {
@@ -1114,6 +1249,9 @@
         }
         
         if (!messageList) return;
+        
+        // Update navigation dots with the messages being rendered
+        updateScrollIndicator(messagesToRender);
         
         // Clear existing content completely
         messageList.innerHTML = '';
@@ -2789,6 +2927,10 @@
         return p.innerHTML;
     }
 
+    // --- Prompt Refiner Variables --- //
+    let promptRefiner = null;
+    let refineButtons = new Set();
+
     // --- Enhanced Initialization --- //
     async function init() {
         console.log('Threadly: Initializing...');
@@ -2798,6 +2940,15 @@
             console.log('Threadly: Unknown platform, exiting');
             return;
         }
+
+        // Initialize prompt refiner
+        try {
+            promptRefiner = new PromptRefiner();
+            await promptRefiner.initialize();
+            console.log('Threadly: Prompt refiner initialized');
+        } catch (error) {
+            console.error('Threadly: Failed to initialize prompt refiner:', error);
+        }
         
         // Wait a bit more for dynamic platforms
         if (currentPlatformId === 'perplexity' || currentPlatformId === 'gemini') {
@@ -2805,6 +2956,9 @@
         }
         
         try {
+            // Initialize navigation dots immediately for faster loading
+            createScrollIndicator();
+            
             injectUI();
             
             const savedMessages = await loadMessagesFromStorage();
@@ -2834,6 +2988,12 @@
             }
 
             startObserver();
+            
+            // Initialize prompt refiner buttons
+            initializePromptRefiner();
+            
+            // Update navigation dots with messages
+            updateScrollIndicator(allMessages);
             
             console.log('Threadly: Initialization complete for', currentPlatformId);
             
@@ -4409,5 +4569,94 @@
         
         console.log('Threadly: Successfully assigned messages to collection:', collection.name);
     }
+
+    // --- Prompt Refiner Functions --- //
+    
+    function initializePromptRefiner() {
+        console.log('Threadly: Initializing prompt refiner for ChatGPT...');
+        
+        // Only work on ChatGPT for now
+        if (!window.location.hostname.includes('chat.openai.com')) {
+            console.log('Threadly: Not on ChatGPT, skipping prompt refiner');
+            return;
+        }
+
+        // Insert sparkle icon next to mic button
+        insertSparkleIcon();
+        
+        // Set up observer for dynamically added content
+        const observer = new MutationObserver(() => {
+            insertSparkleIcon();
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        // Try once on load
+        setTimeout(insertSparkleIcon, 1000);
+    }
+
+    function insertSparkleIcon() {
+        // Find the mic button in ChatGPT
+        const micButton = document.querySelector('button[aria-label*="microphone"], button[aria-label*="voice"], button[data-testid*="mic"], button[aria-label*="Send voice message"]');
+        
+        if (!micButton) {
+            console.log('Threadly: Mic button not found');
+            return;
+        }
+
+        // Check if we already added our icon
+        if (micButton.parentElement.querySelector('.threadly-sparkle-icon')) {
+            return;
+        }
+
+        console.log('Threadly: Found mic button, inserting sparkle icon');
+
+        // Create the sparkle icon button
+        const sparkleButton = document.createElement('button');
+        sparkleButton.className = 'threadly-sparkle-icon';
+        sparkleButton.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <!-- Main large sparkle -->
+                <path d="M50,30 L55,45 L70,50 L55,55 L50,70 L45,55 L30,50 L45,45 Z" 
+                      fill="currentColor" 
+                      opacity="1"/>
+                
+                <!-- Medium sparkle top-left -->
+                <path d="M30,25 L33,30 L38,32 L33,34 L30,40 L27,34 L22,32 L27,30 Z" 
+                      fill="currentColor" 
+                      opacity="0.8"/>
+            </svg>
+        `;
+        
+        sparkleButton.setAttribute('aria-label', 'Refine prompt with AI');
+        sparkleButton.style.cssText = `
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            margin-left: 8px;
+            cursor: pointer;
+            color: white;
+            background: none;
+            border: none;
+            padding: 0;
+        `;
+
+        sparkleButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Threadly: Sparkle icon clicked!');
+            // TODO: Add prompt refinement logic here
+        });
+
+        // Insert after the mic button
+        micButton.insertAdjacentElement('afterend', sparkleButton);
+        console.log('Threadly: Sparkle icon inserted successfully');
+    }
+
+    // Old functions removed - using clean ChatGPT-specific implementation
 
 })();
