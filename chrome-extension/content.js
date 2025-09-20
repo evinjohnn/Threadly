@@ -4581,82 +4581,9 @@
             return;
         }
 
-        // Insert sparkle icon next to mic button
-        insertSparkleIcon();
-        
-        // Set up observer for dynamically added content
-        const observer = new MutationObserver(() => {
-            insertSparkleIcon();
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-
-        // Try once on load
-        setTimeout(insertSparkleIcon, 1000);
+        // ChatGPT sparkle functionality is now handled by chatgpt-sparkle.js
     }
 
-    function insertSparkleIcon() {
-        // Find the mic button in ChatGPT
-        const micButton = document.querySelector('button[aria-label*="microphone"], button[aria-label*="voice"], button[data-testid*="mic"], button[aria-label*="Send voice message"]');
-        
-        if (!micButton) {
-            console.log('Threadly: Mic button not found');
-            return;
-        }
-
-        // Check if we already added our icon
-        if (micButton.parentElement.querySelector('.threadly-sparkle-icon')) {
-            return;
-        }
-
-        console.log('Threadly: Found mic button, inserting sparkle icon');
-
-        // Create the sparkle icon button
-        const sparkleButton = document.createElement('button');
-        sparkleButton.className = 'threadly-sparkle-icon';
-        sparkleButton.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <!-- Main large sparkle -->
-                <path d="M50,30 L55,45 L70,50 L55,55 L50,70 L45,55 L30,50 L45,45 Z" 
-                      fill="currentColor" 
-                      opacity="1"/>
-                
-                <!-- Medium sparkle top-left -->
-                <path d="M30,25 L33,30 L38,32 L33,34 L30,40 L27,34 L22,32 L27,30 Z" 
-                      fill="currentColor" 
-                      opacity="0.8"/>
-            </svg>
-        `;
-        
-        sparkleButton.setAttribute('aria-label', 'Refine prompt with AI');
-        sparkleButton.style.cssText = `
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            margin-left: 8px;
-            cursor: pointer;
-            color: white;
-            background: none;
-            border: none;
-            padding: 0;
-        `;
-
-        sparkleButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            console.log('Threadly: Sparkle icon clicked!');
-            // TODO: Add prompt refinement logic here
-        });
-
-        // Insert after the mic button
-        micButton.insertAdjacentElement('afterend', sparkleButton);
-        console.log('Threadly: Sparkle icon inserted successfully');
-    }
-
-    // Old functions removed - using clean ChatGPT-specific implementation
+    // ChatGPT sparkle functionality moved to dedicated chatgpt-sparkle.js file
 
 })();
