@@ -33,8 +33,8 @@
         },
         'ai-studio': {
             name: 'AI Studio',
-            chatContainer: 'main, .chat-container, .chat-interface, [role="main"], .conversation-container',
-            userSelector: '.user-message, [data-role="user"], .user-input, .user-query, .prompt-text, .input-text, .query-input, .user-prompt, div[class*="user"] p, div[class*="prompt"] p',
+            chatContainer: 'div.chat-container, main, .conversation-container',
+            userSelector: 'ms-cmark-node.user-chunk span, ms-cmark-node.user-chunk p span',
         },
         copilot: {
             name: 'Copilot',
@@ -253,6 +253,12 @@
 
     // --- Simple Navigation Dots --- //
     function createScrollIndicator() {
+        // Skip navigation dots for AI Studio
+        if (currentPlatformId === 'ai-studio') {
+            console.log('Threadly: Skipping navigation dots for AI Studio');
+            return;
+        }
+        
         if (scrollIndicator) {
             scrollIndicator.remove();
         }
@@ -269,6 +275,12 @@
     
     function updateScrollIndicator(messages) {
         console.log('Threadly: updateScrollIndicator called with', messages?.length || 0, 'messages');
+        
+        // Skip navigation dots for AI Studio
+        if (currentPlatformId === 'ai-studio') {
+            console.log('Threadly: Skipping navigation dots update for AI Studio');
+            return;
+        }
         
         if (!scrollIndicator) {
             createScrollIndicator();
@@ -360,6 +372,11 @@
     }
     
     function updateActiveScrollDot(activeIndex) {
+        // Skip navigation dots for AI Studio
+        if (currentPlatformId === 'ai-studio') {
+            return;
+        }
+        
         if (!scrollIndicator) return;
         
         const dots = scrollIndicator.querySelectorAll('.threadly-scroll-dot');
@@ -1026,6 +1043,7 @@
 
         console.log('Threadly: Extracting messages with selector:', config.userSelector);
 
+
         // Try multiple selectors (comma-separated)
         const selectors = config.userSelector.split(',').map(s => s.trim());
         
@@ -1037,6 +1055,7 @@
                 userElements.forEach((userEl, index) => {
                     let text = '';
                     
+                    
                     // Try different text extraction methods
                     if (userEl.textContent) {
                         text = userEl.textContent.trim();
@@ -1047,22 +1066,10 @@
                     }
                     
                     if (text && text.length > 2) { // Minimum length check
-                        // Simple filtering for AI Studio: only accept short, question-like text as user input
+                        // AI Studio specific filtering: simple and direct
                         if (currentPlatformId === 'ai-studio') {
-                            // User input should be relatively short and look like a question/request
-                            if (text.length > 200) {
-                                console.log('Threadly: Skipping long text (likely AI response):', text.substring(0, 50) + '...');
-                                return; // Skip this element
-                            }
-                            
-                            // Check if it looks like a user question/request
-                            const questionPatterns = ['?', 'what', 'how', 'why', 'when', 'where', 'who', 'can you', 'please', 'help', 'explain', 'tell me'];
-                            const looksLikeQuestion = questionPatterns.some(pattern => 
-                                text.toLowerCase().includes(pattern.toLowerCase())
-                            );
-                            
-                            if (!looksLikeQuestion && text.length > 100) {
-                                console.log('Threadly: Skipping non-question text (likely AI response):', text.substring(0, 50) + '...');
+                            // Skip if text is too short
+                            if (text.length < 5) {
                                 return; // Skip this element
                             }
                         }
@@ -1114,7 +1121,7 @@
         } else if (currentPlatformId === 'gemini') {
             aiSelectors = '.assistant-message, [data-role="assistant"], .ai-response, div[class*="assistant"] p, .gemini-response, div[class*="gemini"], div[class*="response"], .response-text, div[class*="answer"], .ai-answer';
         } else if (currentPlatformId === 'ai-studio') {
-            aiSelectors = '.assistant-message, [data-role="assistant"], .ai-response, .response-text, .ai-answer, .generated-text, .final-answer, .ai-output, .response-content, .output-text, .answer-content, .model-response, .ai-studio-response, div[class*="assistant"] p, div[class*="response"] p, div[class*="answer"] p, div[class*="generated"] p';
+            aiSelectors = 'ms-chat-turn .model-prompt-container .turn-content ms-prompt-chunk:not(:has(ms-thought-chunk)) span, ms-chat-turn .model-prompt-container .turn-content ms-prompt-chunk:not(:has(ms-thought-chunk)) p span';
         } else if (currentPlatformId === 'copilot') {
             aiSelectors = '.assistant-message, [data-role="assistant"], .ai-response, .copilot-response, div[class*="assistant"], div[class*="response"], .response-text, div[class*="answer"]';
         } else if (currentPlatformId === 'perplexity') {
@@ -1129,6 +1136,7 @@
             const aiElements = document.querySelectorAll(aiSelectors);
             console.log('Threadly: Found', aiElements.length, 'AI response elements with selector:', aiSelectors);
             
+            
             aiElements.forEach((aiEl, index) => {
                 let text = '';
                 
@@ -1139,17 +1147,15 @@
                 }
                 
                 if (text && text.length > 2) {
-                    // For AI Studio, focus on substantial AI responses
+                    // For AI Studio, simple filtering
                     if (currentPlatformId === 'ai-studio') {
-                        // AI responses should be substantial and informative
-                        if (text.length < 30) {
-                            console.log('Threadly: Skipping very short AI response:', text.substring(0, 50) + '...');
+                        // Skip if text is too short
+                        if (text.length < 10) {
                             return; // Skip this element
                         }
                         
-                        // Skip thinking/planning text
-                        if (text.toLowerCase().includes('thinking') || text.toLowerCase().includes('let me think')) {
-                            console.log('Threadly: Skipping thinking text:', text.substring(0, 50) + '...');
+                        // Skip if it looks like HTML/XML markup
+                        if (text.includes('<') && text.includes('>')) {
                             return; // Skip this element
                         }
                     }
@@ -1182,32 +1188,25 @@
                 }
             });
             
-            // Fallback: If no AI responses found, try alternative methods
-            if (aiElements.length === 0) {
-                console.log('Threadly: No AI responses found with primary selectors, trying fallback methods...');
+            // Simple fallback for AI Studio
+            if (aiElements.length === 0 && currentPlatformId === 'ai-studio') {
+                console.log('Threadly: Trying simple AI Studio fallback...');
                 
-                // Try to find AI responses by looking for elements that contain typical AI response text
-                const allTextElements = document.querySelectorAll('div, p, span');
-                const aiResponseKeywords = ['I understand', 'Here\'s', 'Based on', 'Let me', 'I can', 'The answer', 'According to', 'I\'ll help', 'Here is', 'To answer'];
-                
-                allTextElements.forEach(el => {
-                    const text = el.textContent?.trim() || '';
-                    if (text.length > 20 && text.length < 2000) { // Reasonable length for AI response
-                        const hasAiKeywords = aiResponseKeywords.some(keyword => 
-                            text.toLowerCase().includes(keyword.toLowerCase())
+                // Look for any span elements that might contain AI responses
+                const allSpans = document.querySelectorAll('span');
+                allSpans.forEach(span => {
+                    const text = span.textContent?.trim() || '';
+                    if (text.length > 20 && text.length < 1000) {
+                        // Skip if it's likely a user message
+                        const isUserMessage = extracted.some(msg => 
+                            msg.content === text || msg.element === span
                         );
                         
-                        // Also check if it's not a user message (already extracted)
-                        const isNotUserMessage = !extracted.some(msg => 
-                            msg.content === text || msg.element === el
-                        );
-                        
-                        if (hasAiKeywords && isNotUserMessage) {
-                            console.log('Threadly: Found potential AI response with fallback method:', text.substring(0, 50) + '...');
+                        if (!isUserMessage) {
                             extracted.push({
                                 role: 'assistant',
                                 content: text,
-                                element: el
+                                element: span
                             });
                         }
                     }
