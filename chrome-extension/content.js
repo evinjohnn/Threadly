@@ -241,7 +241,6 @@
         
         for (const domain in platformMap) {
             if (hostname.includes(domain)) {
-                console.log('Threadly: Platform detected:', platformMap[domain]);
                 return platformMap[domain];
             }
         }
@@ -895,7 +894,6 @@
     // --- Enhanced Storage Functions --- //
     function getStorageKey() {
         const key = `threadly_${currentPlatformId}_${window.location.pathname}`;
-        console.log('Threadly: Storage key:', key);
         return key;
     }
 
@@ -928,7 +926,6 @@
             
             if (storableMessages.length > 0) {
                 await chrome.storage.local.set({ [key]: storableMessages });
-                console.log('Threadly: Saved', storableMessages.length, 'messages for', currentPlatformId);
             }
         } catch (error) {
             console.error('Threadly: Storage save error:', error);
@@ -960,7 +957,6 @@
             const key = getStorageKey();
             const data = await chrome.storage.local.get(key);
             const messages = data[key] || [];
-            console.log('Threadly: Loaded', messages.length, 'messages for', currentPlatformId);
             return messages;
         } catch (error) {
             console.error('Threadly: Storage load error:', error);
@@ -994,7 +990,7 @@
         }
     }
 
-    // Load all messages from all platforms for global collection access
+    // Load all messages from all platforms for global collection access (optimized)
     async function loadAllMessagesFromAllPlatforms() {
         try {
             const allMessages = [];
@@ -1007,23 +1003,19 @@
                 if (key.startsWith('threadly_') && key.includes('_/') && Array.isArray(value)) {
                     // This is a message storage key
                     const messages = value;
-                    console.log('Threadly: Loading messages from key:', key, 'count:', messages.length);
                     
                     // Extract platform from storage key and add to messages
                     const platformFromKey = key.split('_')[1]; // Extract platform from threadly_platform_pathname
-                    console.log('Threadly: Extracted platform from key:', platformFromKey, 'for storage key:', key);
                     
                     const messagesWithPlatform = messages.map(msg => ({
                         ...msg,
                         platform: msg.platform || platformFromKey // Use stored platform or extract from key
                     }));
                     
-                    console.log('Threadly: Sample message with platform:', messagesWithPlatform[0]);
                     allMessages.push(...messagesWithPlatform);
                 }
             }
             
-            console.log('Threadly: Total messages loaded from all platforms:', allMessages.length);
             return allMessages;
         } catch (error) {
             console.error('Threadly: Error loading all platform messages:', error);
@@ -1041,16 +1033,12 @@
             return [];
         }
 
-        console.log('Threadly: Extracting messages with selector:', config.userSelector);
-
-
         // Try multiple selectors (comma-separated)
         const selectors = config.userSelector.split(',').map(s => s.trim());
         
         for (const selector of selectors) {
             try {
                 const userElements = document.querySelectorAll(selector);
-                console.log('Threadly: Found', userElements.length, 'elements with selector:', selector);
                 
                 userElements.forEach((userEl, index) => {
                     let text = '';
@@ -1093,7 +1081,7 @@
                             }
                         }
                         
-                        console.log('Threadly: Extracted user message', index + 1, ':', text.substring(0, 50) + '...');
+                        // Extracted user message
                         extracted.push({
                             role: 'user',
                             content: text,
@@ -1134,7 +1122,6 @@
         
         try {
             const aiElements = document.querySelectorAll(aiSelectors);
-            console.log('Threadly: Found', aiElements.length, 'AI response elements with selector:', aiSelectors);
             
             
             aiElements.forEach((aiEl, index) => {
@@ -1179,7 +1166,7 @@
                         }
                     }
                     
-                    console.log('Threadly: Extracted AI message', index + 1, ':', text.substring(0, 50) + '...');
+                    // Extracted AI message
                     extracted.push({
                         role: 'assistant',
                         content: text,
@@ -1216,19 +1203,15 @@
             console.warn('Threadly: Error extracting AI responses:', error);
         }
         
-        console.log('Threadly: Total extracted messages:', extracted.length);
-        
-        // Debug: Log what elements are available for better debugging
-        if (extracted.length === 0) {
-            console.log('Threadly: Debug - No messages extracted, checking available elements...');
+        // Debug: Log what elements are available for better debugging (only in development)
+        if (extracted.length === 0 && window.location.hostname === 'localhost') {
             const debugElements = document.querySelectorAll('div, p, span');
-            console.log('Threadly: Debug - Found', debugElements.length, 'potential text elements');
             
             // Log first few elements for debugging
-            debugElements.slice(0, 10).forEach((el, i) => {
+            Array.from(debugElements).slice(0, 5).forEach((el, i) => {
                 const text = el.textContent?.trim() || '';
                 if (text.length > 5) {
-                    console.log(`Threadly: Debug - Element ${i}:`, text.substring(0, 100) + '...');
+                    console.log(`Threadly: Debug - Element ${i}:`, text.substring(0, 50) + '...');
                 }
             });
         }
@@ -1819,7 +1802,7 @@
                 }
             });
             
-            console.log('Threadly: Loaded global favorites, marked', globalFavorites.length, 'as favorited');
+            // Loaded global favorites
         } catch (error) {
             console.error('Threadly: Error loading global favorites:', error);
         }
@@ -1840,10 +1823,6 @@
     // --- Collections View Functions --- //
     async function renderCollectionsView(isAssigning = false) {
         try {
-            console.log('Threadly: renderCollectionsView called with isAssigning:', isAssigning);
-            console.log('Threadly: messageList element:', messageList);
-            console.log('Threadly: messageList exists:', !!messageList);
-            
             if (!messageList) {
                 console.error('Threadly: messageList not found in renderCollectionsView');
                 return;
@@ -1851,7 +1830,6 @@
             
             // Set flag to indicate we're in collections view
             isInCollectionsView = true;
-            console.log('Threadly: Set isInCollectionsView to true');
             
             // Ensure panel stays expanded when in collections view
             if (panel && !panel.classList.contains('threadly-expanded')) {
@@ -2932,15 +2910,13 @@
 
     // --- Enhanced Initialization --- //
     async function init() {
-        console.log('Threadly: Initializing...');
-        
         currentPlatformId = detectPlatform();
         if (currentPlatformId === 'unknown') {
             console.log('Threadly: Unknown platform, exiting');
             return;
         }
 
-        // Initialize prompt refiner
+        // Initialize prompt refiner for all platforms
         try {
             promptRefiner = new PromptRefiner();
             await promptRefiner.initialize();
@@ -2979,8 +2955,8 @@
             // Load collections
             collections = await loadCollectionsFromStorage();
             
-            // Update collection message counts
-            await updateCollectionMessageCounts();
+            // Update collection message counts (only when needed, not during init)
+            // await updateCollectionMessageCounts();
             
             if (panel && panel.classList.contains('threadly-expanded')) {
                 renderMessages(allMessages);
@@ -3235,14 +3211,27 @@
         setTimeout(init, 1000); // Extra delay for SPA loading
     }
     
-    // Handle SPA navigation
+    // Handle SPA navigation (optimized)
     let lastUrl = location.href;
+    let reinitTimeout = null;
+    
     new MutationObserver(() => {
         const url = location.href;
         if (url !== lastUrl) {
             lastUrl = url;
-            console.log('Threadly: URL changed, re-initializing...');
-            setTimeout(init, 2000); // Re-initialize on navigation
+            
+            // Debounce re-initialization to avoid excessive calls
+            if (reinitTimeout) {
+                clearTimeout(reinitTimeout);
+            }
+            
+            reinitTimeout = setTimeout(() => {
+                // Only re-initialize if we're still on a supported platform
+                const platform = detectPlatform();
+                if (platform !== 'unknown') {
+                    init();
+                }
+            }, 3000); // Increased delay to reduce frequency
         }
     }).observe(document, { subtree: true, childList: true });
 
@@ -4572,15 +4561,10 @@
     // --- Prompt Refiner Functions --- //
     
     function initializePromptRefiner() {
-        console.log('Threadly: Initializing prompt refiner for ChatGPT...');
+        console.log('Threadly: Initializing prompt refiner for all platforms...');
         
-        // Only work on ChatGPT for now
-        if (!window.location.hostname.includes('chat.openai.com')) {
-            console.log('Threadly: Not on ChatGPT, skipping prompt refiner');
-            return;
-        }
-
-        // ChatGPT sparkle functionality is now handled by chatgpt-sparkle.js
+        // Prompt refiner is now available for all platforms
+        // Individual platform sparkle functionality is handled by dedicated files
     }
 
     // ChatGPT sparkle functionality moved to dedicated chatgpt-sparkle.js file

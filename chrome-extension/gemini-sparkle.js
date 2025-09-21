@@ -131,9 +131,12 @@
         console.log('Threadly: Document ready state:', document.readyState);
         console.log('Threadly: PromptRefiner available:', !!window.PromptRefiner);
         console.log('Threadly: All available textareas:', document.querySelectorAll('textarea'));
+        console.log('Threadly: All contenteditable elements:', document.querySelectorAll('[contenteditable="true"]'));
+        console.log('Threadly: Rich textarea elements:', document.querySelectorAll('rich-textarea'));
         
         // Get current input text from Gemini textarea using specific selector
-        const textArea = document.querySelector('textarea[placeholder*="Start typing a prompt"], textarea[aria-label*="Start typing a prompt"], textarea[aria-label*="Type something"], textarea[placeholder*="Type something"], textarea');
+        // Gemini uses contenteditable div instead of textarea
+        const textArea = document.querySelector('textarea[placeholder*="Start typing a prompt"], textarea[aria-label*="Start typing a prompt"], textarea[aria-label*="Type something"], textarea[placeholder*="Type something"], textarea, [contenteditable="true"][role="textbox"], .ql-editor[contenteditable="true"], rich-textarea [contenteditable="true"]');
         
         // Debug: log textarea details
         if (textArea) {
@@ -159,10 +162,21 @@
             }
         }
         // Use the main textarea or fallback
-        const finalTextArea = textArea || document.querySelector('textarea');
+        const finalTextArea = textArea || document.querySelector('textarea, [contenteditable="true"][role="textbox"], .ql-editor[contenteditable="true"], rich-textarea [contenteditable="true"]');
         
         if (finalTextArea) {
-            const currentText = finalTextArea.value || finalTextArea.textContent || finalTextArea.innerText;
+            // Handle both textarea and contenteditable elements
+            let currentText;
+            if (finalTextArea.tagName === 'TEXTAREA') {
+                currentText = finalTextArea.value;
+            } else if (finalTextArea.contentEditable === 'true') {
+                // For contenteditable elements, get text content and clean it up
+                currentText = finalTextArea.textContent || finalTextArea.innerText;
+                // Remove extra whitespace and normalize
+                currentText = currentText.replace(/\s+/g, ' ').trim();
+            } else {
+                currentText = finalTextArea.value || finalTextArea.textContent || finalTextArea.innerText;
+            }
             console.log('Threadly: Current prompt:', currentText);
             
             if (!currentText || currentText.trim() === '') {
@@ -218,8 +232,8 @@
                         finalTextArea.value = refinedPrompt;
                         console.log('Threadly: Updated textarea value');
                     } else if (finalTextArea.contentEditable === 'true') {
-                        finalTextArea.textContent = refinedPrompt;
-                        finalTextArea.innerText = refinedPrompt;
+                        // For contenteditable elements, replace the content properly
+                        finalTextArea.innerHTML = `<p>${refinedPrompt}</p>`;
                         console.log('Threadly: Updated contenteditable text');
                     } else {
                         finalTextArea.textContent = refinedPrompt;
@@ -232,6 +246,18 @@
                     finalTextArea.dispatchEvent(new Event('keyup', { bubbles: true }));
                     finalTextArea.dispatchEvent(new Event('keydown', { bubbles: true }));
                     finalTextArea.dispatchEvent(new Event('paste', { bubbles: true }));
+                    
+                    // Additional events for rich text editors
+                    if (finalTextArea.contentEditable === 'true') {
+                        finalTextArea.dispatchEvent(new Event('blur', { bubbles: true }));
+                        finalTextArea.dispatchEvent(new Event('focus', { bubbles: true }));
+                        // Trigger on the parent rich-textarea element as well
+                        const richTextarea = finalTextArea.closest('rich-textarea');
+                        if (richTextarea) {
+                            richTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                            richTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
                     
                     // Force focus back to the text area
                     finalTextArea.focus();
@@ -259,8 +285,8 @@
                         finalTextArea.value = improvedPrompt;
                         console.log('Threadly: Updated textarea value with fallback');
                     } else if (finalTextArea.contentEditable === 'true') {
-                        finalTextArea.textContent = improvedPrompt;
-                        finalTextArea.innerText = improvedPrompt;
+                        // For contenteditable elements, replace the content properly
+                        finalTextArea.innerHTML = `<p>${improvedPrompt}</p>`;
                         console.log('Threadly: Updated contenteditable text with fallback');
                     } else {
                         finalTextArea.textContent = improvedPrompt;
@@ -270,6 +296,19 @@
                     // Trigger events
                     finalTextArea.dispatchEvent(new Event('input', { bubbles: true }));
                     finalTextArea.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    // Additional events for rich text editors
+                    if (finalTextArea.contentEditable === 'true') {
+                        finalTextArea.dispatchEvent(new Event('blur', { bubbles: true }));
+                        finalTextArea.dispatchEvent(new Event('focus', { bubbles: true }));
+                        // Trigger on the parent rich-textarea element as well
+                        const richTextarea = finalTextArea.closest('rich-textarea');
+                        if (richTextarea) {
+                            richTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                            richTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                    
                     finalTextArea.focus();
                     
                     console.log('Threadly: Fallback prompt improvement completed');
@@ -453,7 +492,7 @@
     }
 
     // Main function to insert the sparkle icon next to the appropriate button
-    async function insertSparkleIcon() {
+    function insertSparkleIcon() {
         try {
             console.log('Threadly: Adding sparkle icon to Gemini input area...');
             
@@ -575,7 +614,11 @@
         
         // Wait for Gemini's interface to load
         setTimeout(() => {
-            insertSparkleIcon();
+            if (!isInsertingSparkle) {
+                isInsertingSparkle = true;
+                insertSparkleIcon();
+                isInsertingSparkle = false;
+            }
         }, 3000);
         
         // Also check periodically to ensure sparkle stays in place and is positioned correctly
@@ -589,9 +632,8 @@
             if (existingSparkles.length === 0) {
                 console.log('Threadly: Periodic check - re-adding missing sparkle icon');
                 isInsertingSparkle = true;
-                insertSparkleIcon().finally(() => {
-                    isInsertingSparkle = false;
-                });
+                insertSparkleIcon();
+                isInsertingSparkle = false;
             } else if (existingSparkles.length > 1) {
                 console.log('Threadly: Periodic check - removing duplicate sparkles');
                 // Keep only the first one, remove the rest
@@ -604,42 +646,45 @@
                 const micContainer = document.querySelector('.mic-button-container');
                 const sendContainer = document.querySelector('.send-button-container');
                 
-                // If mic container is hidden and send container is visible, move sparkle to send container
+                // Check if sparkle is already in the correct position
+                let needsRepositioning = false;
+                
+                // If mic container is hidden and send container is visible, sparkle should be in send container
                 if (micContainer && micContainer.classList.contains('hidden') && sendContainer && !sendContainer.classList.contains('hidden')) {
-                    console.log('Threadly: Periodic check - moving sparkle to send button container (mic hidden)');
-                    sparkle.remove();
-                    isInsertingSparkle = true;
-                    insertSparkleIcon().finally(() => {
-                        isInsertingSparkle = false;
-                    });
+                    if (!sendContainer.contains(sparkle)) {
+                        needsRepositioning = true;
+                        console.log('Threadly: Periodic check - moving sparkle to send button container (mic hidden)');
+                    }
                 }
-                // If mic container is visible and send container is hidden, move sparkle to mic container
+                // If mic container is visible and send container is hidden, sparkle should be in mic container
                 else if (micContainer && !micContainer.classList.contains('hidden') && sendContainer && sendContainer.classList.contains('hidden')) {
-                    console.log('Threadly: Periodic check - moving sparkle to mic button container (send hidden)');
-                    sparkle.remove();
-                    isInsertingSparkle = true;
-                    insertSparkleIcon().finally(() => {
-                        isInsertingSparkle = false;
-                    });
+                    if (!micContainer.contains(sparkle)) {
+                        needsRepositioning = true;
+                        console.log('Threadly: Periodic check - moving sparkle to mic button container (send hidden)');
+                    }
                 }
                 // If both are visible, check if sparkle is in the correct position
                 else if (micContainer && !micContainer.classList.contains('hidden')) {
                     const speechDictationComponent = document.querySelector('speech-dictation-mic-button');
                     if (speechDictationComponent && speechDictationComponent.previousElementSibling !== sparkle) {
+                        needsRepositioning = true;
                         console.log('Threadly: Periodic check - repositioning sparkle before speech-dictation-mic-button component');
-                        sparkle.remove();
-                        isInsertingSparkle = true;
-                        insertSparkleIcon().finally(() => {
-                            isInsertingSparkle = false;
-                        });
                     }
+                }
+                
+                // Only reposition if needed
+                if (needsRepositioning) {
+                    sparkle.remove();
+                    isInsertingSparkle = true;
+                    insertSparkleIcon();
+                    isInsertingSparkle = false;
                 }
             }
         }, 5000); // Check every 5 seconds
         
         // Add input listener to textarea to ensure sparkle positioning when typing
         const addTextareaListener = () => {
-            const textarea = document.querySelector('textarea, [contenteditable="true"]');
+            const textarea = document.querySelector('textarea, [contenteditable="true"][role="textbox"], .ql-editor[contenteditable="true"], rich-textarea [contenteditable="true"]');
             if (textarea) {
                 textarea.addEventListener('input', () => {
                     // Skip if we're currently inserting a sparkle to prevent infinite loops
@@ -653,9 +698,8 @@
                         if (existingSparkles.length === 0) {
                             console.log('Threadly: Re-adding missing sparkle after textarea input');
                             isInsertingSparkle = true;
-                            insertSparkleIcon().finally(() => {
-                                isInsertingSparkle = false;
-                            });
+                            insertSparkleIcon();
+                            isInsertingSparkle = false;
                         } else if (existingSparkles.length > 1) {
                             console.log('Threadly: Removing duplicate sparkles after textarea input');
                             // Keep only the first one, remove the rest
@@ -668,35 +712,38 @@
                             const micContainer = document.querySelector('.mic-button-container');
                             const sendContainer = document.querySelector('.send-button-container');
                             
-                            // If mic container is hidden and send container is visible, move sparkle to send container
+                            // Check if sparkle is already in the correct position
+                            let needsRepositioning = false;
+                            
+                            // If mic container is hidden and send container is visible, sparkle should be in send container
                             if (micContainer && micContainer.classList.contains('hidden') && sendContainer && !sendContainer.classList.contains('hidden')) {
-                                console.log('Threadly: Moving sparkle to send button container after textarea input (mic hidden)');
-                                sparkle.remove();
-                                isInsertingSparkle = true;
-                                insertSparkleIcon().finally(() => {
-                                    isInsertingSparkle = false;
-                                });
+                                if (!sendContainer.contains(sparkle)) {
+                                    needsRepositioning = true;
+                                    console.log('Threadly: Moving sparkle to send button container after textarea input (mic hidden)');
+                                }
                             }
-                            // If mic container is visible and send container is hidden, move sparkle to mic container
+                            // If mic container is visible and send container is hidden, sparkle should be in mic container
                             else if (micContainer && !micContainer.classList.contains('hidden') && sendContainer && sendContainer.classList.contains('hidden')) {
-                                console.log('Threadly: Moving sparkle to mic button container after textarea input (send hidden)');
-                                sparkle.remove();
-                                isInsertingSparkle = true;
-                                insertSparkleIcon().finally(() => {
-                                    isInsertingSparkle = false;
-                                });
+                                if (!micContainer.contains(sparkle)) {
+                                    needsRepositioning = true;
+                                    console.log('Threadly: Moving sparkle to mic button container after textarea input (send hidden)');
+                                }
                             }
                             // If both are visible, check if sparkle is in the correct position
                             else if (micContainer && !micContainer.classList.contains('hidden')) {
                                 const speechDictationComponent = document.querySelector('speech-dictation-mic-button');
                                 if (speechDictationComponent && speechDictationComponent.previousElementSibling !== sparkle) {
+                                    needsRepositioning = true;
                                     console.log('Threadly: Repositioning sparkle before speech-dictation-mic-button component after textarea input');
-                                    sparkle.remove();
-                                    isInsertingSparkle = true;
-                                    insertSparkleIcon().finally(() => {
-                                        isInsertingSparkle = false;
-                                    });
                                 }
+                            }
+                            
+                            // Only reposition if needed
+                            if (needsRepositioning) {
+                                sparkle.remove();
+                                isInsertingSparkle = true;
+                                insertSparkleIcon();
+                                isInsertingSparkle = false;
                             }
                         }
                     }, 200);
@@ -706,10 +753,13 @@
         
         // Add listener immediately and also periodically
         addTextareaListener();
-        setInterval(addTextareaListener, 3000);
+        setInterval(() => {
+            if (!isInsertingSparkle) {
+                addTextareaListener();
+            }
+        }, 3000);
         
         // Watch for dynamic content changes and ensure proper positioning
-        let isInsertingSparkle = false; // Flag to prevent infinite loops
         const observer = new MutationObserver((mutations) => {
             // Skip if we're currently inserting a sparkle to prevent infinite loops
             if (isInsertingSparkle) {
@@ -741,9 +791,8 @@
                         if (existingSparkles.length === 0) {
                             console.log('Threadly: Re-adding missing sparkle icon after DOM change');
                             isInsertingSparkle = true;
-                            insertSparkleIcon().finally(() => {
-                                isInsertingSparkle = false;
-                            });
+                            insertSparkleIcon();
+                            isInsertingSparkle = false;
                         } else if (existingSparkles.length > 1) {
                             console.log('Threadly: Removing duplicate sparkles after DOM change');
                             // Keep only the first one, remove the rest
@@ -756,35 +805,38 @@
                             const micContainer = document.querySelector('.mic-button-container');
                             const sendContainer = document.querySelector('.send-button-container');
                             
-                            // If mic container is hidden and send container is visible, move sparkle to send container
+                            // Check if sparkle is already in the correct position
+                            let needsRepositioning = false;
+                            
+                            // If mic container is hidden and send container is visible, sparkle should be in send container
                             if (micContainer && micContainer.classList.contains('hidden') && sendContainer && !sendContainer.classList.contains('hidden')) {
-                                console.log('Threadly: Moving sparkle to send button container after DOM change (mic hidden)');
-                                sparkle.remove();
-                                isInsertingSparkle = true;
-                                insertSparkleIcon().finally(() => {
-                                    isInsertingSparkle = false;
-                                });
+                                if (!sendContainer.contains(sparkle)) {
+                                    needsRepositioning = true;
+                                    console.log('Threadly: Moving sparkle to send button container after DOM change (mic hidden)');
+                                }
                             }
-                            // If mic container is visible and send container is hidden, move sparkle to mic container
+                            // If mic container is visible and send container is hidden, sparkle should be in mic container
                             else if (micContainer && !micContainer.classList.contains('hidden') && sendContainer && sendContainer.classList.contains('hidden')) {
-                                console.log('Threadly: Moving sparkle to mic button container after DOM change (send hidden)');
-                                sparkle.remove();
-                                isInsertingSparkle = true;
-                                insertSparkleIcon().finally(() => {
-                                    isInsertingSparkle = false;
-                                });
+                                if (!micContainer.contains(sparkle)) {
+                                    needsRepositioning = true;
+                                    console.log('Threadly: Moving sparkle to mic button container after DOM change (send hidden)');
+                                }
                             }
                             // If both are visible, check if sparkle is in the correct position
                             else if (micContainer && !micContainer.classList.contains('hidden')) {
                                 const speechDictationComponent = document.querySelector('speech-dictation-mic-button');
                                 if (speechDictationComponent && speechDictationComponent.previousElementSibling !== sparkle) {
+                                    needsRepositioning = true;
                                     console.log('Threadly: Repositioning sparkle before speech-dictation-mic-button component after DOM change');
-                                    sparkle.remove();
-                                    isInsertingSparkle = true;
-                                    insertSparkleIcon().finally(() => {
-                                        isInsertingSparkle = false;
-                                    });
                                 }
+                            }
+                            
+                            // Only reposition if needed
+                            if (needsRepositioning) {
+                                sparkle.remove();
+                                isInsertingSparkle = true;
+                                insertSparkleIcon();
+                                isInsertingSparkle = false;
                             }
                         }
                     }, 1000); // Slower response to avoid repositioning during typing
@@ -811,23 +863,30 @@
                                 const micContainer = document.querySelector('.mic-button-container');
                                 const sendContainer = document.querySelector('.send-button-container');
                                 
-                                // If mic container is hidden and send container is visible, move sparkle to send container
+                                // Check if sparkle is already in the correct position
+                                let needsRepositioning = false;
+                                
+                                // If mic container is hidden and send container is visible, sparkle should be in send container
                                 if (micContainer && micContainer.classList.contains('hidden') && sendContainer && !sendContainer.classList.contains('hidden')) {
-                                    console.log('Threadly: Moving sparkle to send button container after class change (mic hidden)');
-                                    sparkle.remove();
-                                    isInsertingSparkle = true;
-                                    insertSparkleIcon().finally(() => {
-                                        isInsertingSparkle = false;
-                                    });
+                                    if (!sendContainer.contains(sparkle)) {
+                                        needsRepositioning = true;
+                                        console.log('Threadly: Moving sparkle to send button container after class change (mic hidden)');
+                                    }
                                 }
-                                // If mic container is visible and send container is hidden, move sparkle to mic container
+                                // If mic container is visible and send container is hidden, sparkle should be in mic container
                                 else if (micContainer && !micContainer.classList.contains('hidden') && sendContainer && sendContainer.classList.contains('hidden')) {
-                                    console.log('Threadly: Moving sparkle to mic button container after class change (send hidden)');
+                                    if (!micContainer.contains(sparkle)) {
+                                        needsRepositioning = true;
+                                        console.log('Threadly: Moving sparkle to mic button container after class change (send hidden)');
+                                    }
+                                }
+                                
+                                // Only reposition if needed
+                                if (needsRepositioning) {
                                     sparkle.remove();
                                     isInsertingSparkle = true;
-                                    insertSparkleIcon().finally(() => {
-                                        isInsertingSparkle = false;
-                                    });
+                                    insertSparkleIcon();
+                                    isInsertingSparkle = false;
                                 }
                             }
                         }, 100);
