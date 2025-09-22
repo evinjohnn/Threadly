@@ -59,6 +59,7 @@
     let retryCount = 0;
     const MAX_RETRIES = 5;
     let messageFilterState = 'user'; // 'user', 'assistant', or 'favorites'
+    let previousFilterState = 'user'; // Store the state before entering selection mode
     let isInSelectionMode = false;
     let selectedMessageIds = [];
     let collections = [];
@@ -395,22 +396,6 @@
             return;
         }
         
-        // Contextual Actions Bar HTML (defined first)
-        const contextualActionsHTML = `
-            <div id="threadly-contextual-actions" class="threadly-contextual-actions" style="display: none;">
-                <div class="threadly-selection-info">
-                    <span id="threadly-selection-count">Select items to organize</span>
-                </div>
-                <div class="threadly-action-buttons">
-                    <button id="threadly-assign-btn" class="threadly-action-btn" disabled>
-                        ASSIGN TO
-                    </button>
-                    <button id="threadly-unstar-btn" class="threadly-action-btn" disabled>
-                        Unstar
-                    </button>
-                </div>
-            </div>
-        `;
         
         // Create the main panel
         const panelHTML = `
@@ -460,7 +445,6 @@
                                 <div class="threadly-toggle-label assistant">AI</div>
                                 <div class="threadly-toggle-label fav">FAV</div>
                             </div>
-                            ${contextualActionsHTML}
                         </div>
                         
                         <div class="threadly-messages" id="threadly-messages"></div>
@@ -533,7 +517,6 @@
                             <span class="threadly-toggle-label ai">AI</span>
                             <span class="threadly-toggle-label fav">FAV</span>
                         </div>
-                        ${contextualActionsHTML}
                     </div>
                 </div>
             </div>
@@ -766,17 +749,15 @@
             }
         });
         
-        // Add event listeners for contextual action buttons
-        document.getElementById('threadly-assign-btn').addEventListener('click', () => {
-            // Enter assign mode
-            enterAssignmentMode();
-        });
-        document.getElementById('threadly-unstar-btn').addEventListener('click', unstarMessages);
         
-        // Add event listener for select bulb
+        // Add event listener for select bulb with debouncing
         const selectBulb = document.getElementById('threadly-select-bulb');
         if (selectBulb) {
-            selectBulb.addEventListener('click', toggleSelectionMode);
+            selectBulb.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleSelectionMode();
+            });
         }
         
         // Add event listener for saved bulb
@@ -1965,13 +1946,15 @@
             await assignToCollection(selectedMessageIds, collectionId);
             
             // Exit selection mode
-            exitSelectionMode();
+            await exitSelectionMode();
             
-            // Reset assignment mode
+            // Exit assignment mode completely and return to DEFAULT SAVED state
             isAssigningMode = false;
             
-            // Re-render the original view
-            await filterMessages(searchInput.value);
+            // Reset to default SAVED state (same as clicking SAVED button from header)
+            setSavedButtonActive(true);
+            await renderCollectionsView(false); // false = not in assignment mode
+            morphNavbarToSavedState();
             
             console.log('Threadly: Successfully assigned messages to collection');
         } catch (error) {
@@ -3237,14 +3220,18 @@
 
     // --- Selection Mode Management --- //
     function enterSelectionMode() {
+        // Save the current filter state before entering selection mode
+        previousFilterState = messageFilterState;
+        console.log('Threadly: Saved previous state:', previousFilterState);
+        
         isInSelectionMode = true;
         selectedMessageIds = [];
         
         // Show checkboxes on all messages
         document.body.classList.add('selection-mode');
         
-        // Show contextual actions bar
-        showContextualActions();
+        // Morph navbar to show ASSIGN TO | CANCEL
+        morphNavbarToSelectionMode();
         
         // Update select button to show it's in close mode
         const selectBulb = document.getElementById('threadly-select-bulb');
@@ -3261,7 +3248,7 @@
         console.log('Threadly: Entered selection mode');
     }
     
-    function exitSelectionMode() {
+    async function exitSelectionMode() {
         isInSelectionMode = false;
         selectedMessageIds = [];
         
@@ -3270,9 +3257,6 @@
         
         // Hide checkboxes
         document.body.classList.remove('selection-mode');
-        
-        // Hide contextual actions
-        hideContextualActions();
         
         // Uncheck all checkboxes
         const checkboxes = document.querySelectorAll('.threadly-message-checkbox');
@@ -3287,110 +3271,26 @@
             selectBulb.setAttribute('data-mode', 'select');
         }
         
+        // Restore the previous filter state FIRST
+        console.log('Threadly: Restoring previous state:', previousFilterState);
+        messageFilterState = previousFilterState; // Set the state before resetting navbar
+        
+        // Morph navbar back to original YOU | AI | FAV with correct state
+        resetNavbarToOriginal();
+        
+        // Filter messages to show the correct state
+        await filterMessages('');
+        
         // Update checkbox states
         updateCheckboxStates();
         
         // Update selection info
         updateSelectionInfo();
-        console.log('Threadly: Exited selection mode');
+        console.log('Threadly: Exited selection mode and restored to:', previousFilterState);
     }
 
-    // Function to restore original contextual actions
-    function restoreOriginalContextualActions() {
-        const contextualActions = document.querySelector('.threadly-contextual-actions');
-        if (contextualActions) {
-            const addNewBtn = contextualActions.querySelector('#threadly-add-new-btn');
-            const cancelBtn = contextualActions.querySelector('#threadly-cancel-btn');
-            
-            if (addNewBtn) {
-                addNewBtn.textContent = 'Assign To';
-                addNewBtn.id = 'threadly-assign-btn';
-                addNewBtn.style.background = '';
-                addNewBtn.style.borderColor = '';
-                
-                // Restore original event listener
-                addNewBtn.replaceWith(addNewBtn.cloneNode(true));
-                const newAssignBtn = contextualActions.querySelector('#threadly-assign-btn');
-                newAssignBtn.addEventListener('click', () => {
-                    enterAssignmentMode();
-                });
-            }
-            
-            if (cancelBtn) {
-                cancelBtn.textContent = 'Unstar';
-                cancelBtn.id = 'threadly-unstar-btn';
-                cancelBtn.style.background = '';
-                cancelBtn.style.borderColor = '';
-                
-                // Restore original event listener
-                cancelBtn.replaceWith(cancelBtn.cloneNode(true));
-                const newUnstarBtn = contextualActions.querySelector('#threadly-unstar-btn');
-                newUnstarBtn.addEventListener('click', () => {
-                    unstarMessages();
-                });
-            }
-            
-            console.log('Threadly: Restored original contextual actions [Assign To] [Unstar]');
-        }
-    }
 
-    // Function to show contextual actions bar
-    function showContextualActions() {
-        const contextualActions = document.querySelector('.threadly-contextual-actions');
-        if (contextualActions) {
-            contextualActions.style.display = 'flex';
-            contextualActions.style.opacity = '1';
-            contextualActions.style.transform = 'scale(1)';
-            
-            // If in assignment mode, change the buttons to [ADD NEW] [CANCEL]
-            if (isAssigningMode) {
-                const assignBtn = contextualActions.querySelector('#threadly-assign-btn');
-                const unstarBtn = contextualActions.querySelector('#threadly-unstar-btn');
-                
-                if (assignBtn) {
-                    assignBtn.textContent = 'ADD NEW';
-                    assignBtn.id = 'threadly-add-new-btn';
-                                    assignBtn.style.background = 'transparent';
-                assignBtn.style.borderColor = 'transparent';
-                    
-                    // Remove old event listener and add new one
-                    assignBtn.replaceWith(assignBtn.cloneNode(true));
-                    const newAddBtn = contextualActions.querySelector('#threadly-add-new-btn');
-                    newAddBtn.addEventListener('click', () => {
-                        enterInputMode();
-                    });
-                }
-                
-                if (unstarBtn) {
-                    unstarBtn.textContent = 'CANCEL';
-                    unstarBtn.id = 'threadly-cancel-btn';
-                    unstarBtn.style.background = 'rgba(239, 68, 68, 0.8)';
-                    unstarBtn.style.borderColor = 'rgba(239, 68, 68, 0.6)';
-                    
-                    // Remove old event listener and add new one
-                    unstarBtn.replaceWith(unstarBtn.cloneNode(true));
-                    const newCancelBtn = contextualActions.querySelector('#threadly-cancel-btn');
-                    newCancelBtn.addEventListener('click', () => {
-                        cancelAssignment();
-                    });
-                }
-                
-                console.log('Threadly: Changed contextual actions to [ADD NEW] [CANCEL] for assignment mode');
-            }
-        }
-    }
 
-    // Function to hide contextual actions bar
-    function hideContextualActions() {
-        const contextualActions = document.querySelector('.threadly-contextual-actions');
-        if (contextualActions) {
-            contextualActions.style.opacity = '0';
-            contextualActions.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                contextualActions.style.display = 'none';
-            }, 600);
-        }
-    }
 
     // Function to enter assignment mode
     async function enterAssignmentMode() {
@@ -3419,6 +3319,74 @@
         console.log('Threadly: Entered assignment mode');
     }
 
+    // Function to morph navbar to selection mode (ASSIGN TO | UNSTAR)
+    function morphNavbarToSelectionMode() {
+        console.log('Threadly: morphNavbarToSelectionMode called');
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) {
+            console.error('Threadly: Toggle bar not found');
+            return;
+        }
+
+        
+        // Create ASSIGN TO | CANCEL layout
+        toggleBar.innerHTML = `
+            <div class="threadly-toggle-label assign-to">
+                <span class="threadly-toggle-text">ASSIGN TO</span>
+            </div>
+            <div class="threadly-toggle-label cancel">
+                <span class="threadly-toggle-text">CANCEL</span>
+            </div>
+        `;
+
+        // Add event listeners for the new buttons
+        const assignBtn = toggleBar.querySelector('.assign-to');
+        const cancelBtn = toggleBar.querySelector('.cancel');
+        
+        if (assignBtn) {
+            assignBtn.addEventListener('click', () => {
+                if (selectedMessageIds.length > 0) {
+                    enterAssignmentMode();
+                }
+            });
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                exitSelectionMode();
+            });
+        }
+
+        // Update button states based on selection
+        updateSelectionModeButtonStates();
+        
+        console.log('Threadly: Navbar morphed to selection mode');
+    }
+
+    // Function to update button states in selection mode
+    function updateSelectionModeButtonStates() {
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) return;
+        
+        const assignBtn = toggleBar.querySelector('.assign-to');
+        const cancelBtn = toggleBar.querySelector('.cancel');
+        
+        const hasSelection = selectedMessageIds.length > 0;
+        
+        if (assignBtn) {
+            assignBtn.disabled = !hasSelection;
+            assignBtn.style.opacity = hasSelection ? '1' : '0.5';
+            assignBtn.style.cursor = hasSelection ? 'pointer' : 'not-allowed';
+        }
+        
+        // CANCEL button is always enabled
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+            cancelBtn.style.opacity = '1';
+            cancelBtn.style.cursor = 'pointer';
+        }
+    }
+
     // Function to morph navbar to assignment mode (ADD NEW | CANCEL)
     function morphNavbarToAssignmentMode() {
         console.log('Threadly: morphNavbarToAssignmentMode called');
@@ -3428,8 +3396,6 @@
             return;
         }
 
-        // Add morphing class for smooth transition
-        toggleBar.classList.add('morphing-to-assignment');
         
         // Create ADD NEW | CANCEL layout
         toggleBar.innerHTML = `
@@ -3475,15 +3441,9 @@
         console.log('Threadly: morphToSavedState called');
         const panel = document.getElementById('threadly-panel');
         if (panel) {
-            console.log('Threadly: Found panel, adding morphing-to-saved class');
-            panel.classList.add('morphing-to-saved');
-            
-            setTimeout(() => {
-                console.log('Threadly: Removing morphing-to-saved and adding saved-state class');
-                panel.classList.remove('morphing-to-saved');
-                panel.classList.add('saved-state');
-                console.log('Threadly: Panel classes after morph:', panel.className);
-            }, 400);
+            console.log('Threadly: Found panel, adding saved-state class');
+            panel.classList.add('saved-state');
+            console.log('Threadly: Panel classes after morph:', panel.className);
         } else {
             console.error('Threadly: Panel not found in morphToSavedState');
         }
@@ -3719,14 +3679,8 @@
             return;
         }
 
-        // Check if we're returning from input mode to add animation
-        const isReturningFromInput = toggleBar.classList.contains('morphing-to-input');
-        
-        // Remove morphing classes and add return animation class if needed
-        toggleBar.classList.remove('morphed', 'morphing-to-input');
-        if (isReturningFromInput) {
-            toggleBar.classList.add('returning-from-input');
-        }
+        // Remove any morphing classes
+        toggleBar.classList.remove('morphed', 'morphing-to-input', 'morphing-to-selection', 'returning-from-input', 'returning-from-selection');
         
         // Reset to original HTML
         toggleBar.innerHTML = `
@@ -4256,7 +4210,21 @@
     }
 
     // --- Selection Mode Toggle Function --- //
+    let lastToggleTime = 0;
+    const TOGGLE_DEBOUNCE_TIME = 500; // 500ms debounce
+    
     function toggleSelectionMode() {
+        const now = Date.now();
+        
+        // Prevent multiple rapid clicks
+        if (now - lastToggleTime < TOGGLE_DEBOUNCE_TIME) {
+            console.log('Threadly: Toggle debounced, ignoring rapid click');
+            return;
+        }
+        
+        lastToggleTime = now;
+        console.log('Threadly: Toggling selection mode, current state:', isInSelectionMode);
+        
         if (isInSelectionMode) {
             exitSelectionMode();
         } else {
@@ -4273,6 +4241,8 @@
         
         if (messageId) {
             toggleMessageSelection(messageId, isChecked);
+            // Update button states in selection mode
+            updateSelectionModeButtonStates();
         }
     }
 
@@ -4510,11 +4480,24 @@
         }
         
         // Add new message IDs (avoid duplicates)
+        let addedCount = 0;
         currentMessages.forEach(msg => {
             if (!collection.messageIds.includes(msg.id)) {
                 collection.messageIds.push(msg.id);
+                addedCount++;
             }
         });
+        
+        if (addedCount === 0) {
+            console.log('Threadly: All selected messages are already in this collection');
+            // Still exit selection mode even if no new messages were added
+            isAssigningMode = false;
+            await exitSelectionMode();
+            returnToMainMessages();
+            return;
+        }
+        
+        console.log('Threadly: Added', addedCount, 'new messages to collection');
 
         // Update Chrome storage for collections
         await saveCollectionsToStorage(collections);
@@ -4540,20 +4523,14 @@
         // Show success message
         showToast(`Messages added to "${collection.name}"`);
 
-        // Reset assignment mode
+        // Exit selection mode and assignment mode
         isAssigningMode = false;
+        await exitSelectionMode();
         
-        // Reset SAVED button state
-        setSavedButtonActive(false);
-        
-        // Reset navbar to original state
-        resetNavbarToOriginal();
-        
-        // Exit selection mode
-        exitSelectionMode();
-
-        // Return to main messages
-        returnToMainMessages();
+        // Reset to default SAVED state (same as clicking SAVED button from header)
+        setSavedButtonActive(true);
+        await renderCollectionsView(false); // false = not in assignment mode
+        morphNavbarToSavedState();
         
         console.log('Threadly: Successfully assigned messages to collection:', collection.name);
     }

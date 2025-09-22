@@ -1888,6 +1888,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
+
 /* Fly-in animation for ADD NEW and CANCEL labels */
 .threadly-toggle-label.add,
 .threadly-toggle-label.back {
@@ -1971,6 +1972,102 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     top: 2px;
     transform: none;
     transform-origin: center;
+}
+
+/* Selection mode ASSIGN TO | UNSTAR labels */
+.threadly-toggle-label.assign-to,
+.threadly-toggle-label.unstar {
+    color: var(--threadly-text-primary);
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 14px;
+    background: transparent;
+    border: none;
+    position: relative;
+    z-index: 2;
+    height: 28px;
+    flex: 1;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.threadly-toggle-label.assign-to:not(:disabled),
+.threadly-toggle-label.unstar:not(:disabled) {
+    opacity: 1;
+    cursor: pointer;
+}
+
+.threadly-toggle-label.assign-to:not(:disabled):hover {
+    color: white;
+    background: rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.8);
+}
+
+  .threadly-toggle-label.unstar:not(:disabled):hover {
+      color: white;
+      background: rgba(239, 68, 68, 0.6);
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+  }
+
+/* CANCEL button styling - centered with soft red glow */
+.threadly-toggle-label.cancel {
+    color: #ef4444;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 14px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    position: relative;
+    z-index: 2;
+    height: 28px;
+    flex: 1;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    transition: all 0.3s ease;
+}
+
+.threadly-toggle-label.cancel:hover {
+    color: white;
+    background: rgba(185, 28, 28, 0.9);
+    border-color: rgba(185, 28, 28, 1);
+    box-shadow: 0 0 25px rgba(185, 28, 28, 0.6);
+}
+
+.threadly-toggle-label.cancel:active {
+    background: rgba(153, 27, 27, 0.95);
+    border-color: rgba(153, 27, 27, 1);
+    box-shadow: 0 0 30px rgba(153, 27, 27, 0.8);
+}
+  
+  /* Assign button - green accent */
+.threadly-toggle-label.assign-to:not(:disabled) {
+    color: #10b981;
+}
+
+/* Unstar button - red accent */
+.threadly-toggle-label.unstar:not(:disabled) {
+    color: #ef4444;
 }
 
 .threadly-toggle-label.back {
@@ -2117,141 +2214,6 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     letter-spacing: 0.5px;
 }
 
-/* Contextual Actions Container - matches toggle container exactly */
-.threadly-contextual-actions {
-    /* EXACTLY same positioning as toggle container, but offset by 3px left and 2px down */
-    position: absolute;
-    bottom: 13px; /* 15px - 2px = 13px (moved 2px down) */
-    left: 15px; /* 18px - 3px = 15px (moved 3px left) */
-    right: 18px;
-    z-index: 10;
-    
-    /* EXACTLY same dimensions and styling as toggle bar */
-    width: 100%;
-    height: 32px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 2px;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    
-    /* Layout */
-    display: none;
-    flex-direction: column;
-    gap: 8px;
-    
-    /* Smooth animation */
-    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-    opacity: 0;
-    transform: scale(0.95);
-}
-
-.threadly-contextual-actions[style*="display: flex"] {
-    opacity: 1;
-    transform: scale(1);
-}
-
-/* Hide toggle bar when showing contextual actions */
-.selection-mode .threadly-toggle-bar {
-    opacity: 0;
-    transform: scale(0.95);
-    pointer-events: none;
-    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Show contextual actions in selection mode */
-.selection-mode .threadly-contextual-actions {
-    display: flex !important;
-    opacity: 1;
-    transform: scale(1);
-    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Contextual action buttons - styled like toggle labels */
-.threadly-action-buttons {
-    display: flex;
-    gap: 0;
-    height: 100%;
-    position: relative;
-    width: 100%;
-}
-
-.threadly-action-btn {
-    flex: 1; /* 50% width each */
-    background: transparent;
-    border: none;
-    border-radius: 14px;
-    color: var(--threadly-text-primary);
-    font-size: 0.75rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-    text-align: center;
-    padding: 4px 8px;
-    position: relative;
-    z-index: 2;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    /* Disabled state */
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.threadly-action-btn:not(:disabled) {
-    opacity: 1;
-    cursor: pointer;
-}
-
-.threadly-action-btn:not(:disabled):hover {
-    color: white;
-    background: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
-}
-
-/* Assign button - green accent */
-#threadly-assign-btn:not(:disabled) {
-    color: #10b981;
-}
-
-#threadly-assign-btn:not(:disabled):hover {
-    color: white;
-    background: rgba(16, 185, 129, 0.6);
-    box-shadow: 0 0 24px rgba(16, 185, 129, 0.9);
-}
-
-/* Unstar button - red accent */
-#threadly-unstar-btn:not(:disabled) {
-    color: #ef4444;
-}
-
-#threadly-unstar-btn:not(:disabled):hover {
-    color: white;
-    background: rgba(239, 68, 68, 0.6);
-    box-shadow: 0 0 24px rgba(239, 68, 68, 0.9);
-}
-
-/* Selection info - positioned above the pill */
-.threadly-selection-info {
-    position: absolute;
-    top: -30px;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    font-size: 0.75rem;
-    color: var(--threadly-text-secondary);
-    font-weight: 500;
-    white-space: nowrap;
-    z-index: 1;
-}
 
 /* Collection assignment popover */
 .threadly-collection-popover {
@@ -2917,24 +2879,6 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 /* --- Morph Animation Styles --- */
-@keyframes morphToSaved {
-    0% { 
-        transform: translateY(0) scale(1); 
-        background: transparent;
-    }
-    50% { 
-        transform: translateY(-20px) scale(1.05); 
-        background: transparent;
-    }
-    100% { 
-        transform: translateY(0) scale(1); 
-        background: transparent;
-    }
-}
-
-.morphing-to-saved {
-    animation: morphToSaved 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
 .saved-state {
     background: transparent !important;
@@ -3015,27 +2959,6 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: none;
 }
 
-/* --- Contextual Actions Enhancement --- */
-.selection-mode .threadly-contextual-actions {
-    display: flex !important;
-    opacity: 1;
-    transform: scale(1);
-    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-    background: transparent;
-    border-color: transparent;
-}
-
-.selection-mode .threadly-action-btn:not(:disabled) {
-    background: transparent;
-    color: white;
-    border: 1px solid transparent;
-}
-
-.selection-mode .threadly-action-btn:not(:disabled):hover {
-    background: transparent;
-    border-color: transparent;
-    box-shadow: none;
-}
 
 /* --- Smooth State Transitions --- */
 .threadly-panel {
@@ -3213,78 +3136,6 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     position: relative;
 }
 
-/* Assignment mode navbar morphing */
-.threadly-toggle-bar.morphing-to-assignment {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    padding: 2px;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    overflow: hidden;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    position: relative;
-}
-
-.threadly-toggle-bar.morphing-to-assignment:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 
-        0 12px 40px rgba(0, 0, 0, 0.15),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px);
-}
-
-.threadly-toggle-bar.morphing-to-assignment .threadly-toggle-label {
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-    flex: 1;
-    height: 100%;
-    position: relative;
-    cursor: pointer;
-}
-
-.threadly-toggle-bar.morphing-to-assignment .threadly-toggle-label .threadly-toggle-text {
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 13px;
-    font-weight: 600;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-    transition: all 0.3s ease;
-}
-
-.threadly-toggle-bar.morphing-to-assignment .threadly-toggle-label.add:hover {
-    background: rgba(16, 185, 129, 0.8) !important;
-    color: white !important;
-    box-shadow: 
-        0 0 20px rgba(16, 185, 129, 0.4),
-        0 0 40px rgba(16, 185, 129, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-    transform: translateY(-1px);
-}
-
-.threadly-toggle-bar.morphing-to-assignment .threadly-toggle-label.cancel:hover {
-    background: rgba(239, 68, 68, 0.8) !important;
-    color: white !important;
-    box-shadow: 
-        0 0 20px rgba(239, 68, 68, 0.4),
-        0 0 40px rgba(239, 68, 68, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-    transform: translateY(-1px);
-}
 
 .threadly-toggle-label.input-field .threadly-collection-input {
     width: 100%;
