@@ -4331,9 +4331,8 @@
         const toggleBar = document.getElementById('threadly-toggle-bar');
         if (!toggleBar) return;
         
-        const labels = toggleBar.querySelectorAll('.threadly-toggle-label');
-        const deleteBtn = labels[0]; // First label is DELETE
-        const cancelBtn = labels[1]; // Second label is CANCEL
+        const deleteBtn = toggleBar.querySelector('.delete');
+        const cancelBtn = toggleBar.querySelector('.cancel');
         
         let hasSelection = false;
         if (selectionContext === 'messages-in-collection') {
@@ -4342,14 +4341,14 @@
             hasSelection = selectedCollectionIds.length > 0;
         }
         
-        if (deleteBtn && deleteBtn.classList.contains('delete')) {
+        if (deleteBtn) {
             deleteBtn.disabled = !hasSelection;
             deleteBtn.style.opacity = hasSelection ? '1' : '0.5';
             deleteBtn.style.cursor = hasSelection ? 'pointer' : 'not-allowed';
         }
         
         // CANCEL button is always enabled
-        if (cancelBtn && cancelBtn.classList.contains('cancel')) {
+        if (cancelBtn) {
             cancelBtn.disabled = false;
             cancelBtn.style.opacity = '1';
             cancelBtn.style.cursor = 'pointer';
@@ -4427,48 +4426,22 @@
             return;
         }
 
-        // Add morphing class for animation
-        toggleBar.classList.add('morphed');
+        // Create DELETE | CANCEL layout (same approach as morphNavbarToSelectionMode)
+        toggleBar.innerHTML = `
+            <div class="threadly-toggle-label delete">
+                <span class="threadly-toggle-text">DELETE</span>
+            </div>
+            <div class="threadly-toggle-label cancel">
+                <span class="threadly-toggle-text">CANCEL</span>
+            </div>
+        `;
+
+        // Add event listeners for the new buttons
+        const deleteBtn = toggleBar.querySelector('.delete');
+        const cancelBtn = toggleBar.querySelector('.cancel');
         
-        // Update the toggle segment for highlight bubble
-        const toggleSegment = toggleBar.querySelector('.threadly-toggle-segment');
-        if (toggleSegment) {
-            toggleSegment.className = 'threadly-toggle-segment';
-            toggleSegment.style.left = '2px';
-            toggleSegment.style.width = 'calc(50% - 2px)';
-        }
-        
-        // Update the labels to show only 2 sections (50/50 split)
-        const labels = toggleBar.querySelectorAll('.threadly-toggle-label');
-        if (labels.length >= 2) {
-            // Add fly-in animation by setting initial state
-            labels[0].style.opacity = '0';
-            labels[0].style.transform = 'translateY(20px) scale(0.9)';
-            labels[1].style.opacity = '0';
-            labels[1].style.transform = 'translateY(20px) scale(0.9)';
-            
-            labels[0].textContent = 'DELETE';
-            labels[0].className = 'threadly-toggle-label delete';
-            labels[1].textContent = 'CANCEL';
-            labels[1].className = 'threadly-toggle-label cancel';
-            
-            // Hide any additional labels
-            for (let i = 2; i < labels.length; i++) {
-                labels[i].style.display = 'none';
-            }
-            
-            // Animate in with fly-in effect
-            setTimeout(() => {
-                labels[0].style.opacity = '1';
-                labels[0].style.transform = 'translateY(0) scale(1)';
-                labels[1].style.opacity = '1';
-                labels[1].style.transform = 'translateY(0) scale(1)';
-            }, 50);
-        }
-        
-        // Add event listeners for the buttons
-        if (labels[0]) {
-            labels[0].addEventListener('click', () => {
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => {
                 if (selectionContext === 'messages-in-collection' && selectedMessageIds.length > 0) {
                     deleteSelectedMessagesFromCollection();
                 } else if (selectionContext === 'collections' && selectedCollectionIds.length > 0) {
@@ -4477,8 +4450,8 @@
             });
         }
         
-        if (labels[1]) {
-            labels[1].addEventListener('click', () => {
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
                 exitSelectionMode();
             });
         }

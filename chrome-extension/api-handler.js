@@ -49,28 +49,35 @@ class PromptRefiner {
                 'image_generation': {
                     name: 'Image Generation',
                     weight: 0,
-                    keywords: ['image', 'picture', 'photo', 'generate', 'create', 'draw', 'art', 'visual', 'design', 'portrait', 'landscape', 'scene', 'character', 'edit', 'modify', 'change', 'add', 'remove', 'transform', 'style'],
+                    keywords: ['image', 'picture', 'photo', 'generate', 'create', 'draw', 'art', 'visual', 'design', 'portrait', 'landscape', 'scene', 'character', 'edit', 'modify', 'change', 'add', 'remove', 'transform', 'style', 'elephant', 'cat', 'dog', 'person', 'animal', 'building', 'car', 'wearing', 'suit', 'dress', 'at', 'in', 'with', 'holding'],
                     patterns: [
                         /(create|generate|make|draw)\s+(an?\s+)?(image|picture|photo|art|visual|portrait|landscape)/i,
                         /(image|picture|photo|art|visual|portrait|landscape)\s+(of|showing|with)/i,
+                        /^(picture|photo|image)\s+(of|showing)/i,
                         /(photorealistic|stylized|illustration|sticker|logo|mockup|anime|realistic)/i,
                         /(dalle|midjourney|stable diffusion|ai art|ai image)/i,
                         /(camera angle|lighting|composition|aspect ratio)/i,
                         /(use this photo|of these people|this image|provided image|uploaded image)/i,
                         /(edit|modify|change|add|remove|transform)\s+(this|the|my)\s+(photo|image|picture)/i,
                         /(inpainting|style transfer|semantic masking|composite|combine)/i,
-                        /(using the provided|with the image|based on this photo)/i
+                        /(using the provided|with the image|based on this photo)/i,
+                        /^(show me|i want|i need)\s+(a\s+)?(picture|photo|image)/i,
+                        /(elephant|cat|dog|person|character|scene|landscape|building|car|animal)\s+(in|with|at|wearing|holding)/i
                     ]
                 },
                 'ai_prompting': {
                     name: 'AI Prompting Enhancement',
                     weight: 0,
-                    keywords: ['code', 'research', 'analyze', 'explain', 'help', 'assist', 'guide', 'tutorial'],
+                    keywords: ['code', 'research', 'analyze', 'explain', 'help', 'assist', 'guide', 'tutorial', 'app', 'application', 'program', 'software', 'c++', 'python', 'javascript', 'java', 'react', 'vue', 'angular', 'html', 'css', 'sql', 'database', 'api', 'function', 'class', 'method', 'variable', 'algorithm', 'debug', 'fix', 'implement', 'build', 'develop', 'create', 'make'],
                     patterns: [
-                        /(write|create|generate)\s+(code|program|script|function)/i,
+                        /(write|create|generate|make|build|develop)\s+(code|program|script|function|app|application|software)/i,
+                        /(make|create|build)\s+(me|a|an)\s+(c\+\+|python|javascript|java|react|vue|angular|html|css|sql|app|application|program|software)/i,
                         /(research|analyze|study|investigate)/i,
                         /(explain|teach|guide|tutorial|how to)/i,
-                        /(help me|assist me|guide me)/i
+                        /(help me|assist me|guide me)/i,
+                        /(c\+\+|python|javascript|java|react|vue|angular|html|css|sql)\s+(app|application|program|code|function|class)/i,
+                        /(calculator|todo|notes|chat|game|website|dashboard|portfolio)\s+(app|application|program)/i,
+                        /(debug|fix|implement|optimize)\s+(code|program|function|algorithm)/i
                     ]
                 }
             }
@@ -128,7 +135,7 @@ class PromptRefiner {
         } else if (triageResult.primaryCategory === 'grammar_spelling' && triageResult.confidence > 0.7) {
             // Simple grammar and spelling correction
             refinedPrompt = await this.performGrammarCorrection(userPrompt);
-        } else if (triageResult.primaryCategory === 'image_generation' && triageResult.confidence > 0.6) {
+        } else if (triageResult.primaryCategory === 'image_generation' && triageResult.confidence > 0.4) {
             // Image generation prompt refinement
             refinedPrompt = await this.refineImageGenerationPrompt(userPrompt, platform, triageResult);
         } else {
@@ -216,6 +223,29 @@ class PromptRefiner {
             };
         }
 
+        // Special logic: Prioritize coding requests over image generation when there are conflicting signals
+        const hasCodingKeywords = analysis.categories.ai_prompting.weight > 0;
+        const hasImageKeywords = analysis.categories.image_generation.weight > 0;
+        
+        if (hasCodingKeywords && hasImageKeywords) {
+            // Check if the request is primarily about creating code/apps
+            const codingPatterns = [
+                /make\s+(me\s+)?(a\s+)?(c\+\+|python|javascript|java|react|vue|angular|html|css|sql|app|application|program|software)/i,
+                /create\s+(me\s+)?(a\s+)?(c\+\+|python|javascript|java|react|vue|angular|html|css|sql|app|application|program|software)/i,
+                /build\s+(me\s+)?(a\s+)?(c\+\+|python|javascript|java|react|vue|angular|html|css|sql|app|application|program|software)/i,
+                /(c\+\+|python|javascript|java|react|vue|angular|html|css|sql)\s+(app|application|program|code|function|class)/i
+            ];
+            
+            const isPrimarilyCoding = codingPatterns.some(pattern => pattern.test(userPrompt));
+            
+            if (isPrimarilyCoding) {
+                // Boost coding weight and reduce image weight
+                analysis.categories.ai_prompting.weight += 5;
+                analysis.categories.image_generation.weight = Math.max(0, analysis.categories.image_generation.weight - 3);
+                analysis.reasoning.push('prioritized coding over image generation due to app creation request');
+            }
+        }
+
         // Determine primary category and confidence
         let maxWeight = 0;
         for (const [categoryKey, data] of Object.entries(analysis.categories)) {
@@ -240,63 +270,63 @@ class PromptRefiner {
     // Assess prompt quality and determine refinement need
     assessPromptQuality(userPrompt) {
         const prompt = userPrompt.toLowerCase();
-        let score = 0;
+        let score = 50; // Start with neutral score - assume user knows what they want
         let need = 'low';
         
-        // Length analysis
-        if (userPrompt.length < 20) {
-            score -= 30; // Very short prompts need refinement
-        } else if (userPrompt.length < 50) {
-            score -= 15; // Short prompts may need refinement
+        // Length analysis - be more understanding
+        if (userPrompt.length < 10) {
+            score -= 20; // Very short prompts might need more context
+        } else if (userPrompt.length < 30) {
+            score -= 10; // Short prompts can be perfectly fine
         } else if (userPrompt.length > 200) {
-            score += 10; // Longer prompts are usually better
+            score += 5; // Longer prompts are usually more detailed
         }
         
-        // Structure analysis
+        // Structure analysis - appreciate natural communication
         const hasQuestion = prompt.includes('?');
         const hasPeriod = prompt.includes('.');
         const hasComma = prompt.includes(',');
         const hasColon = prompt.includes(':');
         
-        if (hasQuestion) score += 5;
-        if (hasPeriod) score += 3;
-        if (hasComma) score += 2;
-        if (hasColon) score += 3;
+        if (hasQuestion) score += 3; // Questions show engagement
+        if (hasPeriod) score += 2; // Complete thoughts
+        if (hasComma) score += 1; // Natural flow
+        if (hasColon) score += 2; // Structured thinking
         
-        // Clarity indicators
+        // Clarity indicators - understand user intent
         const clarityWords = ['please', 'can you', 'could you', 'help me', 'i need', 'i want', 'explain', 'describe', 'create', 'write', 'generate'];
         const clarityCount = clarityWords.filter(word => prompt.includes(word)).length;
-        score += clarityCount * 2;
+        score += clarityCount * 1; // Appreciate polite requests
         
-        // Specificity indicators
+        // Specificity indicators - value user's details
         const specificWords = ['specific', 'detailed', 'example', 'step by step', 'with', 'including', 'for', 'about'];
         const specificCount = specificWords.filter(word => prompt.includes(word)).length;
-        score += specificCount * 3;
+        score += specificCount * 2; // Value specificity
         
-        // Context indicators
+        // Context indicators - understand user's situation
         const contextWords = ['as a', 'act as', 'pretend', 'imagine', 'suppose', 'considering', 'given that'];
         const contextCount = contextWords.filter(word => prompt.includes(word)).length;
-        score += contextCount * 4;
+        score += contextCount * 3; // Appreciate context
         
-        // Format indicators
+        // Format indicators - optional, not required
         const formatWords = ['format', 'structure', 'list', 'table', 'code', 'json', 'markdown', 'bullet points'];
         const formatCount = formatWords.filter(word => prompt.includes(word)).length;
-        score += formatCount * 3;
+        score += formatCount * 2; // Nice to have
         
-        // Grammar and spelling issues
+        // Grammar and spelling - be more forgiving of casual language
         const commonMistakes = ['wanna', 'gonna', 'dont', 'cant', 'wont', 'aint', 'ur', 'u', 'r', '2', '4'];
         const mistakeCount = commonMistakes.filter(mistake => prompt.includes(mistake)).length;
-        score -= mistakeCount * 2;
+        score -= mistakeCount * 1; // Smaller penalty for casual language
         
-        // Vague language
+        // Vague language - understand that sometimes users don't know exactly what they want
         const vagueWords = ['thing', 'stuff', 'something', 'anything', 'whatever', 'maybe', 'probably', 'kind of'];
         const vagueCount = vagueWords.filter(word => prompt.includes(word)).length;
-        score -= vagueCount * 2;
+        score -= vagueCount * 1; // Smaller penalty for uncertainty
         
-        // Determine refinement need
-        if (score < 20) {
+        // Determine refinement need - more generous thresholds
+        if (score < 30) {
             need = 'high';
-        } else if (score < 40) {
+        } else if (score < 50) {
             need = 'medium';
         } else {
             need = 'low';
@@ -396,14 +426,81 @@ CORRECTION GUIDELINES:
 - Make minimal changes - only fix what's broken
 - Don't add extra content or explanations
 
-Return only the corrected text without any additional commentary or explanations.`;
+IMPORTANT: Return ONLY the corrected text. Do not include any labels, headers, formatting, or explanations. Just the corrected text itself.`;
 
         return await this.callGeminiAPI(systemPrompt, userPrompt);
     }
 
-    // Image generation prompt refinement using official Gemini templates
+    // Platform-specific image generation prompt refinement
     async refineImageGenerationPrompt(userPrompt, platform, triageResult = null) {
-        let systemPrompt = `You are an expert in AI image generation prompts, specializing in Gemini's image generation capabilities. Your task is to refine prompts using the official Gemini image generation templates and best practices.
+        let systemPrompt;
+        
+        // Choose the appropriate system prompt based on platform
+        if (platform === 'chatgpt') {
+            systemPrompt = this.getDALLEMidjourneySystemPrompt();
+        } else if (platform === 'gemini' || platform === 'ai-studio') {
+            systemPrompt = this.getGeminiImageSystemPrompt();
+        } else {
+            // Default to Gemini for other platforms
+            systemPrompt = this.getGeminiImageSystemPrompt();
+        }
+
+        // Add context about shared images if detected
+        if (triageResult && triageResult.hasSharedImages) {
+            if (platform === 'chatgpt') {
+                systemPrompt += `\n\nIMPORTANT: The user has referenced shared/uploaded images. Include references to "based on the provided image" or "using the uploaded photo" in your refined prompt.`;
+            } else {
+                systemPrompt += `\n\nIMPORTANT: The user has referenced shared/uploaded images. Make sure to include references to "the provided image" or "using the uploaded image" in your refined prompt.`;
+            }
+        }
+
+        return await this.callGeminiAPI(systemPrompt, userPrompt);
+    }
+
+    // DALL-E/Midjourney system prompt for ChatGPT
+    getDALLEMidjourneySystemPrompt() {
+        return `You are a helpful assistant who understands what users want to create with images. Your task is to refine their image generation prompts to help them get better results.
+
+HUMAN-LIKE IMAGE PROMPT REFINEMENT:
+
+**Understanding the User's Vision:**
+- Listen to what the user is really trying to create
+- Understand their creative intent and emotional goals
+- Help them express their vision more clearly
+- Make their prompt more effective without losing their original idea
+
+**DALL-E Optimization (Natural Language):**
+- Use descriptive, conversational language
+- Be specific about what they want to see
+- Include style and mood that matches their intent
+- Add helpful details that enhance their vision
+- Use quality boosters when appropriate: "high quality", "detailed"
+- Include negative prompts only when needed: "no text", "no watermark"
+
+**Gentle Enhancement Approach:**
+- Build on their original idea rather than replacing it
+- Add helpful details that serve their creative vision
+- Use photography and art terminology naturally
+- Include lighting and composition that enhances their concept
+- Focus on making their image generation more successful
+
+**Example Enhancement:**
+User: "elephant in red suit"
+Enhanced: "A majestic elephant wearing a vibrant red suit, photorealistic style, dramatic lighting, centered composition, high quality, detailed, professional, no text, no watermark"
+
+REFINEMENT PHILOSOPHY:
+- Understand what the user really wants to create
+- Enhance their prompt to help them achieve their vision
+- Use natural language that feels conversational
+- Focus on making their creative process easier and more successful
+- Be empathetic to their creative goals
+
+IMPORTANT: Return ONLY the refined prompt text. Do not include any labels, headers, formatting, or explanations. Just the refined prompt itself.`;
+    }
+
+    // Gemini/AI Studio system prompt using official templates
+    getGeminiImageSystemPrompt() {
+        return `You are a helpful assistant who understands what users want to create with images. Your task is to refine their image generation prompts to help them get better results using Gemini's capabilities.
 
 OFFICIAL GEMINI IMAGE GENERATION TEMPLATES:
 
@@ -450,39 +547,37 @@ BEST PRACTICES:
 - Control the camera with photographic language
 - Include aspect ratio specifications
 
-REFINEMENT APPROACH:
-- Identify the most appropriate template based on the user's request
-- Fill in the template with specific details from the user's prompt
-- Add technical photography terms and specifications
-- Include aspect ratio and quality specifications
+HUMAN-LIKE REFINEMENT APPROACH:
+- Understand what the user really wants to create
+- Choose the most appropriate template that serves their vision
+- Fill in the template with their specific details and ideas
+- Add helpful technical details that enhance their concept
+- Include aspect ratio and quality specifications naturally
 - For image editing requests, use the appropriate editing template
 - Preserve any references to shared/uploaded images
+- Focus on making their creative process easier and more successful
 
-Return only the refined prompt without explanations.`;
-
-        // Add context about shared images if detected
-        if (triageResult && triageResult.hasSharedImages) {
-            systemPrompt += `\n\nIMPORTANT: The user has referenced shared/uploaded images. Make sure to include references to "the provided image" or "using the uploaded image" in your refined prompt.`;
-        }
-
-        return await this.callGeminiAPI(systemPrompt, userPrompt);
+IMPORTANT: Return ONLY the refined prompt text. Do not include any labels, headers, formatting, or explanations. Just the refined prompt itself.`;
     }
 
     // Light enhancement for high-quality prompts
     async performLightEnhancement(userPrompt, platform, triageResult) {
-        let systemPrompt = `You are a prompt enhancement assistant. The user has provided a well-structured prompt that needs only minor improvements.
+        let systemPrompt = `You are a helpful assistant who understands what users really need. The user has provided a good prompt that just needs gentle improvement.
 
-ENHANCEMENT GUIDELINES:
-- Make minimal changes to preserve the user's original intent
-- Only add clarity where needed
-- Fix any minor grammar or spelling issues
-- Enhance specificity slightly if beneficial
-- Maintain the original tone and style
+HUMAN-LIKE ENHANCEMENT APPROACH:
+- Understand what the user is really trying to accomplish
+- Make only helpful, minimal changes that serve the user's actual needs
+- Fix obvious issues without being overly critical
+- Enhance clarity where it genuinely helps the user
+- Respect the user's communication style and preferences
+- Be empathetic to the user's situation and goals
+- Understand context vs literal keywords (e.g., "Apple-like UI" means design style, not Swift code)
+- Choose appropriate tools/languages based on user's actual needs, not keyword matching
 
 REFINEMENT NEED: ${triageResult.refinementNeed.toUpperCase()}
 PROMPT QUALITY: ${triageResult.promptQuality}/100
 
-Return only the lightly enhanced prompt without explanations.`;
+IMPORTANT: Return ONLY the enhanced prompt text. Do not include any labels, headers, formatting, or explanations. Just the enhanced prompt itself.`;
 
         // Add similar prompts context if available
         if (triageResult.similarPrompts && triageResult.similarPrompts.length > 0) {
@@ -526,67 +621,87 @@ TRIAGE ANALYSIS:
 TASK CATEGORY: ${taskCategory.toUpperCase()}${triageContext}
 ${taskGuidelines}
 
-IMPORTANT REFINEMENT RULES:
-1. NEVER omit or change the user's original intent, context, or specific values
-2. ALWAYS preserve the core meaning and purpose of the user's request
-3. Only add structure, clarity, and platform-specific formatting
-4. If the user's prompt is already well-structured, make minimal changes
-5. Always maintain the user's original tone and style preferences
-6. Add context only when it enhances understanding without changing intent
+HUMAN-LIKE REFINEMENT APPROACH:
+1. Understand the user's true intent and emotional context behind their request
+2. Preserve the user's original meaning while making it more effective
+3. Add helpful structure and clarity that serves the user's actual needs
+4. If the prompt is already good, make only gentle improvements
+5. Respect the user's communication style and preferences
+6. Enhance understanding without being overly prescriptive or rigid
+7. Be empathetic to what the user is really trying to accomplish
+8. Focus on making the user's life easier, not following strict rules
+9. Understand context vs literal keywords (e.g., "Apple-like UI" means design style, not Swift code)
+10. Choose appropriate tools/languages based on user's actual needs, not keyword matching
 
-USER'S ORIGINAL PROMPT TO REFINE:`;
+USER'S ORIGINAL PROMPT TO REFINE:
+
+CONTEXT UNDERSTANDING EXAMPLES:
+- "Apple-like UI" = Clean, minimalist design style (not Swift/iOS requirement)
+- "Google-style search" = Fast, relevant results (not Google's specific code)
+- "Netflix-like interface" = Intuitive, personalized UI (not their tech stack)
+- "Spotify-like music app" = Music streaming features (not their specific implementation)
+
+IMPORTANT: Return ONLY the refined prompt text. Do not include any labels, headers, formatting, or explanations. Just the refined prompt itself.`;
     }
 
     getTaskGuidelines(taskCategory) {
         const guidelines = {
             'coding': `
-- Specify programming language and framework when relevant
-- Include error handling and edge cases
-- Request code examples and documentation
-- Ask for performance considerations
-- Specify testing requirements`,
+- Understand what the user is really trying to build or solve
+- Help them express their coding needs clearly
+- Include practical considerations that matter to them
+- Request helpful examples and documentation
+- Consider their skill level and project context
+- Choose appropriate programming languages based on their actual needs, not keyword matching
+- Understand design references (e.g., "Apple-like UI" means design style, not Swift requirement)
+- Suggest the best tools and frameworks for their specific use case`,
 
             'research': `
-- Request credible sources and citations
-- Ask for recent data and statistics
-- Specify scope and depth of research
-- Request multiple perspectives
-- Ask for methodology details`,
+- Understand what the user is really trying to learn or discover
+- Help them find the information they actually need
+- Request credible sources that serve their purpose
+- Ask for recent data that's relevant to their situation
+- Consider their research goals and context`,
 
             'personal_support': `
-- Maintain empathetic and supportive tone
-- Request specific, actionable advice
-- Ask for step-by-step guidance
-- Consider individual circumstances
-- Suggest professional help when appropriate`,
+- Be genuinely empathetic and understanding
+- Listen to what the user is really going through
+- Provide specific, actionable advice that helps them
+- Offer step-by-step guidance that feels supportive
+- Consider their unique situation and needs
+- Suggest professional help when it would genuinely benefit them`,
 
             'content_creation': `
-- Specify target audience and platform
-- Request engaging and compelling content
-- Ask for SEO optimization when relevant
-- Include call-to-action suggestions
-- Specify tone and style requirements`,
+- Understand what the user is really trying to communicate
+- Help them connect with their intended audience
+- Create engaging content that serves their purpose
+- Include SEO optimization when it helps their goals
+- Suggest call-to-actions that feel natural and helpful
+- Respect their voice and communication style`,
 
             'learning': `
-- Break down complex concepts into digestible parts
-- Request analogies and real-world examples
-- Ask for practice exercises or quizzes
-- Specify difficulty level and prerequisites
-- Include visual aids when helpful`,
+- Understand what the user is really trying to learn
+- Break down concepts in a way that makes sense to them
+- Use analogies and examples that resonate with their experience
+- Provide practice opportunities that help them grow
+- Consider their current knowledge level and learning style
+- Include visual aids when they genuinely help understanding`,
 
             'technical_assistance': `
-- Provide step-by-step troubleshooting
-- Include safety precautions
-- Ask for system specifications
-- Request alternative solutions
-- Include prevention tips`,
+- Understand what the user is really trying to accomplish
+- Provide step-by-step help that makes sense to them
+- Include safety precautions that protect them
+- Ask for system details that help solve their problem
+- Offer alternative solutions that work for their situation
+- Include prevention tips that help them avoid future issues`,
 
             'creativity': `
-- Encourage unique and original ideas
-- Request multiple options or variations
-- Ask for inspiration sources
-- Include specific constraints or requirements
-- Suggest ways to develop ideas further`
+- Understand what the user is really trying to create or express
+- Encourage their unique perspective and original ideas
+- Offer multiple options that serve their creative vision
+- Help them find inspiration that resonates with their goals
+- Include constraints that actually help their creative process
+- Suggest ways to develop their ideas that feel natural and exciting`
         };
 
         return guidelines[taskCategory] || guidelines['general'];
@@ -825,7 +940,9 @@ REFINEMENT APPROACH:
             return 'chatgpt';
         } else if (url.includes('claude.ai')) {
             return 'claude';
-        } else if (url.includes('gemini.google.com') || url.includes('aistudio.google.com')) {
+        } else if (url.includes('aistudio.google.com')) {
+            return 'ai-studio';
+        } else if (url.includes('gemini.google.com')) {
             return 'gemini';
         } else if (url.includes('perplexity.ai')) {
             return 'perplexity';
@@ -848,7 +965,11 @@ REFINEMENT APPROACH:
             "thing stuff whatever",
             "edit this photo to add a sunset background",
             "use this image to create a professional headshot",
-            "transform the provided image into anime style"
+            "transform the provided image into anime style",
+            "create a logo for my startup",
+            "photorealistic portrait of a CEO, professional headshot, studio lighting",
+            "picture of a elephant in red suit at met gala",
+            "make me a c++ calculator app with pretty apple like ui, the 0 should be in red color, which can be previewed in chatgpt canvas"
         ];
 
         console.log('Threadly: Testing Enhanced Triage System...');

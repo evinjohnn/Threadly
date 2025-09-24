@@ -153,6 +153,23 @@ Based on comprehensive analysis, the system routes prompts to:
 - Reasoning: keyword: edit, keyword: photo, pattern: image editing, has shared images
 **Output:** "Using the provided image, please add a vibrant sunset background to the scene. Ensure the change integrates seamlessly with the original lighting and composition, creating a warm, golden atmosphere that complements the existing elements while maintaining the original style and perspective."
 
+### Platform-Specific Examples
+
+#### ChatGPT (DALL-E)
+**Input:** "create a logo for my startup"
+**Platform:** ChatGPT
+**Output:** "Professional startup logo design, minimalist style, modern typography, clean geometric shapes, high quality, detailed, no text, no watermark"
+
+#### Gemini/AI Studio
+**Input:** "create a logo for my startup"
+**Platform:** Gemini
+**Output:** "Create a modern, minimalist logo for a startup company with clean typography and geometric design elements. The design should be professional and memorable, with a contemporary color scheme suitable for digital and print applications, featuring sharp focus on brand identity and scalability."
+
+#### DALL-E Example
+**Input:** "anime character with blue hair"
+**Platform:** ChatGPT (DALL-E)
+**Output:** "Anime character with blue hair and green eyes, kawaii style, soft lighting, centered composition, detailed character design, high quality, no text, no watermark"
+
 ### AI Prompting Example
 **Input:** "write code for fibonacci"
 **Analysis:**
@@ -284,6 +301,19 @@ The system now includes sophisticated image generation capabilities:
 - Automatically includes "provided image" context in prompts
 - Handles image editing scenarios appropriately
 - Preserves references to user's photos and images
+
+**Platform-Specific Optimization:**
+- **ChatGPT**: Uses DALL-E prompting techniques
+  - Natural, descriptive language (not technical parameters)
+  - Quality boosters: "high quality", "detailed", "professional"
+  - Negative prompts: "no text", "no watermark"
+  - Artistic style references and lighting descriptions
+  - Photography terminology and composition details
+- **Gemini/AI Studio**: Uses official Gemini image generation templates
+  - Photorealistic scenes with camera specifications
+  - Stylized illustrations and stickers
+  - Product mockups and commercial photography
+  - Sequential art and comic panels
 
 ## Future Enhancements
 

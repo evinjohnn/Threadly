@@ -2725,21 +2725,7 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
 
 /* --- Contextual Bar Styles for DELETE | CANCEL --- */
 
-/* Hide the default YOU/AI/FAV labels when the bar is morphed */
-.threadly-toggle-bar.morphed .threadly-toggle-label.user,
-.threadly-toggle-bar.morphed .threadly-toggle-label.you,
-.threadly-toggle-bar.morphed .threadly-toggle-label.assistant,
-.threadly-toggle-bar.morphed .threadly-toggle-label.ai,
-.threadly-toggle-bar.morphed .threadly-toggle-label.fav {
-    display: none !important;
-}
-
-/* Hide the moving bubble when the bar is morphed */
-.threadly-toggle-bar.morphed .threadly-toggle-segment {
-    display: none !important;
-}
-
-/* Base styles for contextual action buttons */
+/* Base styles for contextual action buttons (same as existing) */
 .threadly-toggle-label.delete,
 .threadly-toggle-label.cancel {
     text-transform: uppercase;
@@ -2753,7 +2739,8 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     border-radius: 14px;
     position: absolute;
     z-index: 2;
-    top: 2px;
+    top: 50%;
+    transform: translateY(-50%);
     height: 28px;
     display: flex;
     align-items: center;
@@ -4307,4 +4294,94 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
 
 .existing-collection-item:hover::before {
     opacity: 0.1;
+}
+
+/* --- Mode Selection Popup Styles --- */
+.threadly-mode-popup {
+    position: absolute;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 8px;
+    display: flex;
+    gap: 4px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+
+.threadly-mode-popup.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: all;
+}
+
+.threadly-mode-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 60px;
+    background: transparent;
+    border: 1px solid transparent;
+}
+
+.threadly-mode-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.threadly-mode-option.correction:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.threadly-mode-option.image:hover {
+    background: rgba(168, 85, 247, 0.2);
+    border-color: rgba(168, 85, 247, 0.4);
+}
+
+.threadly-mode-option.refine:hover {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.4);
+}
+
+.mode-icon {
+    font-size: 16px;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.mode-text {
+    font-size: 10px;
+    font-weight: 600;
+    color: #f0f0f0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+/* Arrow pointing down to sparkle */
+.threadly-mode-popup::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid rgba(42, 42, 42, 0.95);
 }
