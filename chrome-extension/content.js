@@ -1361,35 +1361,38 @@
             const messageText = item.querySelector('.threadly-message-text');
             const readMoreBtn = item.querySelector('.threadly-read-more');
             
-            // Use setTimeout to ensure DOM is fully rendered before checking truncation
-            setTimeout(() => {
-                // Check if the text is actually truncated (scrollHeight > clientHeight)
-                const isActuallyTruncated = messageText.scrollHeight > messageText.clientHeight;
-                
-                console.log('Threadly: Message truncation check - scrollHeight:', messageText.scrollHeight, 'clientHeight:', messageText.clientHeight, 'isTruncated:', isActuallyTruncated);
-                
-                if (isActuallyTruncated) {
-                    // Show the "See More" button
-                    readMoreBtn.style.display = 'inline-block';
+            // Only proceed if readMoreBtn exists (i.e., when isLongMessage was true)
+            if (readMoreBtn) {
+                // Use setTimeout to ensure DOM is fully rendered before checking truncation
+                setTimeout(() => {
+                    // Check if the text is actually truncated (scrollHeight > clientHeight)
+                    const isActuallyTruncated = messageText.scrollHeight > messageText.clientHeight;
                     
-                    console.log('Threadly: Setting up read more for truncated message:', msg.content.substring(0, 50));
+                    console.log('Threadly: Message truncation check - scrollHeight:', messageText.scrollHeight, 'clientHeight:', messageText.clientHeight, 'isTruncated:', isActuallyTruncated);
                     
-                    readMoreBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        if (messageText.classList.contains('expanded')) {
-                            messageText.classList.remove('expanded');
-                            readMoreBtn.textContent = 'See More';
-                        } else {
-                            messageText.classList.add('expanded');
-                            readMoreBtn.textContent = 'See Less';
-                        }
-                    });
-                } else {
-                    // Hide the "See More" button if text is not truncated
-                    readMoreBtn.style.display = 'none';
-                    console.log('Threadly: Text not truncated, hiding See More button for message:', msg.content.substring(0, 50));
-                }
-            }, 10);
+                    if (isActuallyTruncated) {
+                        // Show the "See More" button
+                        readMoreBtn.style.display = 'inline-block';
+                        
+                        console.log('Threadly: Setting up read more for truncated message:', msg.content.substring(0, 50));
+                        
+                        readMoreBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (messageText.classList.contains('expanded')) {
+                                messageText.classList.remove('expanded');
+                                readMoreBtn.textContent = 'See More';
+                            } else {
+                                messageText.classList.add('expanded');
+                                readMoreBtn.textContent = 'See Less';
+                            }
+                        });
+                    } else {
+                        // Hide the "See More" button if text is not truncated
+                        readMoreBtn.style.display = 'none';
+                        console.log('Threadly: Text not truncated, hiding See More button for message:', msg.content.substring(0, 50));
+                    }
+                }, 10);
+            }
 
             // Add copy button event listener
             const copyBtn = item.querySelector('.threadly-copy-btn');
@@ -1630,35 +1633,38 @@
             const messageText = item.querySelector('.threadly-message-text');
             const readMoreBtn = item.querySelector('.threadly-read-more');
             
-            // Use setTimeout to ensure DOM is fully rendered before checking truncation
-            setTimeout(() => {
-                // Check if the text is actually truncated (scrollHeight > clientHeight)
-                const isActuallyTruncated = messageText.scrollHeight > messageText.clientHeight;
-                
-                console.log('Threadly: Message truncation check - scrollHeight:', messageText.scrollHeight, 'clientHeight:', messageText.clientHeight, 'isTruncated:', isActuallyTruncated);
-                
-                if (isActuallyTruncated) {
-                    // Show the "See More" button
-                    readMoreBtn.style.display = 'inline-block';
+            // Only proceed if readMoreBtn exists (i.e., when isLongMessage was true)
+            if (readMoreBtn) {
+                // Use setTimeout to ensure DOM is fully rendered before checking truncation
+                setTimeout(() => {
+                    // Check if the text is actually truncated (scrollHeight > clientHeight)
+                    const isActuallyTruncated = messageText.scrollHeight > messageText.clientHeight;
                     
-                    console.log('Threadly: Setting up read more for truncated message:', fav.content.substring(0, 50));
+                    console.log('Threadly: Message truncation check - scrollHeight:', messageText.scrollHeight, 'clientHeight:', messageText.clientHeight, 'isTruncated:', isActuallyTruncated);
                     
-                    readMoreBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        if (messageText.classList.contains('expanded')) {
-                            messageText.classList.remove('expanded');
-                            readMoreBtn.textContent = 'See More';
-                        } else {
-                            messageText.classList.add('expanded');
-                            readMoreBtn.textContent = 'See Less';
-                        }
-                    });
-                } else {
-                    // Hide the "See More" button if text is not truncated
-                    readMoreBtn.style.display = 'none';
-                    console.log('Threadly: Text not truncated, hiding See More button for message:', fav.content.substring(0, 50));
-                }
-            }, 10);
+                    if (isActuallyTruncated) {
+                        // Show the "See More" button
+                        readMoreBtn.style.display = 'inline-block';
+                        
+                        console.log('Threadly: Setting up read more for truncated message:', fav.content.substring(0, 50));
+                        
+                        readMoreBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (messageText.classList.contains('expanded')) {
+                                messageText.classList.remove('expanded');
+                                readMoreBtn.textContent = 'See More';
+                            } else {
+                                messageText.classList.add('expanded');
+                                readMoreBtn.textContent = 'See Less';
+                            }
+                        });
+                    } else {
+                        // Hide the "See More" button if text is not truncated
+                        readMoreBtn.style.display = 'none';
+                        console.log('Threadly: Text not truncated, hiding See More button for message:', fav.content.substring(0, 50));
+                    }
+                }, 10);
+            }
 
             // Add copy button event listener
             const copyBtn = item.querySelector('.threadly-copy-btn');
@@ -1879,9 +1885,11 @@
             
             // Set flag to indicate we're in collections view
             isInCollectionsView = true;
+            console.log('Threadly: renderCollectionsView - Set isInCollectionsView to true');
             
             // Clear current collection ID since we're viewing the collections list
             currentCollectionId = null;
+            console.log('Threadly: renderCollectionsView - Set currentCollectionId to null');
             
             // Ensure panel stays expanded when in collections view
             if (panel && !panel.classList.contains('threadly-expanded')) {
@@ -1899,27 +1907,27 @@
                 console.log('Threadly: Collections from Chrome storage:', collectionsFromStorage);
                 console.log('Threadly: Collections length:', collectionsFromStorage.length);
                 
-                            if (collectionsFromStorage.length === 0) {
-                // Create a test collection if none exist
-                console.log('Threadly: No collections found, creating a test collection');
-                const testCollection = {
-                    id: 'test_collection_1',
-                    name: 'Test Collection',
-                    createdAt: Date.now(),
-                    platform: currentPlatformId,
-                    messageIds: []
-                };
-                
-                try {
-                    await saveCollectionsToStorage([testCollection]);
-                    console.log('Threadly: Created test collection');
-                    collectionsFromStorage = [testCollection];
-                } catch (error) {
-                    console.error('Threadly: Error creating test collection:', error);
-                    messageList.innerHTML = '<div class="threadly-empty-state">You have no saved collections.</div>';
-                    return;
+                if (collectionsFromStorage.length === 0) {
+                    // Create a test collection if none exist
+                    console.log('Threadly: No collections found, creating a test collection');
+                    const testCollection = {
+                        id: 'test_collection_1',
+                        name: 'Test Collection',
+                        createdAt: Date.now(),
+                        platform: currentPlatformId,
+                        messageIds: []
+                    };
+                    
+                    try {
+                        await saveCollectionsToStorage([testCollection]);
+                        console.log('Threadly: Created test collection');
+                        collectionsFromStorage = [testCollection];
+                    } catch (error) {
+                        console.error('Threadly: Error creating test collection:', error);
+                        messageList.innerHTML = '<div class="threadly-empty-state">You have no saved collections.</div>';
+                        return;
+                    }
                 }
-            }
             } catch (error) {
                 console.error('Threadly: Error loading collections:', error);
                 messageList.innerHTML = '<div class="threadly-empty-state">Error loading collections. Please try again.</div>';
@@ -2897,6 +2905,9 @@
                             ">${roleText}${platformIndicator}</div>
                         </div>
                         <div class="threadly-message-right">
+                            <div class="threadly-message-checkbox-container" style="display: none;">
+                                <input type="checkbox" class="threadly-message-checkbox" id="collection_checkbox_${index}" data-message-id="${msg.id}">
+                            </div>
                             <button class="threadly-star-btn ${msg.isFavorited ? 'starred' : ''}" title="${msg.isFavorited ? 'Remove from favorites' : 'Add to favorites'}" style="
                                 background: none;
                                 border: none;
@@ -2971,35 +2982,38 @@
                 const messageText = item.querySelector('.threadly-message-text');
                 const readMoreBtn = item.querySelector('.threadly-read-more');
                 
-                // Use setTimeout to ensure DOM is fully rendered before checking truncation
-                setTimeout(() => {
-                    // Check if the text is actually truncated (scrollHeight > clientHeight)
-                    const isActuallyTruncated = messageText.scrollHeight > messageText.clientHeight;
-                    
-                    console.log('Threadly: Message truncation check - scrollHeight:', messageText.scrollHeight, 'clientHeight:', messageText.clientHeight, 'isTruncated:', isActuallyTruncated);
-                    
-                    if (isActuallyTruncated) {
-                        // Show the "See More" button
-                        readMoreBtn.style.display = 'inline-block';
+                // Only proceed if readMoreBtn exists (i.e., when isLongMessage was true)
+                if (readMoreBtn) {
+                    // Use setTimeout to ensure DOM is fully rendered before checking truncation
+                    setTimeout(() => {
+                        // Check if the text is actually truncated (scrollHeight > clientHeight)
+                        const isActuallyTruncated = messageText.scrollHeight > messageText.clientHeight;
                         
-                        console.log('Threadly: Setting up read more for truncated message:', msg.content.substring(0, 50));
+                        console.log('Threadly: Message truncation check - scrollHeight:', messageText.scrollHeight, 'clientHeight:', messageText.clientHeight, 'isTruncated:', isActuallyTruncated);
                         
-                        readMoreBtn.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            if (messageText.classList.contains('expanded')) {
-                                messageText.classList.remove('expanded');
-                                readMoreBtn.textContent = 'See More';
-                            } else {
-                                messageText.classList.add('expanded');
-                                readMoreBtn.textContent = 'See Less';
-                            }
-                        });
-                    } else {
-                        // Hide the "See More" button if text is not truncated
-                        readMoreBtn.style.display = 'none';
-                        console.log('Threadly: Text not truncated, hiding See More button for message:', msg.content.substring(0, 50));
-                    }
-                }, 10);
+                        if (isActuallyTruncated) {
+                            // Show the "See More" button
+                            readMoreBtn.style.display = 'inline-block';
+                            
+                            console.log('Threadly: Setting up read more for truncated message:', msg.content.substring(0, 50));
+                            
+                            readMoreBtn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                if (messageText.classList.contains('expanded')) {
+                                    messageText.classList.remove('expanded');
+                                    readMoreBtn.textContent = 'See More';
+                                } else {
+                                    messageText.classList.add('expanded');
+                                    readMoreBtn.textContent = 'See Less';
+                                }
+                            });
+                        } else {
+                            // Hide the "See More" button if text is not truncated
+                            readMoreBtn.style.display = 'none';
+                            console.log('Threadly: Text not truncated, hiding See More button for message:', msg.content.substring(0, 50));
+                        }
+                    }, 10);
+                }
 
                 // Add copy button event listener
                 const copyBtn = item.querySelector('.threadly-copy-btn');
@@ -3030,6 +3044,19 @@
             });
             
             messageList.appendChild(fragment);
+            
+            // Ensure select bulb is visible in collection view
+            const selectBulb = document.getElementById('threadly-select-bulb');
+            if (selectBulb) {
+                selectBulb.style.display = 'flex';
+                selectBulb.title = 'Enable selection mode';
+                selectBulb.setAttribute('data-mode', 'select');
+            }
+            
+            // Ensure default navbar is visible in collection view (not in selection mode)
+            if (!isInSelectionMode) {
+                resetNavbarToOriginal();
+            }
             
             console.log('Threadly: Successfully rendered', collectionMessages.length, 'messages for collection:', collection.name);
             
@@ -4140,6 +4167,8 @@
         selectedCollectionIds = []; // Reset collection selection
         
         // Determine selection context based on current view
+        console.log('Threadly: enterSelectionMode - isInCollectionsView:', isInCollectionsView, 'currentCollectionId:', currentCollectionId);
+        
         if (isInCollectionsView && currentCollectionId) {
             // We're viewing messages within a specific collection
             selectionContext = 'messages-in-collection';
@@ -4154,13 +4183,24 @@
             console.log('Threadly: Entering selection mode for messages in main view');
         }
         
+        // TEMPORARY DEBUG: Force collections context when in collections view
+        if (isInCollectionsView) {
+            selectionContext = 'collections';
+            console.log('Threadly: FORCED selection context to collections for debugging');
+        }
+        
+        console.log('Threadly: Selection context set to:', selectionContext);
+        
         // Show checkboxes on all messages
         document.body.classList.add('selection-mode');
         
         // Morph navbar based on selection context
+        console.log('Threadly: About to morph navbar, selectionContext:', selectionContext);
         if (selectionContext === 'collections') {
+            console.log('Threadly: Calling morphNavbarToDeleteMode');
             morphNavbarToDeleteMode();
         } else {
+            console.log('Threadly: Calling morphNavbarToSelectionMode');
             morphNavbarToSelectionMode();
         }
         
@@ -4720,14 +4760,6 @@
 
         // Re-add original event listeners
         addToggleBarEventListeners();
-
-        // Remove return animation class after animation completes
-        if (isReturningFromInput) {
-            setTimeout(() => {
-                toggleBar.classList.remove('returning-from-input');
-                console.log('Threadly: Return animation completed');
-            }, 400); // Match the animation duration
-        }
 
         console.log('Threadly: Navbar reset to original state');
     }

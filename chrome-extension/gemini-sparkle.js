@@ -96,11 +96,45 @@
             sparklePath.removeAttribute("filter");
         });
 
+        // Add hover popup functionality
+        let hoverTimeout;
+        let popup = null;
+
+        svg.addEventListener('mouseenter', () => {
+            console.log('Threadly: Mouse entered sparkle');
+            hoverTimeout = setTimeout(() => {
+                console.log('Threadly: Creating popup after hover delay');
+                popup = createModeSelectionPopup(svg);
+                if (popup) {
+                    console.log('Threadly: Popup created successfully');
+                } else {
+                    console.log('Threadly: Popup creation failed');
+                }
+            }, 300); // Show popup after 300ms hover
+        });
+
+        svg.addEventListener('mouseleave', () => {
+            console.log('Threadly: Mouse left sparkle');
+            clearTimeout(hoverTimeout);
+            if (popup) {
+                console.log('Threadly: Removing popup');
+                popup.remove();
+                popup = null;
+            }
+        });
+
         // Add click handler (exact same as Claude)
         svg.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();
             console.log('Threadly: Sparkle clicked!');
+            
+            // If popup is visible, remove it and proceed with autonomous mode
+            if (popup) {
+                popup.remove();
+                popup = null;
+            }
+            
             handleSparkleClick();
         });
         
@@ -121,6 +155,159 @@
         svg.setAttribute('title', 'Refine prompt with AI');
 
         return svg;
+    }
+
+    // Create mode selection popup
+    function createModeSelectionPopup(sparkleElement) {
+        console.log('Threadly: Creating mode selection popup');
+        console.log('Threadly: Sparkle element:', sparkleElement);
+        
+        try {
+            // Remove existing popup if any
+            const existingPopup = document.querySelector('.threadly-mode-popup');
+            if (existingPopup) {
+                console.log('Threadly: Removing existing popup');
+                existingPopup.remove();
+            }
+
+            // Create popup container
+            console.log('Threadly: Creating popup div element');
+            const popup = document.createElement('div');
+            popup.className = 'threadly-mode-popup';
+            console.log('Threadly: Setting popup innerHTML');
+            popup.innerHTML = `
+                <div class="threadly-mode-option correction" data-mode="correction">
+                    <span class="mode-icon">✏️</span>
+                    <span class="mode-text">CORRECT</span>
+                </div>
+                <div class="threadly-mode-option image" data-mode="image">
+                    <span class="mode-icon">🎨</span>
+                    <span class="mode-text">IMAGE</span>
+                </div>
+                <div class="threadly-mode-option refine" data-mode="refine">
+                    <span class="mode-icon">✨</span>
+                    <span class="mode-text">REFINE</span>
+                </div>
+            `;
+
+            // Position popup relative to sparkle element
+            console.log('Threadly: Setting sparkle element position');
+            sparkleElement.style.position = 'relative';
+            console.log('Threadly: Appending popup to sparkle element');
+            sparkleElement.appendChild(popup);
+            console.log('Threadly: Popup appended to sparkle element');
+            console.log('Threadly: Popup element:', popup);
+            console.log('Threadly: Sparkle element position:', sparkleElement.getBoundingClientRect());
+
+            // Show popup with animation
+            setTimeout(() => {
+                console.log('Threadly: Adding show class to popup');
+                popup.classList.add('show');
+                console.log('Threadly: Popup classes:', popup.className);
+                console.log('Threadly: Popup position:', popup.getBoundingClientRect());
+            }, 10);
+
+            // Add click handlers for each option
+            popup.addEventListener('click', (e) => {
+                const mode = e.target.closest('.threadly-mode-option')?.dataset.mode;
+                if (mode) {
+                    handleModeSelection(mode, sparkleElement);
+                    popup.remove();
+                }
+            });
+
+            // Hide popup when clicking outside
+            const hidePopup = (e) => {
+                if (!popup.contains(e.target) && !sparkleElement.contains(e.target)) {
+                    popup.remove();
+                    document.removeEventListener('click', hidePopup);
+                }
+            };
+
+            setTimeout(() => {
+                document.addEventListener('click', hidePopup);
+            }, 100);
+
+            return popup;
+        } catch (error) {
+            console.error('Threadly: Error creating popup:', error);
+            return null;
+        }
+    }
+
+    // Handle mode selection
+    async function handleModeSelection(mode, sparkleElement) {
+        console.log('Threadly: Mode selected:', mode);
+        
+        // Get current input text
+        const textArea = document.querySelector('textarea, [contenteditable="true"]');
+        if (!textArea) {
+            console.log('Threadly: No text area found');
+            return;
+        }
+
+        const currentText = textArea.value || textArea.textContent || textArea.innerText;
+        if (!currentText || currentText.trim() === '') {
+            console.log('Threadly: No text to process');
+            return;
+        }
+
+        // Visual feedback
+        startClickAnimationSequence(sparkleElement);
+
+        try {
+            if (window.PromptRefiner) {
+                const promptRefiner = new window.PromptRefiner();
+                await promptRefiner.initialize();
+
+                let refinedPrompt;
+                const platform = detectCurrentPlatform();
+
+                switch (mode) {
+                    case 'correction':
+                        refinedPrompt = await promptRefiner.performGrammarCorrection(currentText);
+                        break;
+                    case 'image':
+                        refinedPrompt = await promptRefiner.refineImageGenerationPrompt(currentText, platform);
+                        break;
+                    case 'refine':
+                        refinedPrompt = await promptRefiner.refinePrompt(currentText, platform);
+                        break;
+                }
+
+                // Replace text in the input
+                if (refinedPrompt) {
+                    if (textArea.tagName === 'TEXTAREA') {
+                        textArea.value = refinedPrompt;
+                    } else {
+                        textArea.textContent = refinedPrompt;
+                    }
+                    
+                    // Trigger input event to notify the platform
+                    textArea.dispatchEvent(new Event('input', { bubbles: true }));
+                    textArea.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        } catch (error) {
+            console.error('Threadly: Error processing prompt:', error);
+        }
+    }
+
+    // Detect current platform
+    function detectCurrentPlatform() {
+        const url = window.location.href;
+        if (url.includes('chat.openai.com') || url.includes('chatgpt.com')) {
+            return 'chatgpt';
+        } else if (url.includes('claude.ai')) {
+            return 'claude';
+        } else if (url.includes('aistudio.google.com')) {
+            return 'ai-studio';
+        } else if (url.includes('gemini.google.com')) {
+            return 'gemini';
+        } else if (url.includes('perplexity.ai')) {
+            return 'perplexity';
+        }
+        return 'chatgpt'; // default fallback
     }
 
     // Handle sparkle click functionality with prompt refine feature (exact copy from Claude)

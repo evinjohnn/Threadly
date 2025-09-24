@@ -2725,9 +2725,18 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
 
 /* --- Contextual Bar Styles for DELETE | CANCEL --- */
 
-/* Base styles for contextual action buttons (same as existing) */
+/* --- DELETE | CANCEL Contextual Bar Styles --- */
+
+/* Base styles for DELETE and CANCEL buttons */
 .threadly-toggle-label.delete,
 .threadly-toggle-label.cancel {
+    position: absolute;
+    top: 2px;
+    height: 28px;
+    width: calc(50% - 1px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 700;
@@ -2737,21 +2746,13 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     -webkit-tap-highlight-color: transparent;
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     border-radius: 14px;
-    position: absolute;
     z-index: 2;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: calc(50% - 2px);
+    color: #ff4444; /* Red color for both buttons */
 }
 
 /* DELETE Button - First half (left side) */
 .threadly-toggle-label.delete {
     left: 2px;
-    color: #ff4444; /* Red color */
 }
 
 .threadly-toggle-label.delete:not(:disabled):hover {
@@ -2770,8 +2771,7 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
 
 /* CANCEL Button - Second half (right side) */
 .threadly-toggle-label.cancel {
-    left: calc(50% + 2px);
-    color: #ff4444; /* Red color */
+    left: calc(50% + 1px);
 }
 
 .threadly-toggle-label.cancel:hover {

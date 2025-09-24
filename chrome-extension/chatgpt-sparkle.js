@@ -101,18 +101,39 @@
         let popup = null;
 
         svg.addEventListener('mouseenter', () => {
-            console.log('Threadly: Mouse entered sparkle');
             hoverTimeout = setTimeout(() => {
-                console.log('Threadly: Creating popup after hover delay');
+                // Create the mode selection popup
                 popup = createModeSelectionPopup(svg);
             }, 300); // Show popup after 300ms hover
         });
 
         svg.addEventListener('mouseleave', () => {
             clearTimeout(hoverTimeout);
+            
+            // Remove any existing popups with shrinking animation
+            const existingPopups = document.querySelectorAll('.pill-popup');
+            existingPopups.forEach(popup => {
+                if (popup.classList.contains('growing')) {
+                    popup.classList.remove('growing');
+                    popup.classList.add('shrinking');
+                    setTimeout(() => popup.remove(), 600);
+                } else {
+                    popup.remove();
+                }
+            });
+            
             if (popup) {
-                popup.remove();
-                popup = null;
+                if (popup.classList.contains('growing')) {
+                    popup.classList.remove('growing');
+                    popup.classList.add('shrinking');
+                    setTimeout(() => {
+                        popup.remove();
+                        popup = null;
+                    }, 600);
+                } else {
+                    popup.remove();
+                    popup = null;
+                }
             }
         });
 
@@ -122,11 +143,32 @@
             event.stopPropagation();
             console.log('Threadly: ChatGPT Sparkle clicked!');
             
-            // If popup is visible, remove it and proceed with autonomous mode
+            // If popup is visible, remove it with shrinking animation
             if (popup) {
-                popup.remove();
-                popup = null;
+                if (popup.classList.contains('growing')) {
+                    popup.classList.remove('growing');
+                    popup.classList.add('shrinking');
+                    setTimeout(() => {
+                        popup.remove();
+                        popup = null;
+                    }, 600);
+                } else {
+                    popup.remove();
+                    popup = null;
+                }
             }
+            
+            // Also remove any existing popups with shrinking animation
+            const existingPopups = document.querySelectorAll('.pill-popup');
+            existingPopups.forEach(popup => {
+                if (popup.classList.contains('growing')) {
+                    popup.classList.remove('growing');
+                    popup.classList.add('shrinking');
+                    setTimeout(() => popup.remove(), 600);
+                } else {
+                    popup.remove();
+                }
+            });
             
             handleSparkleClick();
         });
@@ -155,37 +197,163 @@
 
     // Create mode selection popup
     function createModeSelectionPopup(sparkleElement) {
+        // Inject pill animation CSS if not already present
+        if (!document.querySelector('#threadly-pill-animations')) {
+            const style = document.createElement('style');
+            style.id = 'threadly-pill-animations';
+            style.textContent = `
+                /* Pill-shaped popup animation */
+                .pill-popup {
+                    position: fixed;
+                    z-index: 10000;
+                    overflow: hidden;
+                    pointer-events: none;
+                }
+
+                /* Growing animation */
+                .pill-popup.growing {
+                    animation: pill-emerge 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+                }
+
+                /* Shrinking animation */
+                .pill-popup.shrinking {
+                    animation: pill-contract 0.6s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+                }
+
+                    /* Emergence keyframes */
+                    @keyframes pill-emerge {
+                        0% {
+                            width: 0;
+                            height: 0;
+                            opacity: 0;
+                            border-radius: 50%;
+                        }
+                        
+                        30% {
+                            width: 40px;
+                            height: 40px;
+                            opacity: 1;
+                            border-radius: 50%;
+                        }
+                        
+                        70% {
+                            width: 240px;
+                            height: 40px;
+                            border-radius: 20px;
+                        }
+                        
+                        100% {
+                            width: 280px;
+                            height: 45px;
+                            opacity: 1;
+                            border-radius: 22px;
+                        }
+                    }
+
+                /* Contraction keyframes */
+                @keyframes pill-contract {
+                    0% {
+                        width: 280px;
+                        height: 45px;
+                        opacity: 1;
+                        border-radius: 22px;
+                    }
+                    
+                    30% {
+                        width: 160px;
+                        height: 35px;
+                        border-radius: 18px;
+                    }
+                    
+                    70% {
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                    }
+                    
+                    100% {
+                        width: 0;
+                        height: 0;
+                        opacity: 0;
+                        border-radius: 50%;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
         // Remove existing popup if any
-        const existingPopup = document.querySelector('.threadly-mode-popup');
+        const existingPopup = document.querySelector('.pill-popup');
         if (existingPopup) {
             existingPopup.remove();
         }
 
-        // Create popup container
+        // Create popup container with pill animation
         const popup = document.createElement('div');
-        popup.className = 'threadly-mode-popup';
-        popup.innerHTML = `
-            <div class="threadly-mode-option correction" data-mode="correction">
-                <span class="mode-icon">✏️</span>
-                <span class="mode-text">CORRECT</span>
+        popup.className = 'pill-popup';
+        
+        // Add inline styles for pill animation
+        popup.style.position = 'fixed';
+        popup.style.zIndex = '10000';
+        popup.style.overflow = 'hidden';
+        popup.style.pointerEvents = 'none';
+        
+        // Create content container for the pill
+        const contentContainer = document.createElement('div');
+        contentContainer.style.display = 'flex';
+        contentContainer.style.alignItems = 'center';
+        contentContainer.style.justifyContent = 'center';
+        contentContainer.style.gap = '8px';
+        contentContainer.style.height = '100%';
+        contentContainer.style.width = '100%';
+        contentContainer.style.opacity = '0';
+        contentContainer.style.transition = 'opacity 0.3s ease 0.4s';
+        
+        contentContainer.innerHTML = `
+            <div class="threadly-mode-option correction" data-mode="correction" style="display: flex; align-items: center; justify-content: center; padding: 8px 12px; cursor: pointer; transition: all 0.2s ease; border-right: 1px solid rgba(255, 255, 255, 0.2);">
+                <span class="mode-text" style="font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">CORRECT</span>
             </div>
-            <div class="threadly-mode-option image" data-mode="image">
-                <span class="mode-icon">🎨</span>
-                <span class="mode-text">IMAGE</span>
+            <div class="threadly-mode-option image" data-mode="image" style="display: flex; align-items: center; justify-content: center; padding: 8px 12px; cursor: pointer; transition: all 0.2s ease; border-right: 1px solid rgba(255, 255, 255, 0.2);">
+                <span class="mode-text" style="font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">IMAGE</span>
             </div>
-            <div class="threadly-mode-option refine" data-mode="refine">
-                <span class="mode-icon">✨</span>
-                <span class="mode-text">REFINE</span>
+            <div class="threadly-mode-option refine" data-mode="refine" style="display: flex; align-items: center; justify-content: center; padding: 8px 12px; cursor: pointer; transition: all 0.2s ease;">
+                <span class="mode-text" style="font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">REFINE</span>
             </div>
         `;
+        
+        popup.appendChild(contentContainer);
 
-        // Position popup relative to sparkle element
-        sparkleElement.style.position = 'relative';
-        sparkleElement.appendChild(popup);
+        // Position popup relative to document body to avoid clipping
+        document.body.appendChild(popup);
+        
+        // Get sparkle element position and adjust popup position
+        const sparkleRect = sparkleElement.getBoundingClientRect();
+        
+        // Set initial position for pill animation (above the sparkle)
+        popup.style.top = (sparkleRect.top - 80) + 'px';
+        popup.style.left = (sparkleRect.left + sparkleRect.width / 2) + 'px';
+        
+        // Add pill animation styles
+        popup.style.width = '0';
+        popup.style.height = '0';
+        popup.style.background = 'rgba(255, 255, 255, 0.15)';
+        popup.style.backdropFilter = 'blur(20px)';
+        popup.style.border = '1px solid rgba(255, 255, 255, 0.25)';
+        popup.style.borderRadius = '50px';
+        popup.style.boxShadow = '0 20px 60px rgba(0, 0, 0, 0.3)';
+        popup.style.transformOrigin = 'center center';
+        popup.style.transition = 'none';
+        popup.style.opacity = '0';
 
-        // Show popup with animation
+        // Start the pill emergence animation
         setTimeout(() => {
-            popup.classList.add('show');
+            popup.classList.add('growing');
+            popup.style.pointerEvents = 'all';
+            
+            // Show content after animation starts
+            setTimeout(() => {
+                contentContainer.style.opacity = '1';
+            }, 400);
         }, 10);
 
         // Add click handlers for each option
@@ -547,153 +715,101 @@
         }, 1250);
     }
 
-        // Main function to insert the sparkle icon next to the mic button (original approach)
-        async function insertSparkleIcon() {
-            try {
-                console.log('Threadly: Adding sparkle icon to ChatGPT input area...');
-                
-                // Check if sparkle already exists
-                const existingSparkle = document.querySelector('[data-threadly-sparkle="true"]');
-                if (existingSparkle) {
-                    console.log('Threadly: Sparkle icon already exists, removing duplicates');
-                    document.querySelectorAll('[data-threadly-sparkle="true"]').forEach(el => el.remove());
-                }
-                
-                // Find the mic/dictate button - be more aggressive
-                let micButton = null;
-                
-                // Try multiple approaches to find the mic button - updated for actual DOM structure
-                const micSelectors = [
-                    'button.composer-btn[aria-label*="dictate"]', // Specific composer-btn with dictate
-                    'button.composer-btn[aria-label*="Dictate"]', // Case sensitive
-                    'button[aria-label*="dictate"]',
-                    'button[title*="dictate"]', 
-                    'button[aria-label*="mic"]',
-                    'button[title*="mic"]',
-                    'button[aria-label*="voice"]',
-                    'button[title*="voice"]'
-                ];
-                
-                for (const selector of micSelectors) {
-                    micButton = document.querySelector(selector);
-                    if (micButton) {
-                        console.log(`Threadly: Found mic button with selector: ${selector}`);
-                        break;
-                    }
-                }
-                
-                // If still not found, search all buttons more thoroughly
-                if (!micButton) {
-                    const allButtons = document.querySelectorAll('button');
-                    for (const button of allButtons) {
-                        const text = button.textContent.toLowerCase();
-                        const ariaLabel = (button.getAttribute('aria-label') || '').toLowerCase();
-                        const title = (button.getAttribute('title') || '').toLowerCase();
-                        const className = button.className.toLowerCase();
-                        
-                        if ((text.includes('mic') || text.includes('dictate') || 
-                             ariaLabel.includes('mic') || ariaLabel.includes('dictate') ||
-                             title.includes('mic') || title.includes('dictate') ||
-                             className.includes('composer-btn')) &&
-                            !text.includes('voice mode') && !ariaLabel.includes('voice mode') && 
-                            !title.includes('voice mode') && !ariaLabel.includes('send')) {
-                            micButton = button;
-                            console.log(`Threadly: Found mic button: ${text || ariaLabel || title || className}`);
-                            break;
-                        }
-                    }
-                }
-                
-                if (!micButton) {
-                    throw new Error("Could not find mic/dictate button");
-                }
-                
-                console.log('Threadly: Mic button found:', micButton);
-                console.log('Threadly: Mic button parent:', micButton.parentElement);
-                
-                // Create the sparkle icon
-                const sparkleIcon = createSparkleIcon();
-                
-                // Style the sparkle icon
-                sparkleIcon.style.display = 'inline-block';
-                sparkleIcon.style.verticalAlign = 'middle';
-                sparkleIcon.style.position = 'relative';
-                sparkleIcon.style.top = '0';
-                sparkleIcon.style.marginLeft = '0px';
-                sparkleIcon.style.marginRight = '4px';
-                
-                // Ensure parent container is flex
-                const parentContainer = micButton.parentElement;
-                if (parentContainer) {
-                    parentContainer.style.display = 'flex';
-                    parentContainer.style.alignItems = 'center';
-                    parentContainer.style.gap = '0';
-                }
-                
-                // STABLE POSITIONING - Always position right before mic button within its span container
-                console.log('Threadly: Attempting to insert sparkle...');
-                console.log('Threadly: Mic button:', micButton);
-                console.log('Threadly: Mic button parent:', micButton.parentElement);
-                
-                // Find the span container that holds the mic button
-                const spanContainer = micButton.parentElement;
-                if (spanContainer) {
-                    // Ensure span container is flex with proper alignment (matching the actual DOM structure)
-                    spanContainer.style.display = 'flex';
-                    spanContainer.style.alignItems = 'center';
-                    spanContainer.style.gap = '4px';
-                    spanContainer.style.flexDirection = 'row';
-                    
-                    // Remove any existing sparkles first
-                    const existingSparkles = spanContainer.querySelectorAll('[data-threadly-sparkle="true"]');
-                    existingSparkles.forEach(sparkle => sparkle.remove());
-                }
-                
-                // Always insert sparkle right before the mic button within the span container
-                try {
-                    micButton.parentNode.insertBefore(sparkleIcon, micButton);
-                    console.log('Threadly: SUCCESS - Sparkle inserted before mic button in span container');
-                } catch (error) {
-                    console.error('Threadly: Insert before mic failed:', error);
-                    // Fallback: append as first child if mic insertion fails
-                    if (spanContainer && spanContainer.firstChild) {
-                        spanContainer.insertBefore(sparkleIcon, spanContainer.firstChild);
-                        console.log('Threadly: FALLBACK - Sparkle inserted as first child of span');
-                    } else if (spanContainer) {
-                        spanContainer.appendChild(sparkleIcon);
-                        console.log('Threadly: FALLBACK - Sparkle appended to span container');
-                    } else {
-                        // Last resort: append to body
-                        document.body.appendChild(sparkleIcon);
-                        console.log('Threadly: FALLBACK - appended to body');
-                    }
-                }
-                
-                // Check if sparkle was inserted
-                const insertedSparkle = document.querySelector('[data-threadly-sparkle="true"]');
-                if (insertedSparkle) {
-                    console.log('Threadly: SUCCESS - Sparkle is now in DOM');
-                    console.log('Threadly: Sparkle parent:', insertedSparkle.parentElement);
-                } else {
-                    console.error('Threadly: FAILED - Sparkle not found in DOM');
-                }
-                
-                console.log("Threadly: Successfully added sparkle icon to ChatGPT input area");
-                
-                // Dispatch success event
-                window.dispatchEvent(new CustomEvent('threadly-sparkle-inserted', {
-                    detail: { platform: 'chatgpt', success: true }
-                }));
-                
-            } catch (error) {
-                console.error("Threadly: Error inserting sparkle icon:", error);
-                
-                // Dispatch error event
-                window.dispatchEvent(new CustomEvent('threadly-sparkle-error', {
-                    detail: { platform: 'chatgpt', error: error.message }
-                }));
+// Main function to insert the sparkle icon with a wrapper
+async function insertSparkleIcon() {
+    try {
+        console.log('Threadly: Starting insertSparkleIcon...');
+        
+        // Use a unique attribute for the wrapper to prevent duplicates
+        if (document.querySelector('[data-threadly-sparkle-wrapper="true"]')) {
+            console.log('Threadly: Sparkle wrapper already exists, skipping...');
+            return; // Already exists, do nothing
+        }
+
+        // Updated selectors to match current ChatGPT DOM structure
+        const micSelectors = [
+            'button[aria-label="Dictate button"]', // Exact match for current ChatGPT
+            'button.composer-btn[aria-label*="dictate"]',
+            'button[aria-label*="dictate"]',
+            'button[title*="dictate"]',
+            'button[aria-label*="mic"]',
+            'button[title*="mic"]',
+        ];
+        
+        let micButton = null;
+        for (const selector of micSelectors) {
+            micButton = document.querySelector(selector);
+            if (micButton) {
+                console.log(`Threadly: Found mic button with selector: ${selector}`);
+                break;
             }
         }
+
+        let parentContainer;
+        if (!micButton) {
+            console.log('Threadly: Mic button not found with selectors, trying fallback...');
+            // If specific selectors fail, try to find the trailing area container
+            const trailingContainer = document.querySelector('[grid-area\\:trailing]');
+            if (trailingContainer) {
+                console.log('Threadly: Found trailing container');
+                // Look for the ms-auto container within trailing
+                const msAutoContainer = trailingContainer.querySelector('.ms-auto');
+                if (msAutoContainer) {
+                    console.log('Threadly: Found ms-auto container');
+                    parentContainer = msAutoContainer;
+                    // Insert as first child in this case
+                    micButton = msAutoContainer.firstChild;
+                } else {
+                    parentContainer = trailingContainer;
+                    micButton = trailingContainer.firstChild;
+                }
+            } else {
+                // Last resort: find any composer button area
+                const composerArea = document.querySelector('.flex.items-center.gap-2');
+                if (composerArea) {
+                    console.log('Threadly: Found composer area as fallback');
+                    parentContainer = composerArea;
+                    micButton = composerArea.firstChild;
+                } else {
+                    throw new Error("Could not find a suitable insertion point for the sparkle button.");
+                }
+            }
+        } else {
+            parentContainer = micButton.parentElement;
+        }
+        
+        if (!parentContainer) {
+            throw new Error("Could not find the parent container of the mic button.");
+        }
+
+        console.log('Threadly: Parent container found:', parentContainer);
+
+        // Create the sparkle icon
+        const sparkleIcon = createSparkleIcon();
+
+        // *** THE FIX: Create the dedicated wrapper div ***
+        const sparkleWrapper = document.createElement('div');
+        sparkleWrapper.setAttribute('data-threadly-sparkle-wrapper', 'true');
+        sparkleWrapper.style.display = 'flex';
+        sparkleWrapper.style.alignItems = 'center';
+        sparkleWrapper.style.justifyContent = 'center';
+        // This margin creates the necessary space to avoid tooltip conflicts
+        sparkleWrapper.style.marginRight = '8px';
+        sparkleWrapper.appendChild(sparkleIcon);
+
+        // Insert the wrapper before the mic button (or its container)
+        parentContainer.insertBefore(sparkleWrapper, micButton);
+
+        // Ensure the parent container uses flexbox for proper alignment
+        parentContainer.style.display = 'flex';
+        parentContainer.style.alignItems = 'center';
+
+        console.log("Threadly: Successfully added sparkle icon with isolated wrapper.");
+
+    } catch (error) {
+        console.error("Threadly: Error inserting sparkle icon:", error);
+    }
+}
 
     // Check if we're on ChatGPT's website
     function isChatGPTWebsite() {
@@ -713,7 +829,7 @@
         
             // Also check periodically to ensure sparkle stays in place and is positioned correctly
             setInterval(() => {
-                const existingSparkles = document.querySelectorAll('[data-threadly-sparkle="true"]');
+                const existingSparkles = document.querySelectorAll('[data-threadly-sparkle-wrapper="true"]');
                 if (existingSparkles.length === 0) {
                     console.log('Threadly: Periodic check - re-adding missing sparkle icon');
                     insertSparkleIcon();
@@ -726,7 +842,7 @@
                 } else {
                     // Check if sparkle is in the correct position (right before mic button)
                     const sparkle = existingSparkles[0];
-                    const micButton = document.querySelector('button.composer-btn[aria-label*="dictate"], button[aria-label*="dictate"], button[title*="dictate"], button[aria-label*="mic"], button[title*="mic"]');
+                    const micButton = document.querySelector('button[aria-label*="dictate"], button[title*="dictate"]');
                     if (micButton && micButton.previousElementSibling !== sparkle) {
                         console.log('Threadly: Periodic check - repositioning sparkle before mic button');
                         // Remove and re-insert to ensure correct position
@@ -743,7 +859,7 @@
                 textarea.addEventListener('input', () => {
                     // Check and fix sparkle positioning after typing
                     setTimeout(() => {
-                        const existingSparkles = document.querySelectorAll('[data-threadly-sparkle="true"]');
+                        const existingSparkles = document.querySelectorAll('[data-threadly-sparkle-wrapper="true"]');
                         if (existingSparkles.length === 0) {
                             console.log('Threadly: Re-adding missing sparkle after textarea input');
                             insertSparkleIcon();
@@ -756,7 +872,7 @@
                         } else {
                             // Check if sparkle is in the correct position (right before mic button)
                             const sparkle = existingSparkles[0];
-                            const micButton = document.querySelector('button.composer-btn[aria-label*="dictate"], button[aria-label*="dictate"], button[title*="dictate"], button[aria-label*="mic"], button[title*="mic"]');
+                            const micButton = document.querySelector('button[aria-label*="dictate"], button[title*="dictate"]');
                             if (micButton && micButton.previousElementSibling !== sparkle) {
                                 console.log('Threadly: Repositioning sparkle before mic button after textarea input');
                                 // Remove and re-insert to ensure correct position
@@ -779,7 +895,7 @@
                 if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
                     // Check and fix sparkle positioning after DOM changes
                     setTimeout(() => {
-                        const existingSparkles = document.querySelectorAll('[data-threadly-sparkle="true"]');
+                        const existingSparkles = document.querySelectorAll('[data-threadly-sparkle-wrapper="true"]');
                         if (existingSparkles.length === 0) {
                             console.log('Threadly: Re-adding missing sparkle icon after DOM change');
                             insertSparkleIcon();
@@ -792,7 +908,7 @@
                         } else {
                             // Check if sparkle is in the correct position (right before mic button)
                             const sparkle = existingSparkles[0];
-                            const micButton = document.querySelector('button.composer-btn[aria-label*="dictate"], button[aria-label*="dictate"], button[title*="dictate"], button[aria-label*="mic"], button[title*="mic"]');
+                            const micButton = document.querySelector('button[aria-label*="dictate"], button[title*="dictate"]');
                             if (micButton && micButton.previousElementSibling !== sparkle) {
                                 console.log('Threadly: Repositioning sparkle before mic button after DOM change');
                                 // Remove and re-insert to ensure correct position
