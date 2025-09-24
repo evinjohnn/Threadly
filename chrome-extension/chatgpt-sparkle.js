@@ -98,43 +98,49 @@
 
         // Add hover popup functionality
         let hoverTimeout;
+        let hidePopupTimeout;
         let popup = null;
+        const hoverState = {
+            isHoveringSparkle: false,
+            isHoveringPopup: false
+        };
+
+        const showPopup = () => {
+            clearTimeout(hidePopupTimeout);
+            if (popup) return; // Don't create a new popup if one is already visible
+            hoverTimeout = setTimeout(() => {
+                popup = createModeSelectionPopup(svg, hoverState);
+            }, 300);
+        };
+
+        const hidePopup = () => {
+            clearTimeout(hoverTimeout);
+            hidePopupTimeout = setTimeout(() => {
+                // Only hide if not hovering over either sparkle or popup
+                if (!hoverState.isHoveringSparkle && !hoverState.isHoveringPopup && popup) {
+                    if (popup.classList.contains('growing')) {
+                        popup.classList.remove('growing');
+                        popup.classList.add('shrinking');
+                        setTimeout(() => {
+                            if (popup) popup.remove();
+                            popup = null;
+                        }, 600);
+                    } else {
+                        if (popup) popup.remove();
+                        popup = null;
+                    }
+                }
+            }, 100); // Reduced delay for more responsive hiding
+        };
 
         svg.addEventListener('mouseenter', () => {
-            hoverTimeout = setTimeout(() => {
-                // Create the mode selection popup
-                popup = createModeSelectionPopup(svg);
-            }, 300); // Show popup after 300ms hover
+            hoverState.isHoveringSparkle = true;
+            showPopup();
         });
-
+        
         svg.addEventListener('mouseleave', () => {
-            clearTimeout(hoverTimeout);
-            
-            // Remove any existing popups with shrinking animation
-            const existingPopups = document.querySelectorAll('.pill-popup');
-            existingPopups.forEach(popup => {
-                if (popup.classList.contains('growing')) {
-                    popup.classList.remove('growing');
-                    popup.classList.add('shrinking');
-                    setTimeout(() => popup.remove(), 600);
-                } else {
-                    popup.remove();
-                }
-            });
-            
-            if (popup) {
-                if (popup.classList.contains('growing')) {
-                    popup.classList.remove('growing');
-                    popup.classList.add('shrinking');
-                    setTimeout(() => {
-                        popup.remove();
-                        popup = null;
-                    }, 600);
-                } else {
-                    popup.remove();
-                    popup = null;
-                }
-            }
+            hoverState.isHoveringSparkle = false;
+            hidePopup();
         });
 
         // Add click handler
@@ -196,7 +202,7 @@
     }
 
     // Create mode selection popup
-    function createModeSelectionPopup(sparkleElement) {
+    function createModeSelectionPopup(sparkleElement, hoverState = {}) {
         // Inject pill animation CSS if not already present
         if (!document.querySelector('#threadly-pill-animations')) {
             const style = document.createElement('style');
@@ -220,6 +226,29 @@
                     animation: pill-contract 0.6s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
                 }
 
+                /* Yellow hover effect - only color change, no background, no movement */
+                .threadly-mode-option:hover {
+                    color: #ffcc00 !important;
+                    background: transparent !important;
+                    background-color: transparent !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                    outline: none !important;
+                    transform: none !important;
+                    transition: color 0.2s ease !important;
+                }
+                
+                /* Ensure no background colors or movement on any state */
+                .threadly-mode-option {
+                    background: transparent !important;
+                    background-color: transparent !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                    outline: none !important;
+                    transform: none !important;
+                    transition: color 0.2s ease !important;
+                }
+
                     /* Emergence keyframes */
                     @keyframes pill-emerge {
                         0% {
@@ -230,44 +259,44 @@
                         }
                         
                         30% {
-                            width: 40px;
-                            height: 40px;
+                            width: 28px;
+                            height: 28px;
                             opacity: 1;
                             border-radius: 50%;
                         }
                         
                         70% {
-                            width: 240px;
-                            height: 40px;
-                            border-radius: 20px;
+                            width: 140px;
+                            height: 28px;
+                            border-radius: 14px;
                         }
                         
                         100% {
-                            width: 280px;
-                            height: 45px;
+                            width: 190px;
+                            height: 32px;
                             opacity: 1;
-                            border-radius: 22px;
+                            border-radius: 16px;
                         }
                     }
 
                 /* Contraction keyframes */
                 @keyframes pill-contract {
                     0% {
-                        width: 280px;
-                        height: 45px;
+                        width: 190px;
+                        height: 32px;
                         opacity: 1;
-                        border-radius: 22px;
+                        border-radius: 16px;
                     }
                     
                     30% {
-                        width: 160px;
-                        height: 35px;
-                        border-radius: 18px;
+                        width: 120px;
+                        height: 28px;
+                        border-radius: 14px;
                     }
                     
                     70% {
-                        width: 40px;
-                        height: 40px;
+                        width: 32px;
+                        height: 32px;
                         border-radius: 50%;
                     }
                     
@@ -302,23 +331,17 @@
         const contentContainer = document.createElement('div');
         contentContainer.style.display = 'flex';
         contentContainer.style.alignItems = 'center';
-        contentContainer.style.justifyContent = 'center';
-        contentContainer.style.gap = '8px';
+        contentContainer.style.justifyContent = 'space-between';
         contentContainer.style.height = '100%';
         contentContainer.style.width = '100%';
         contentContainer.style.opacity = '0';
         contentContainer.style.transition = 'opacity 0.3s ease 0.4s';
+        contentContainer.style.padding = '0 12px 0 20px';
         
         contentContainer.innerHTML = `
-            <div class="threadly-mode-option correction" data-mode="correction" style="display: flex; align-items: center; justify-content: center; padding: 8px 12px; cursor: pointer; transition: all 0.2s ease; border-right: 1px solid rgba(255, 255, 255, 0.2);">
-                <span class="mode-text" style="font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">CORRECT</span>
-            </div>
-            <div class="threadly-mode-option image" data-mode="image" style="display: flex; align-items: center; justify-content: center; padding: 8px 12px; cursor: pointer; transition: all 0.2s ease; border-right: 1px solid rgba(255, 255, 255, 0.2);">
-                <span class="mode-text" style="font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">IMAGE</span>
-            </div>
-            <div class="threadly-mode-option refine" data-mode="refine" style="display: flex; align-items: center; justify-content: center; padding: 8px 12px; cursor: pointer; transition: all 0.2s ease;">
-                <span class="mode-text" style="font-size: 11px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">REFINE</span>
-            </div>
+            <span class="threadly-mode-option correction" data-mode="correction" style="cursor: pointer; transition: color 0.2s ease; font-size: 9px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.4px; flex: 1; text-align: center;">CORRECT</span>
+            <span class="threadly-mode-option image" data-mode="image" style="cursor: pointer; transition: color 0.2s ease; font-size: 9px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.4px; flex: 1; text-align: center;">IMAGE</span>
+            <span class="threadly-mode-option refine" data-mode="refine" style="cursor: pointer; transition: color 0.2s ease; font-size: 9px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.4px; flex: 1; text-align: center;">REFINE</span>
         `;
         
         popup.appendChild(contentContainer);
@@ -329,9 +352,10 @@
         // Get sparkle element position and adjust popup position
         const sparkleRect = sparkleElement.getBoundingClientRect();
         
-        // Set initial position for pill animation (above the sparkle)
-        popup.style.top = (sparkleRect.top - 80) + 'px';
+        // Set initial position for pill animation (centered above the sparkle)
+        popup.style.top = (sparkleRect.top - 45) + 'px'; // Adjusted for smaller height + gap
         popup.style.left = (sparkleRect.left + sparkleRect.width / 2) + 'px';
+        popup.style.transform = 'translateX(-50%)'; // Horizontally center the popup
         
         // Add pill animation styles
         popup.style.width = '0';
@@ -361,21 +385,36 @@
             const mode = e.target.closest('.threadly-mode-option')?.dataset.mode;
             if (mode) {
                 handleModeSelection(mode, sparkleElement);
-                popup.remove();
+                if (popup) {
+                    popup.remove();
+                    // Reset hover state when popup is closed
+                    hoverState.isHoveringPopup = false;
+                }
             }
         });
 
-        // Hide popup when clicking outside
-        const hidePopup = (e) => {
-            if (!popup.contains(e.target) && !sparkleElement.contains(e.target)) {
-                popup.remove();
-                document.removeEventListener('click', hidePopup);
+        // Keep popup open when hovering over it
+        popup.addEventListener('mouseenter', () => {
+            hoverState.isHoveringPopup = true;
+            clearTimeout(hidePopupTimeout);
+        });
+        
+        popup.addEventListener('mouseleave', () => {
+            hoverState.isHoveringPopup = false;
+            // Only hide if not hovering over sparkle either
+            if (!hoverState.isHoveringSparkle) {
+                hidePopupTimeout = setTimeout(() => {
+                    if (!hoverState.isHoveringSparkle && !hoverState.isHoveringPopup && popup) {
+                        popup.classList.remove('growing');
+                        popup.classList.add('shrinking');
+                        setTimeout(() => {
+                            if (popup) popup.remove();
+                            popup = null;
+                        }, 600);
+                    }
+                }, 100);
             }
-        };
-
-        setTimeout(() => {
-            document.addEventListener('click', hidePopup);
-        }, 100);
+        });
 
         return popup;
     }
@@ -384,8 +423,16 @@
     async function handleModeSelection(mode, sparkleElement) {
         console.log('Threadly: Mode selected:', mode);
         
-        // Get current input text
-        const textArea = document.querySelector('textarea, [contenteditable="true"]');
+        // Get current input text using ChatGPT-specific selectors
+        let textArea = document.querySelector('#prompt-textarea');
+        if (!textArea) {
+            // Fallback to other possible selectors
+            textArea = document.querySelector('textarea[data-id="root"]') || 
+                      document.querySelector('textarea[placeholder*="Message"]') ||
+                      document.querySelector('textarea[placeholder*="Send a message"]') ||
+                      document.querySelector('textarea');
+        }
+        
         if (!textArea) {
             console.log('Threadly: No text area found');
             return;
@@ -396,6 +443,8 @@
             console.log('Threadly: No text to process');
             return;
         }
+        
+        console.log('Threadly: Found text to process:', currentText);
 
         // Visual feedback
         startClickAnimationSequence(sparkleElement);
@@ -410,12 +459,15 @@
 
                 switch (mode) {
                     case 'correction':
+                        // CORRECT mode: Only fix spelling and grammar, no other changes
                         refinedPrompt = await promptRefiner.performGrammarCorrection(currentText);
                         break;
                     case 'image':
+                        // Use triage AI for image generation
                         refinedPrompt = await promptRefiner.refineImageGenerationPrompt(currentText, platform);
                         break;
                     case 'refine':
+                        // Use triage AI for intelligent refinement
                         refinedPrompt = await promptRefiner.refinePrompt(currentText, platform);
                         break;
                 }
@@ -431,10 +483,12 @@
                     // Trigger input event to notify the platform
                     textArea.dispatchEvent(new Event('input', { bubbles: true }));
                     textArea.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    console.log('Threadly: Prompt refined successfully with triage AI');
                 }
             }
         } catch (error) {
-            console.error('Threadly: Error processing prompt:', error);
+            console.error('Threadly: Error processing prompt with triage AI:', error);
         }
     }
 

@@ -2714,9 +2714,8 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     filter: brightness(1.2);
 }
 
-/* Ensure stable positioning for ADD NEW, DELETE, and CANCEL labels */
+/* Ensure stable positioning for ADD NEW and BACK labels (exclude DELETE and CANCEL for flexbox) */
 .threadly-toggle-bar.morphed .threadly-toggle-label.add,
-.threadly-toggle-bar.morphed .threadly-toggle-label.delete,
 .threadly-toggle-bar.morphed .threadly-toggle-label.back {
     position: absolute !important;
     transform: none !important;
@@ -2725,15 +2724,26 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
 
 /* --- Contextual Bar Styles for DELETE | CANCEL --- */
 
-/* --- DELETE | CANCEL Contextual Bar Styles --- */
+/* --- DELETE | CANCEL Contextual Bar Styles (Flexbox Fix) --- */
+
+/* Ensure the container uses flexbox and has padding for the "pill" border effect */
+.threadly-toggle-bar.morphed {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    padding: 2px;
+}
 
 /* Base styles for DELETE and CANCEL buttons */
 .threadly-toggle-label.delete,
 .threadly-toggle-label.cancel {
-    position: absolute;
-    top: 2px;
+    position: relative; /* Use relative positioning */
+    top: auto;
+    left: auto;
     height: 28px;
-    width: calc(50% - 1px);
+    width: 50%; /* Each button takes exactly half the space */
+    flex-grow: 1; /* Ensure they fill the container */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2745,14 +2755,15 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    border-radius: 14px;
     z-index: 2;
     color: #ff4444; /* Red color for both buttons */
+    margin: 0; /* No margin between buttons */
 }
 
-/* DELETE Button - First half (left side) */
+/* Apply border-radius to the outer corners to form the pill shape */
 .threadly-toggle-label.delete {
-    left: 2px;
+    border-top-left-radius: 14px;
+    border-bottom-left-radius: 14px;
 }
 
 .threadly-toggle-label.delete:not(:disabled):hover {
@@ -2769,9 +2780,9 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     box-shadow: none !important;
 }
 
-/* CANCEL Button - Second half (right side) */
 .threadly-toggle-label.cancel {
-    left: calc(50% + 1px);
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
 }
 
 .threadly-toggle-label.cancel:hover {
