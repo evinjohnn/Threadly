@@ -221,6 +221,23 @@
         return platformColors[currentPlatformId] || 'var(--threadly-primary-accent)';
     }
 
+    function hexToRgb(hex) {
+        // Remove # if present
+        hex = hex.replace('#', '');
+        
+        // Handle CSS variables
+        if (hex.startsWith('var(')) {
+            return '255, 255, 255'; // Default white for CSS variables
+        }
+        
+        // Convert hex to RGB
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        return `${r}, ${g}, ${b}`;
+    }
+
     // --- DOM Elements --- //
     let container, panel, closeButton, messageList, searchInput, platformIndicator, toggleBar, toggleSegment, scrollIndicator;
 
@@ -321,7 +338,9 @@
             
             // Apply platform-specific color
             const platformColor = getPlatformSavedIconColor();
+            const platformRgb = hexToRgb(platformColor);
             dot.style.setProperty('--platform-color', platformColor);
+            dot.style.setProperty('--platform-rgb', platformRgb);
             
             // Create tooltip with first few words of user text
             const tooltip = document.createElement('div');

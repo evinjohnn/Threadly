@@ -15,6 +15,9 @@
     --glass-outer-shadow: rgba(0, 0, 0, 0.1);
     --glass-outer-shadow-blur: 24px;
     
+    /* Platform RGB values for glassmorphism */
+    --platform-rgb: 255, 255, 255; /* Default white */
+    
     /* Metaball specific variables */
     --bulb-size: 42.5px; /* Reduced from 50px by 15% (50 * 0.85 = 42.5) */
     --search-pill-compact-width: 184px; /* 160px + (15px-8px)*2 = 160px + 14px = 174px, rounded up */
@@ -2720,9 +2723,80 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     transform-origin: center !important;
 }
 
+/* --- Contextual Bar Styles for DELETE | CANCEL --- */
+
+/* Hide the default YOU/AI/FAV labels when the bar is morphed */
+.threadly-toggle-bar.morphed .threadly-toggle-label.user,
+.threadly-toggle-bar.morphed .threadly-toggle-label.you,
+.threadly-toggle-bar.morphed .threadly-toggle-label.assistant,
+.threadly-toggle-bar.morphed .threadly-toggle-label.ai,
+.threadly-toggle-bar.morphed .threadly-toggle-label.fav {
+    display: none !important;
+}
+
+/* Hide the moving bubble when the bar is morphed */
+.threadly-toggle-bar.morphed .threadly-toggle-segment {
+    display: none !important;
+}
+
+/* Base styles for contextual action buttons */
+.threadly-toggle-label.delete,
+.threadly-toggle-label.cancel {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    border-radius: 14px;
+    position: absolute;
+    z-index: 2;
+    top: 2px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(50% - 2px);
+}
+
+/* DELETE Button - First half (left side) */
+.threadly-toggle-label.delete {
+    left: 2px;
+    color: #ff4444; /* Red color */
+}
+
+.threadly-toggle-label.delete:not(:disabled):hover {
+    color: white !important;
+    background: rgba(239, 68, 68, 0.9) !important;
+    box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6) !important;
+}
+
+.threadly-toggle-label.delete:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: #666 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* CANCEL Button - Second half (right side) */
+.threadly-toggle-label.cancel {
+    left: calc(50% + 2px);
+    color: #ff4444; /* Red color */
+}
+
+.threadly-toggle-label.cancel:hover {
+    color: white !important;
+    background: rgba(239, 68, 68, 0.9) !important;
+    box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6) !important;
+}
+
 /* Reset positioning when not in morphed state */
 .threadly-toggle-bar:not(.morphed) .threadly-toggle-label.add,
 .threadly-toggle-bar:not(.morphed) .threadly-toggle-label.delete,
+.threadly-toggle-bar:not(.morphed) .threadly-toggle-label.cancel,
 .threadly-toggle-bar:not(.morphed) .threadly-toggle-label.back {
     display: none !important;
 }
@@ -3637,28 +3711,37 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     transform: scale(1.3);
 }
 
-/* Tooltip for navigation dots - Pill shape with platform accent color background */
+/* Tooltip for navigation dots - Glassmorphism effect */
 .threadly-scroll-dot-tooltip {
     position: absolute;
     right: 20px;
-    background: var(--platform-color, rgba(255, 255, 255, 0.1));
+    
+    /* --- Glassmorphism Effect --- */
+    /* Use a semi-transparent version of the platform color */
+    background: rgba(var(--platform-rgb, 255, 255, 255), 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); /* For Safari compatibility */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    
+    /* --- Styling --- */
     color: white;
     padding: 6px 16px;
-    border-radius: 20px;
+    border-radius: 20px; /* Pill shape */
     font-size: 12px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     white-space: nowrap;
     max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
+    
+    /* --- Animation --- */
     opacity: 0;
     visibility: hidden;
     transform: translateX(10px);
     transition: all 0.2s ease;
     pointer-events: none;
     z-index: 100001;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .threadly-scroll-dot:hover .threadly-scroll-dot-tooltip {
