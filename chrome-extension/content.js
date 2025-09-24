@@ -66,6 +66,11 @@
     let currentFilter = { type: 'all' }; // 'all', 'starred', or 'collection'
     let isInCollectionsView = false; // Track if we're viewing collections
     
+    // Enhanced selection state management for contextual bulk deletion
+    let selectionContext = null; // 'messages-in-collection' or 'collections'
+    let selectedCollectionIds = []; // Track selected collections for bulk deletion
+    let currentCollectionId = null; // Track which collection we're viewing messages for
+    
     // Saved button state management (like React useState)
     let savedButtonActive = false; // persisted state via click
     // savedButtonHover removed - SAVED button only changes on click, not hover
@@ -317,6 +322,18 @@
             // Apply platform-specific color
             const platformColor = getPlatformSavedIconColor();
             dot.style.setProperty('--platform-color', platformColor);
+            
+            // Create tooltip with first few words of user text
+            const tooltip = document.createElement('div');
+            tooltip.className = 'threadly-scroll-dot-tooltip';
+            
+            // Extract first few words from the message content
+            const messageText = msg.content || msg.text || '';
+            const firstWords = messageText.trim().split(/\s+/).slice(0, 15).join(' ');
+            const tooltipText = firstWords.length > 0 ? firstWords : `User message ${index + 1}`;
+            tooltip.textContent = tooltipText;
+            
+            dot.appendChild(tooltip);
             
             // Add click handler with event propagation control
             dot.addEventListener('click', (e) => {
@@ -1363,6 +1380,22 @@
                     copyMessageToClipboard(msg.content);
                 });
             }
+
+            // Add long-press gesture for message actions (for YOU and AI states)
+            let longPressTimer;
+            item.addEventListener('mousedown', () => {
+                longPressTimer = setTimeout(() => {
+                    showMessageActionsOverlay(msg, null); // null collectionId for global messages
+                }, 750);
+            });
+            
+            item.addEventListener('mouseup', () => {
+                clearTimeout(longPressTimer);
+            });
+            
+            item.addEventListener('mouseleave', () => {
+                clearTimeout(longPressTimer);
+            });
             
             if (msg.element && document.body.contains(msg.element)) {
                 // Only enable scroll behavior if not in selection mode
@@ -1616,6 +1649,22 @@
                     copyMessageToClipboard(fav.content);
                 });
             }
+
+            // Add long-press gesture for message actions (for FAV state)
+            let longPressTimer;
+            item.addEventListener('mousedown', () => {
+                longPressTimer = setTimeout(() => {
+                    showMessageActionsOverlay(fav, null); // null collectionId for global favorites
+                }, 750);
+            });
+            
+            item.addEventListener('mouseup', () => {
+                clearTimeout(longPressTimer);
+            });
+            
+            item.addEventListener('mouseleave', () => {
+                clearTimeout(longPressTimer);
+            });
             
             fragment.appendChild(item);
         });
@@ -1812,6 +1861,9 @@
             // Set flag to indicate we're in collections view
             isInCollectionsView = true;
             
+            // Clear current collection ID since we're viewing the collections list
+            currentCollectionId = null;
+            
             // Ensure panel stays expanded when in collections view
             if (panel && !panel.classList.contains('threadly-expanded')) {
                 panel.classList.add('threadly-expanded');
@@ -1868,28 +1920,31 @@
             collectionPill.style.borderColor = pillColor.replace('0.3', '0.6').replace('0.4', '0.7').replace('0.5', '0.8').replace('0.6', '0.9').replace('0.7', '1.0');
             collectionPill.style.setProperty('--pill-color-glow', pillColor.replace('0.3', '0.8').replace('0.4', '0.9').replace('0.5', '1.0').replace('0.6', '1.0').replace('0.7', '1.0'));
             
+            // Truncate collection name to 21 characters
+            const displayName = collection.name.length > 21 ? collection.name.substring(0, 21) + '...' : collection.name;
+            
             // Show different content based on mode
             if (isAssigning) {
                 // Assignment mode: show "+" to indicate adding messages
                 collectionPill.innerHTML = `
-                    <span class="collection-pill-name">${collection.name}</span>
+                    <span class="collection-pill-name">${displayName}</span>
                     <span class="collection-pill-add">+</span>
                 `;
                 collectionPill.title = `Add selected messages to "${collection.name}"`;
             } else {
                 // Normal mode: show ">" to indicate viewing messages
                 collectionPill.innerHTML = `
-                    <span class="collection-pill-name">${collection.name}</span>
+                    <span class="collection-pill-name">${displayName}</span>
                     <span class="collection-pill-arrow">></span>
                 `;
                 collectionPill.title = `View messages in "${collection.name}"`;
             }
             
-            // Add long-press gesture for deletion
+            // Add long-press gesture for collection actions
             let longPressTimer;
             collectionPill.addEventListener('mousedown', () => {
                 longPressTimer = setTimeout(() => {
-                    showDeleteConfirmation(collection.id, collection.name);
+                    showCollectionActionsOverlay(collection);
                 }, 750);
             });
             
@@ -1906,11 +1961,32 @@
                 console.log('Threadly: Collection pill clicked:', collection.id, collection.name);
                 console.log('Threadly: isAssigningMode:', isAssigningMode);
                 console.log('Threadly: isAssigning parameter:', isAssigning);
+                console.log('Threadly: selectionContext:', selectionContext);
                 console.log('Threadly: Event target:', e.target);
                 
                 if (isAssigning) {
                     console.log('Threadly: Adding messages to collection:', collection.name);
+                    console.log('Threadly: About to call assignMessagesToCollection for:', collection.name);
+                    // Step 1: Assign the messages to the collection
                     await assignMessagesToCollection(collection.id);
+                    console.log('Threadly: assignMessagesToCollection completed for:', collection.name);
+                    
+                    // Step 2: Call the new function to correctly reset the UI
+                    console.log('Threadly: About to call finalizeAssignmentAndReturnToCollections for:', collection.name);
+                    await finalizeAssignmentAndReturnToCollections(collection.id);
+                    console.log('Threadly: finalizeAssignmentAndReturnToCollections completed for:', collection.name);
+                } else if (selectionContext === 'collections') {
+                    // Collection selection mode: toggle selection instead of navigating
+                    console.log('Threadly: Toggling collection selection:', collection.id);
+                    const isSelected = selectedCollectionIds.includes(collection.id);
+                    toggleCollectionSelection(collection.id, !isSelected);
+                    
+                    // Update visual state
+                    if (!isSelected) {
+                        collectionPill.classList.add('selected-for-deletion');
+                    } else {
+                        collectionPill.classList.remove('selected-for-deletion');
+                    }
                 } else {
                     console.log('Threadly: Viewing collection messages');
                     await renderMessagesForCollection(collection.id);
@@ -1934,36 +2010,280 @@
         }
     }
     
-    // Function to assign selected messages to a collection
-    async function assignSelectedMessagesToCollection(collectionId) {
-        try {
-            if (selectedMessageIds.length === 0) {
-                console.warn('Threadly: No messages selected for assignment');
-                return;
-            }
-            
-            // Call existing assignToCollection function
-            await assignToCollection(selectedMessageIds, collectionId);
-            
-            // Exit selection mode
-            await exitSelectionMode();
-            
-            // Exit assignment mode completely and return to DEFAULT SAVED state
-            isAssigningMode = false;
-            
-            // Reset to default SAVED state (same as clicking SAVED button from header)
-            setSavedButtonActive(true);
-            await renderCollectionsView(false); // false = not in assignment mode
-            morphNavbarToSavedState();
-            
-            console.log('Threadly: Successfully assigned messages to collection');
-        } catch (error) {
-            console.error('Threadly: Error assigning messages to collection:', error);
-        }
-    }
     
 
     
+    // Function to show collection actions overlay
+    function showCollectionActionsOverlay(collection) {
+        const panel = document.getElementById('threadly-panel');
+        if (!panel) return;
+        
+        // Store collection globally for use in transitions
+        window.currentCollectionForActions = collection;
+        
+        // Add class to trigger background blur
+        panel.classList.add('message-actions-active');
+        
+        // Create modal overlay
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'threadly-message-actions-overlay';
+        // Truncate collection name for popup display
+        const displayName = collection.name.length > 21 ? collection.name.substring(0, 21) + '...' : collection.name;
+        
+        modalOverlay.innerHTML = `
+            <div id="threadly-message-actions-modal" class="collection-popup">
+                <div class="threadly-message-preview">
+                    <div class="threadly-message-role">Collection</div>
+                    <div class="threadly-message-content">${displayName} (${collection.messageCount || 0} messages)</div>
+                </div>
+                <div class="threadly-action-list">
+                    <button id="threadly-delete-collection-btn" class="action-list-item delete">Delete</button>
+                    <button id="threadly-export-collection-btn" class="action-list-item export">Export as...</button>
+                    <button id="threadly-cancel-collection-btn" class="action-list-item cancel">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        // Add to panel
+        panel.appendChild(modalOverlay);
+        
+        // Add click outside to close functionality
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                closeMessageActionsOverlay();
+            }
+        });
+        
+        // Add event listeners
+        addCollectionEventListeners(collection);
+    }
+
+    // Function to add collection event listeners
+    function addCollectionEventListeners(collection) {
+        const deleteBtn = document.getElementById('threadly-delete-collection-btn');
+        const exportBtn = document.getElementById('threadly-export-collection-btn');
+        const cancelBtn = document.getElementById('threadly-cancel-collection-btn');
+        
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async () => {
+                try {
+                    await deleteCollection(collection.id);
+                    closeMessageActionsOverlay();
+                    // Re-render collections view to show the item is gone
+                    renderCollectionsView();
+                } catch (error) {
+                    console.error('Threadly: Error deleting collection:', error);
+                }
+            });
+        }
+        
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                showCollectionExportOptionsOverlay(collection);
+            });
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                closeMessageActionsOverlay();
+            });
+        }
+    }
+
+    // Function to show collection export options overlay
+    function showCollectionExportOptionsOverlay(collection) {
+        const panel = document.getElementById('threadly-panel');
+        if (!panel) return;
+        
+        // Get the existing modal and transform it instead of creating new one
+        const existingOverlay = document.getElementById('threadly-message-actions-overlay');
+        if (existingOverlay) {
+            const modal = existingOverlay.querySelector('#threadly-message-actions-modal');
+            if (modal) {
+                // Add contracting animation
+                modal.classList.add('contracting');
+                
+                // Change content immediately and add appearing animation
+                setTimeout(() => {
+                    modal.innerHTML = `
+                        <div class="threadly-export-list">
+                            <button id="threadly-export-collection-pdf-btn" class="action-list-item export-format">PDF</button>
+                            <button id="threadly-export-collection-markdown-btn" class="action-list-item export-format">Markdown</button>
+                            <button id="threadly-export-collection-docx-btn" class="action-list-item export-format">DOCX</button>
+                            <button id="threadly-cancel-collection-export-btn" class="action-list-item cancel">Cancel</button>
+                        </div>
+                    `;
+                    
+                    // Add event listeners
+                    addCollectionExportEventListeners(collection);
+                }, 50);
+                
+                // After contraction completes, remove contracting class and add export class
+                setTimeout(() => {
+                    modal.classList.remove('contracting');
+                    modal.classList.add('export-mode');
+                }, 400);
+            }
+        }
+    }
+
+    // Function to add collection export event listeners
+    function addCollectionExportEventListeners(collection) {
+        const pdfBtn = document.getElementById('threadly-export-collection-pdf-btn');
+        const markdownBtn = document.getElementById('threadly-export-collection-markdown-btn');
+        const docxBtn = document.getElementById('threadly-export-collection-docx-btn');
+        const cancelBtn = document.getElementById('threadly-cancel-collection-export-btn');
+        
+        if (pdfBtn) {
+            pdfBtn.addEventListener('click', () => {
+                exportCollection(collection, 'pdf');
+                closeMessageActionsOverlay();
+            });
+        }
+        
+        if (markdownBtn) {
+            markdownBtn.addEventListener('click', () => {
+                exportCollection(collection, 'markdown');
+                closeMessageActionsOverlay();
+            });
+        }
+        
+        if (docxBtn) {
+            docxBtn.addEventListener('click', () => {
+                exportCollection(collection, 'docx');
+                closeMessageActionsOverlay();
+            });
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                closeMessageActionsOverlay();
+            });
+        }
+    }
+
+    // Function to export a collection in different formats
+    async function exportCollection(collection, format) {
+        try {
+            // Get all messages in the collection
+            const allMessages = await loadAllMessagesFromAllPlatforms();
+            const collectionMessages = allMessages.filter(message => 
+                message.collectionIds && message.collectionIds.includes(collection.id)
+            );
+            
+            if (collectionMessages.length === 0) {
+                showToast('No messages found in this collection');
+                return;
+            }
+            
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `threadly-collection-${collection.name.replace(/[^a-zA-Z0-9]/g, '-')}-${timestamp}`;
+            
+            let content, mimeType, extension;
+            
+            switch (format) {
+                case 'markdown':
+                    content = `# ${collection.name}\n\n**Collection Export** - ${collectionMessages.length} messages\n\n`;
+                    collectionMessages.forEach((msg, index) => {
+                        const role = msg.role === 'user' ? 'You' : 'AI';
+                        const timestamp = new Date(msg.timestamp || Date.now()).toLocaleString();
+                        content += `## ${role} (${timestamp})\n\n${msg.content}\n\n---\n\n`;
+                    });
+                    mimeType = 'text/markdown';
+                    extension = 'md';
+                    break;
+                    
+                case 'pdf':
+                    // For PDF, we'll create a simple HTML content that can be printed
+                    let htmlContent = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>Threadly Collection - ${collection.name}</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+                                .header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+                                .collection-name { font-size: 24px; font-weight: bold; color: #333; }
+                                .collection-info { color: #666; font-size: 14px; margin-top: 5px; }
+                                .message { margin-bottom: 30px; padding: 15px; border-left: 3px solid #007aff; background: #f8f9fa; }
+                                .message-role { font-size: 16px; font-weight: bold; color: #007aff; margin-bottom: 8px; }
+                                .message-content { white-space: pre-wrap; }
+                                .separator { border-top: 1px solid #ddd; margin: 20px 0; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="header">
+                                <div class="collection-name">${collection.name}</div>
+                                <div class="collection-info">Collection Export - ${collectionMessages.length} messages</div>
+                            </div>
+                    `;
+                    
+                    collectionMessages.forEach((msg, index) => {
+                        const role = msg.role === 'user' ? 'You' : 'AI';
+                        const timestamp = new Date(msg.timestamp || Date.now()).toLocaleString();
+                        htmlContent += `
+                            <div class="message">
+                                <div class="message-role">${role} (${timestamp})</div>
+                                <div class="message-content">${msg.content}</div>
+                            </div>
+                        `;
+                        if (index < collectionMessages.length - 1) {
+                            htmlContent += '<div class="separator"></div>';
+                        }
+                    });
+                    
+                    htmlContent += '</body></html>';
+                    
+                    // Create a blob and trigger download
+                    const blob = new Blob([htmlContent], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${filename}.html`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    showToast('HTML file downloaded (can be printed as PDF)');
+                    return;
+                    
+                case 'docx':
+                    // For DOCX, we'll create a simple text file as a fallback
+                    content = `${collection.name}\n\nCollection Export - ${collectionMessages.length} messages\n\n`;
+                    collectionMessages.forEach((msg, index) => {
+                        const role = msg.role === 'user' ? 'You' : 'AI';
+                        const timestamp = new Date(msg.timestamp || Date.now()).toLocaleString();
+                        content += `${role} (${timestamp}):\n${msg.content}\n\n`;
+                    });
+                    mimeType = 'text/plain';
+                    extension = 'txt';
+                    showToast('Text file downloaded (DOCX not supported in browser)');
+                    break;
+                    
+                default:
+                    throw new Error(`Unsupported export format: ${format}`);
+            }
+            
+            // Create and download the file
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast(`Collection exported as ${format.toUpperCase()}`);
+            
+        } catch (error) {
+            console.error('Threadly: Error exporting collection:', error);
+            showToast('Error exporting collection');
+        }
+    }
+
     // Function to show delete confirmation modal
     function showDeleteConfirmation(collectionId, collectionName) {
         const panel = document.getElementById('threadly-panel');
@@ -2023,10 +2343,251 @@
             modalOverlay.remove();
         }
     }
+
+    // Function to show message actions overlay
+    function showMessageActionsOverlay(message, collectionId) {
+        const panel = document.getElementById('threadly-panel');
+        if (!panel) return;
+        
+        // Store message and collection ID globally for use in transitions
+        window.currentMessageForActions = message;
+        window.currentCollectionId = collectionId;
+        
+        // Add class to trigger background blur
+        panel.classList.add('message-actions-active');
+        
+        // Create modal overlay
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'threadly-message-actions-overlay';
+        
+        // Determine if this is a global message (not in a collection)
+        const isGlobalMessage = collectionId === null;
+        
+        modalOverlay.innerHTML = `
+            <div id="threadly-message-actions-modal">
+                <div class="threadly-message-preview">
+                    <div class="threadly-message-role">${message.role === 'user' ? 'You' : 'AI'}</div>
+                    <div class="threadly-message-content">${message.content.substring(0, 120)}${message.content.length > 120 ? '...' : ''}</div>
+                </div>
+                <div class="threadly-action-list">
+                    ${!isGlobalMessage ? '<button id="threadly-delete-message-btn" class="action-list-item delete">Delete</button>' : ''}
+                    <button id="threadly-export-message-btn" class="action-list-item export">Export as...</button>
+                    <button id="threadly-cancel-message-btn" class="action-list-item cancel">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        // Add to panel
+        panel.appendChild(modalOverlay);
+        
+        // Add click outside to close functionality
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                closeMessageActionsOverlay();
+            }
+        });
+        
+        // Add event listeners using the new function
+        addMainMenuEventListeners(message, collectionId);
+    }
+
+    // Function to close message actions overlay
+    function closeMessageActionsOverlay() {
+        const panel = document.getElementById('threadly-panel');
+        if (!panel) return;
+        
+        const modalOverlay = document.getElementById('threadly-message-actions-overlay');
+        const modal = modalOverlay?.querySelector('#threadly-message-actions-modal');
+        
+        if (modalOverlay && modal) {
+            // Add closing animation classes
+            modalOverlay.classList.add('closing');
+            modal.classList.add('closing');
+            
+            // Remove overlay after animation completes
+            setTimeout(() => {
+                panel.classList.remove('message-actions-active');
+                modalOverlay.remove();
+            }, 200);
+        } else {
+            // Fallback if elements don't exist
+            panel.classList.remove('message-actions-active');
+            if (modalOverlay) {
+                modalOverlay.remove();
+            }
+        }
+    }
+
+    // Function to show export options overlay
+    function showExportOptionsOverlay(message) {
+        const panel = document.getElementById('threadly-panel');
+        if (!panel) return;
+        
+        // Get the existing modal and transform it instead of creating new one
+        const existingOverlay = document.getElementById('threadly-message-actions-overlay');
+        if (existingOverlay) {
+            const modal = existingOverlay.querySelector('#threadly-message-actions-modal');
+            if (modal) {
+                // Add contracting animation
+                modal.classList.add('contracting');
+                
+                // Change content immediately and add appearing animation
+                setTimeout(() => {
+                    modal.innerHTML = `
+                        <div class="threadly-export-list">
+                            <button id="threadly-export-pdf-btn" class="action-list-item export-format">PDF</button>
+                            <button id="threadly-export-markdown-btn" class="action-list-item export-format">Markdown</button>
+                            <button id="threadly-export-docx-btn" class="action-list-item export-format">DOCX</button>
+                            <button id="threadly-cancel-export-btn" class="action-list-item cancel">Cancel</button>
+                        </div>
+                    `;
+                    
+                    // Add event listeners
+                    addExportEventListeners(message);
+                }, 200);
+                
+                // After contraction completes, remove contracting class and add export class
+                setTimeout(() => {
+                    modal.classList.remove('contracting');
+                    modal.classList.add('export-mode');
+                }, 400);
+            }
+        }
+    }
+
+    // Function to go back to main menu from export menu
+    function showMainMenuOverlay(message, collectionId) {
+        const panel = document.getElementById('threadly-panel');
+        if (!panel) return;
+        
+        const existingOverlay = document.getElementById('threadly-message-actions-overlay');
+        if (existingOverlay) {
+            const modal = existingOverlay.querySelector('#threadly-message-actions-modal');
+            if (modal) {
+                // Add contracting animation
+                modal.classList.add('contracting');
+                
+                // Change content immediately and add appearing animation
+                setTimeout(() => {
+                    modal.innerHTML = `
+                        <div class="threadly-message-preview">
+                            <div class="threadly-message-role">${message.role === 'user' ? 'You' : 'AI'}</div>
+                            <div class="threadly-message-content">${message.content.substring(0, 120)}${message.content.length > 120 ? '...' : ''}</div>
+                        </div>
+                        <div class="threadly-action-list">
+                            <button id="threadly-delete-message-btn" class="action-list-item delete">Delete</button>
+                            <button id="threadly-export-message-btn" class="action-list-item export">Export as...</button>
+                            <button id="threadly-cancel-message-btn" class="action-list-item cancel">Cancel</button>
+                        </div>
+                    `;
+                    
+                    // Add event listeners
+                    addMainMenuEventListeners(message, collectionId);
+                }, 50);
+                
+                // After contraction completes, remove contracting and export classes
+                setTimeout(() => {
+                    modal.classList.remove('contracting', 'export-mode');
+                }, 400);
+            }
+        }
+    }
+
+
+    // Function to add export event listeners
+    function addExportEventListeners(message) {
+        const pdfBtn = document.getElementById('threadly-export-pdf-btn');
+        const markdownBtn = document.getElementById('threadly-export-markdown-btn');
+        const docxBtn = document.getElementById('threadly-export-docx-btn');
+        const cancelBtn = document.getElementById('threadly-cancel-export-btn');
+        
+                if (pdfBtn) {
+                    pdfBtn.addEventListener('click', (e) => {
+                        e.target.classList.add('clicked');
+                        setTimeout(() => e.target.classList.remove('clicked'), 300);
+                        exportMessage(message, 'pdf');
+                        closeMessageActionsOverlay();
+                    });
+                }
+        
+        if (markdownBtn) {
+            markdownBtn.addEventListener('click', (e) => {
+                e.target.classList.add('clicked');
+                setTimeout(() => e.target.classList.remove('clicked'), 300);
+                exportMessage(message, 'markdown');
+                closeMessageActionsOverlay();
+            });
+        }
+        
+        if (docxBtn) {
+            docxBtn.addEventListener('click', (e) => {
+                e.target.classList.add('clicked');
+                setTimeout(() => e.target.classList.remove('clicked'), 300);
+                exportMessage(message, 'docx');
+                closeMessageActionsOverlay();
+            });
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                closeMessageActionsOverlay();
+            });
+        }
+    }
+
+    // Function to add main menu event listeners
+    function addMainMenuEventListeners(message, collectionId) {
+        const deleteBtn = document.getElementById('threadly-delete-message-btn');
+        const exportBtn = document.getElementById('threadly-export-message-btn');
+        const cancelBtn = document.getElementById('threadly-cancel-message-btn');
+        
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', async (e) => {
+                        e.target.classList.add('clicked');
+                        setTimeout(() => e.target.classList.remove('clicked'), 300);
+                        try {
+                            if (collectionId === null) {
+                                // For global messages, remove from favorites
+                                await unstarGlobalFavorite(message);
+                                closeMessageActionsOverlay();
+                                // Refresh the current view
+                                const currentState = messageFilterState;
+                                selectFilterState(currentState);
+                            } else {
+                                // For collection messages, delete from collection
+                                await deleteMessageFromCollection(message, collectionId);
+                                closeMessageActionsOverlay();
+                                await renderMessagesForCollection(collectionId);
+                            }
+                        } catch (error) {
+                            console.error('Threadly: Error deleting message:', error);
+                        }
+                    });
+                }
+        
+        if (exportBtn) {
+            exportBtn.addEventListener('click', (e) => {
+                e.target.classList.add('clicked');
+                setTimeout(() => e.target.classList.remove('clicked'), 300);
+                showExportOptionsOverlay(message);
+            });
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                closeMessageActionsOverlay();
+            });
+        }
+    }
+
     
     async function renderMessagesForCollection(collectionId) {
         try {
             console.log('Threadly: renderMessagesForCollection called with collectionId:', collectionId);
+            
+            // Set the current collection ID for selection context
+            currentCollectionId = collectionId;
+            
             console.log('Threadly: messageList element:', messageList);
             console.log('Threadly: messageList exists:', !!messageList);
             
@@ -2165,25 +2726,25 @@
                 backButton.style.background = 'transparent';
             });
             
-            backButton.addEventListener('click', (e) => {
+            backButton.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Threadly: Back button clicked, exiting SAVED state');
+                console.log('Threadly: Back button clicked, returning to DEFAULT SAVED state');
                 console.log('Threadly: Current panel state:', panel?.classList.toString());
                 console.log('Threadly: Current isInCollectionsView:', isInCollectionsView);
-                console.log('Threadly: Previous state to return to:', messageFilterState);
                 
-                // Exit SAVED state (equivalent to click 2 on SAVED button)
-                setSavedButtonActive(false);
+                // Return to DEFAULT SAVED state (collections list) instead of exiting completely
                 isInCollectionsView = false;
                 
-                // Return to previous active state
-                console.log('Threadly: Calling resetNavbarToOriginal');
-                resetNavbarToOriginal();
+                // Keep SAVED button active and show collections list
+                console.log('Threadly: Rendering collections view');
+                await renderCollectionsView(false); // false = normal mode, not assignment mode
                 
-                // Return message area to normal view
-                console.log('Threadly: Calling returnToMainMessages');
-                returnToMainMessages();
+                // Morph navbar to show "ADD NEW | BACK" for SAVED state
+                console.log('Threadly: Calling morphNavbarToSavedState');
+                morphNavbarToSavedState();
+                
+                console.log('Threadly: Returned to DEFAULT SAVED state');
             });
             
             headerDiv.appendChild(collectionInfo);
@@ -2429,6 +2990,22 @@
                         copyMessageToClipboard(msg.content);
                     });
                 }
+
+                // Add long-press gesture for message actions
+                let longPressTimer;
+                item.addEventListener('mousedown', () => {
+                    longPressTimer = setTimeout(() => {
+                        showMessageActionsOverlay(msg, collectionId);
+                    }, 750);
+                });
+                
+                item.addEventListener('mouseup', () => {
+                    clearTimeout(longPressTimer);
+                });
+                
+                item.addEventListener('mouseleave', () => {
+                    clearTimeout(longPressTimer);
+                });
                 
                 fragment.appendChild(item);
             });
@@ -2465,23 +3042,23 @@
                 // Add event listener for the back button
                 const backButton = messageList.querySelector('.threadly-back-button');
                 if (backButton) {
-                    backButton.addEventListener('click', (e) => {
+                    backButton.addEventListener('click', async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('Threadly: Back button clicked, exiting SAVED state');
-                        console.log('Threadly: Previous state to return to:', messageFilterState);
+                        console.log('Threadly: Back button clicked, returning to DEFAULT SAVED state');
                         
-                        // Exit SAVED state (equivalent to click 2 on SAVED button)
-                        setSavedButtonActive(false);
+                        // Return to DEFAULT SAVED state (collections list) instead of exiting completely
                         isInCollectionsView = false;
                         
-                        // Return to previous active state
-                        console.log('Threadly: Calling resetNavbarToOriginal');
-                        resetNavbarToOriginal();
+                        // Keep SAVED button active and show collections list
+                        console.log('Threadly: Rendering collections view');
+                        await renderCollectionsView(false); // false = normal mode, not assignment mode
                         
-                        // Return message area to normal view
-                        console.log('Threadly: Calling returnToMainMessages');
-                        returnToMainMessages();
+                        // Morph navbar to show "ADD NEW | BACK" for SAVED state
+                        console.log('Threadly: Calling morphNavbarToSavedState');
+                        morphNavbarToSavedState();
+                        
+                        console.log('Threadly: Returned to DEFAULT SAVED state');
                     });
                 }
             }
@@ -2594,6 +3171,232 @@
         }
     }
 
+    // Function to delete a message from a collection
+    async function deleteMessageFromCollection(message, collectionId) {
+        try {
+            // Load messages from storage
+            const messages = await loadMessagesFromStorage();
+            
+            // Find the message
+            const messageIndex = messages.findIndex(m => m.id === message.id);
+            if (messageIndex === -1) {
+                console.error('Threadly: Message not found:', message.id);
+                return;
+            }
+            
+            // Remove collection ID from the message's collectionIds array
+            if (messages[messageIndex].collectionIds && messages[messageIndex].collectionIds.includes(collectionId)) {
+                messages[messageIndex].collectionIds = messages[messageIndex].collectionIds.filter(id => id !== collectionId);
+                
+                // Save updated messages
+                await saveMessagesToStorage(messages);
+                
+                // Update collection message counts
+                await updateCollectionMessageCounts();
+                
+                console.log('Threadly: Removed message from collection:', collectionId);
+                
+                // Show confirmation toast
+                showToast('Message removed from collection');
+            } else {
+                console.warn('Threadly: Message was not in the specified collection');
+            }
+            
+        } catch (error) {
+            console.error('Threadly: Error removing message from collection:', error);
+            showToast('Error removing message from collection');
+        }
+    }
+
+    // Function to delete selected messages from a collection
+    async function deleteSelectedMessagesFromCollection() {
+        if (!currentCollectionId || selectedMessageIds.length === 0) {
+            console.error('Threadly: No collection or messages selected for deletion');
+            return;
+        }
+
+        try {
+            console.log('Threadly: Deleting messages from collection:', currentCollectionId, 'Messages:', selectedMessageIds);
+            
+            // Load collections from storage
+            const collections = await loadCollectionsFromStorage();
+            
+            // Find the specific collection
+            const collection = collections.find(c => c.id === currentCollectionId);
+            if (!collection) {
+                console.error('Threadly: Collection not found:', currentCollectionId);
+                showToast('Collection not found');
+                return;
+            }
+            
+            // Remove the selected message IDs from the collection's messageIds array
+            const originalCount = collection.messageIds.length;
+            collection.messageIds = collection.messageIds.filter(id => !selectedMessageIds.includes(id));
+            const removedCount = originalCount - collection.messageIds.length;
+            
+            // Save the updated collections
+            await saveCollectionsToStorage(collections);
+            
+            // Update collection message counts
+            await updateCollectionMessageCounts();
+            
+            console.log('Threadly: Removed', removedCount, 'messages from collection:', collection.name);
+            
+            // Show confirmation toast
+            showToast(`Removed ${removedCount} message(s) from '${collection.name}'`);
+            
+            // Exit selection mode and refresh the collection view
+            await exitSelectionMode();
+            await renderMessagesForCollection(currentCollectionId);
+            
+        } catch (error) {
+            console.error('Threadly: Error deleting messages from collection:', error);
+            showToast('Error removing messages from collection');
+        }
+    }
+
+    // Function to delete selected collections
+    async function deleteSelectedCollections() {
+        if (selectedCollectionIds.length === 0) {
+            console.error('Threadly: No collections selected for deletion');
+            return;
+        }
+
+        try {
+            console.log('Threadly: Deleting collections:', selectedCollectionIds);
+            
+            // Load collections from storage
+            const collections = await loadCollectionsFromStorage();
+            
+            // Get names of collections being deleted for toast message
+            const deletedNames = collections
+                .filter(c => selectedCollectionIds.includes(c.id))
+                .map(c => c.name);
+            
+            // Filter out the selected collections
+            const remainingCollections = collections.filter(c => !selectedCollectionIds.includes(c.id));
+            
+            // Save the updated collections
+            await saveCollectionsToStorage(remainingCollections);
+            
+            // Remove collection IDs from all messages that were assigned to deleted collections
+            const messages = await loadMessagesFromStorage();
+            messages.forEach(message => {
+                if (message.collectionIds) {
+                    message.collectionIds = message.collectionIds.filter(id => !selectedCollectionIds.includes(id));
+                }
+            });
+            
+            // Save updated messages
+            await saveMessagesToStorage(messages);
+            
+            // Update global favorites if needed
+            await updateGlobalFavorites();
+            
+            // Update collection message counts
+            await updateCollectionMessageCounts();
+            
+            console.log('Threadly: Deleted collections:', deletedNames);
+            
+            // Show confirmation toast
+            showToast(`Deleted ${deletedNames.length} saved folder(s): ${deletedNames.join(', ')}`);
+            
+            // Exit selection mode and refresh the collections view
+            await exitSelectionMode();
+            await renderCollectionsView();
+            
+        } catch (error) {
+            console.error('Threadly: Error deleting collections:', error);
+            showToast('Error deleting saved folders');
+        }
+    }
+
+    // Function to export a message in different formats
+    async function exportMessage(message, format) {
+        try {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const role = message.role === 'user' ? 'You' : 'AI';
+            const filename = `threadly-${role.toLowerCase()}-${timestamp}`;
+            
+            let content, mimeType, extension;
+            
+            switch (format) {
+                case 'markdown':
+                    content = `# ${role} Message\n\n**Date:** ${new Date(message.timestamp || Date.now()).toLocaleString()}\n\n${message.content}`;
+                    mimeType = 'text/markdown';
+                    extension = 'md';
+                    break;
+                    
+                case 'pdf':
+                    // For PDF, we'll create a simple HTML content that can be printed
+                    const htmlContent = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>Threadly Export - ${role} Message</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+                                .header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+                                .role { font-size: 18px; font-weight: bold; color: #333; }
+                                .timestamp { color: #666; font-size: 14px; }
+                                .content { white-space: pre-wrap; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="header">
+                                <div class="role">${role}</div>
+                                <div class="timestamp">${new Date(message.timestamp || Date.now()).toLocaleString()}</div>
+                            </div>
+                            <div class="content">${message.content}</div>
+                        </body>
+                        </html>
+                    `;
+                    
+                    // Create a blob and trigger download
+                    const blob = new Blob([htmlContent], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${filename}.html`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    showToast('HTML file downloaded (can be printed as PDF)');
+                    return;
+                    
+                case 'docx':
+                    // For DOCX, we'll create a simple text file as a fallback
+                    content = `${role} Message\n\nDate: ${new Date(message.timestamp || Date.now()).toLocaleString()}\n\n${message.content}`;
+                    mimeType = 'text/plain';
+                    extension = 'txt';
+                    showToast('Text file downloaded (DOCX not supported in browser)');
+                    break;
+                    
+                default:
+                    throw new Error(`Unsupported export format: ${format}`);
+            }
+            
+            // Create and download the file
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast(`Message exported as ${format.toUpperCase()}`);
+            
+        } catch (error) {
+            console.error('Threadly: Error exporting message:', error);
+            showToast('Error exporting message');
+        }
+    }
+
     async function assignToCollection(messageIds, collectionId) {
         try {
             // Load messages from storage
@@ -2621,11 +3424,13 @@
             // Update collection message counts
             await updateCollectionMessageCounts();
             
-            console.log('Threadly: Deleted collection:', collectionName);
-            
             // Show confirmation toast
             const collectionName = await getCollectionName(collectionId);
             showToast(`Moved ${messageIds.length} items to '${collectionName}'`);
+            
+            // FORCE EXIT: Reset assignment mode and return to DEFAULT SAVED state
+            console.log('Threadly: Assignment completed - forcing exit to default SAVED state');
+            exitAssignmentMode();
             
         } catch (error) {
             console.error('Threadly: Error assigning to collection:', error);
@@ -2678,56 +3483,143 @@
     }
 
     function showToast(message) {
-        // Create toast element
-        const toast = document.createElement('div');
-        toast.className = 'threadly-toast';
-        toast.textContent = message;
+        console.log('Threadly: showToast called with message:', message);
         
-        // Calculate dynamic width based on message length
-        const baseWidth = 200; // Minimum width
-        const charWidth = 8; // Approximate width per character
-        const maxWidth = 400; // Maximum width
-        const dynamicWidth = Math.min(Math.max(message.length * charWidth, baseWidth), maxWidth);
-        
-        // Apply dynamic width
-        toast.style.width = `${dynamicWidth}px`;
-        toast.style.minWidth = `${baseWidth}px`;
-        toast.style.maxWidth = `${maxWidth}px`;
-        
-        // Find the search container and search pill to hide
-        const searchContainer = document.querySelector('.threadly-search-container');
+        // Find the search elements
+        const searchInput = document.querySelector('.threadly-search-pill input');
         const searchPill = document.querySelector('.threadly-search-pill');
         
-        if (searchContainer && searchPill) {
-            // Hide the search pill
-            searchPill.style.opacity = '0';
-            searchPill.style.visibility = 'hidden';
+        console.log('Threadly: searchInput found:', !!searchInput);
+        console.log('Threadly: searchPill found:', !!searchPill);
+        console.log('Threadly: searchInput element:', searchInput);
+        console.log('Threadly: searchPill element:', searchPill);
+        
+        if (searchInput && searchPill) {
+            // Store original state
+            const originalPlaceholder = searchInput.placeholder;
+            const originalValue = searchInput.value;
             
-            // Position toast over the search container
-            searchContainer.style.position = 'relative';
-            searchContainer.appendChild(toast);
+            // Calculate dynamic width based on actual text measurement
+            const baseWidth = 184; // Same as --search-pill-compact-width
+            const maxWidth = 500; // Allow for longer messages
+            const padding = 32; // Account for padding (16px on each side)
             
-            // Remove toast and restore search pill after 3 seconds
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
+            // Create a temporary element to measure text width accurately
+            const tempElement = document.createElement('span');
+            tempElement.style.position = 'absolute';
+            tempElement.style.visibility = 'hidden';
+            tempElement.style.whiteSpace = 'nowrap';
+            tempElement.style.fontSize = '1rem'; // Same as search input
+            tempElement.style.fontFamily = 'inherit';
+            tempElement.textContent = message;
+            document.body.appendChild(tempElement);
+            
+            const textWidth = tempElement.offsetWidth;
+            document.body.removeChild(tempElement);
+            
+            const dynamicWidth = Math.min(Math.max(textWidth + padding, baseWidth), maxWidth);
+            
+            console.log('Threadly: Message length:', message.length);
+            console.log('Threadly: Calculated dynamic width:', dynamicWidth);
+            
+            // Set up toast message
+            searchInput.placeholder = '';
+            searchInput.value = message;
+            searchInput.readOnly = true;
+            searchInput.style.textAlign = 'center';
+            searchInput.style.cursor = 'default';
+            
+            // Apply dynamic width to search pill using CSS custom property
+            // This ensures the transition works properly
+            searchPill.style.setProperty('--search-pill-expanded-width', `${dynamicWidth}px`);
+            searchPill.style.width = `${dynamicWidth}px`;
+            
+            // Add toast styling (subtle success color)
+            searchPill.style.background = 'rgba(0, 191, 174, 0.12)';
+            searchPill.style.borderColor = 'rgba(0, 191, 174, 0.25)';
+            searchPill.style.boxShadow = '0 0 0 2px rgba(0, 191, 174, 0.15)';
+            
+            // Reuse the existing metaball animation system
+            // This will trigger the same expansion animation as typing
+            console.log('Threadly: Calling handleSearchFocus for toast');
+            
+            // Create a proper event object that will pass the ID check
+            const fakeEvent = {
+                target: {
+                    ...searchInput,
+                    id: 'threadly-search-input'
                 }
-                // Restore the search pill
-                searchPill.style.opacity = '1';
-                searchPill.style.visibility = 'visible';
+            };
+            handleSearchFocus(fakeEvent);
+            
+            console.log('Threadly: Toast expanded with message:', message);
+            
+            // Restore original state after 3 seconds
+            setTimeout(() => {
+                // Restore input state
+                searchInput.placeholder = originalPlaceholder;
+                searchInput.value = originalValue;
+                searchInput.readOnly = false;
+                searchInput.style.textAlign = '';
+                searchInput.style.cursor = '';
+                
+                // Restore original pill styling
+                searchPill.style.removeProperty('--search-pill-expanded-width');
+                searchPill.style.width = '';
+                searchPill.style.background = '';
+                searchPill.style.borderColor = '';
+                searchPill.style.boxShadow = '';
+                
+                // Reuse the existing metaball animation system to collapse
+                // This will trigger the same collapse animation as blur
+                const fakeBlurEvent = {
+                    target: {
+                        ...searchInput,
+                        id: 'threadly-search-input'
+                    }
+                };
+                handleSearchBlur(fakeBlurEvent);
+                
+                console.log('Threadly: Toast collapsed, restored to normal state');
             }, 3000);
         } else {
-            // Fallback to panel if search container not found
-            const panel = document.getElementById('threadly-panel');
-            if (panel) {
-                panel.appendChild(toast);
+            // Fallback: create traditional toast if search elements not found
+            const toast = document.createElement('div');
+            toast.className = 'threadly-toast';
+            toast.textContent = message;
+            
+            // Calculate dynamic width based on message length
+            const baseWidth = 200;
+            const charWidth = 8;
+            const maxWidth = 400;
+            const dynamicWidth = Math.min(Math.max(message.length * charWidth, baseWidth), maxWidth);
+            
+            toast.style.width = `${dynamicWidth}px`;
+            toast.style.minWidth = `${baseWidth}px`;
+            toast.style.maxWidth = `${maxWidth}px`;
+            
+            // Find the search container
+            const searchContainer = document.querySelector('.threadly-search-container');
+            if (searchContainer) {
+                searchContainer.style.position = 'relative';
+                searchContainer.appendChild(toast);
                 
-                // Remove after 3 seconds
                 setTimeout(() => {
                     if (toast.parentNode) {
                         toast.parentNode.removeChild(toast);
                     }
                 }, 3000);
+            } else {
+                // Final fallback to panel
+                const panel = document.getElementById('threadly-panel');
+                if (panel) {
+                    panel.appendChild(toast);
+                    setTimeout(() => {
+                        if (toast.parentNode) {
+                            toast.parentNode.removeChild(toast);
+                        }
+                    }, 3000);
+                }
             }
         }
     }
@@ -3226,12 +4118,32 @@
         
         isInSelectionMode = true;
         selectedMessageIds = [];
+        selectedCollectionIds = []; // Reset collection selection
+        
+        // Determine selection context based on current view
+        if (isInCollectionsView && currentCollectionId) {
+            // We're viewing messages within a specific collection
+            selectionContext = 'messages-in-collection';
+            console.log('Threadly: Entering selection mode for messages in collection:', currentCollectionId);
+        } else if (isInCollectionsView && !currentCollectionId) {
+            // We're viewing the collections list
+            selectionContext = 'collections';
+            console.log('Threadly: Entering selection mode for collections');
+        } else {
+            // We're in the main messages view (not in collections)
+            selectionContext = 'messages-in-collection'; // Default to message selection
+            console.log('Threadly: Entering selection mode for messages in main view');
+        }
         
         // Show checkboxes on all messages
         document.body.classList.add('selection-mode');
         
-        // Morph navbar to show ASSIGN TO | CANCEL
-        morphNavbarToSelectionMode();
+        // Morph navbar based on selection context
+        if (selectionContext === 'collections') {
+            morphNavbarToDeleteMode();
+        } else {
+            morphNavbarToSelectionMode();
+        }
         
         // Update select button to show it's in close mode
         const selectBulb = document.getElementById('threadly-select-bulb');
@@ -3251,6 +4163,8 @@
     async function exitSelectionMode() {
         isInSelectionMode = false;
         selectedMessageIds = [];
+        selectedCollectionIds = []; // Reset collection selection
+        selectionContext = null; // Reset selection context
         
         // Reset assign mode
         isAssigningMode = false;
@@ -3262,6 +4176,12 @@
         const checkboxes = document.querySelectorAll('.threadly-message-checkbox');
         checkboxes.forEach(checkbox => {
             checkbox.checked = false;
+        });
+        
+        // Remove selection styling from collection pills
+        const collectionPills = document.querySelectorAll('.threadly-collection-pill');
+        collectionPills.forEach(pill => {
+            pill.classList.remove('selected-for-deletion');
         });
         
         // Update select button to show it's in select mode
@@ -3387,6 +4307,36 @@
         }
     }
 
+    // Function to update delete mode button states
+    function updateDeleteModeButtonStates() {
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) return;
+        
+        const labels = toggleBar.querySelectorAll('.threadly-toggle-label');
+        const deleteBtn = labels[0]; // First label is DELETE
+        const cancelBtn = labels[1]; // Second label is CANCEL
+        
+        let hasSelection = false;
+        if (selectionContext === 'messages-in-collection') {
+            hasSelection = selectedMessageIds.length > 0;
+        } else if (selectionContext === 'collections') {
+            hasSelection = selectedCollectionIds.length > 0;
+        }
+        
+        if (deleteBtn && deleteBtn.classList.contains('delete')) {
+            deleteBtn.disabled = !hasSelection;
+            deleteBtn.style.opacity = hasSelection ? '1' : '0.5';
+            deleteBtn.style.cursor = hasSelection ? 'pointer' : 'not-allowed';
+        }
+        
+        // CANCEL button is always enabled
+        if (cancelBtn && cancelBtn.classList.contains('cancel')) {
+            cancelBtn.disabled = false;
+            cancelBtn.style.opacity = '1';
+            cancelBtn.style.cursor = 'pointer';
+        }
+    }
+
     // Function to morph navbar to assignment mode (ADD NEW | CANCEL)
     function morphNavbarToAssignmentMode() {
         console.log('Threadly: morphNavbarToAssignmentMode called');
@@ -3447,6 +4397,77 @@
         } else {
             console.error('Threadly: Panel not found in morphToSavedState');
         }
+    }
+
+    // Function to morph navbar to delete mode (DELETE | CANCEL)
+    function morphNavbarToDeleteMode() {
+        console.log('Threadly: morphNavbarToDeleteMode called');
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (!toggleBar) {
+            console.error('Threadly: Toggle bar not found');
+            return;
+        }
+
+        // Add morphing class for animation
+        toggleBar.classList.add('morphed');
+        
+        // Update the toggle segment for highlight bubble
+        const toggleSegment = toggleBar.querySelector('.threadly-toggle-segment');
+        if (toggleSegment) {
+            toggleSegment.className = 'threadly-toggle-segment';
+            toggleSegment.style.left = '2px';
+            toggleSegment.style.width = 'calc(50% - 2px)';
+        }
+        
+        // Update the labels to show only 2 sections (50/50 split)
+        const labels = toggleBar.querySelectorAll('.threadly-toggle-label');
+        if (labels.length >= 2) {
+            // Add fly-in animation by setting initial state
+            labels[0].style.opacity = '0';
+            labels[0].style.transform = 'translateY(20px) scale(0.9)';
+            labels[1].style.opacity = '0';
+            labels[1].style.transform = 'translateY(20px) scale(0.9)';
+            
+            labels[0].textContent = 'DELETE';
+            labels[0].className = 'threadly-toggle-label delete';
+            labels[1].textContent = 'CANCEL';
+            labels[1].className = 'threadly-toggle-label cancel';
+            
+            // Hide any additional labels
+            for (let i = 2; i < labels.length; i++) {
+                labels[i].style.display = 'none';
+            }
+            
+            // Animate in with fly-in effect
+            setTimeout(() => {
+                labels[0].style.opacity = '1';
+                labels[0].style.transform = 'translateY(0) scale(1)';
+                labels[1].style.opacity = '1';
+                labels[1].style.transform = 'translateY(0) scale(1)';
+            }, 50);
+        }
+        
+        // Add event listeners for the buttons
+        if (labels[0]) {
+            labels[0].addEventListener('click', () => {
+                if (selectionContext === 'messages-in-collection' && selectedMessageIds.length > 0) {
+                    deleteSelectedMessagesFromCollection();
+                } else if (selectionContext === 'collections' && selectedCollectionIds.length > 0) {
+                    deleteSelectedCollections();
+                }
+            });
+        }
+        
+        if (labels[1]) {
+            labels[1].addEventListener('click', () => {
+                exitSelectionMode();
+            });
+        }
+
+        // Update button states based on selection
+        updateDeleteModeButtonStates();
+        
+        console.log('Threadly: Navbar morphed to delete mode');
     }
 
     // Function to morph navbar to saved state (ADD NEW | CANCEL)
@@ -3647,7 +4668,7 @@
                 // Remove animation class after animation completes
                 setTimeout(() => {
                     addBtn.classList.remove('clicked');
-                }, 300); // Match animation duration
+                }, 400); // Match animation duration
                 
                 // Call the original function
                 addNewCollection();
@@ -3838,7 +4859,7 @@
                 // Remove animation class after animation completes
                 setTimeout(() => {
                     addBtn.classList.remove('clicked');
-                }, 300); // Match animation duration
+                }, 400); // Match animation duration
                 
                 await addNewCollection();
             });
@@ -3975,8 +4996,10 @@
                 });
 
                 // Add click handler to assign to this collection
-                collectionItem.addEventListener('click', () => {
-                    assignMessagesToCollection(collection.id);
+                collectionItem.addEventListener('click', async () => {
+                    await assignMessagesToCollection(collection.id);
+                    // Call the finalization function to properly reset UI state
+                    await finalizeAssignmentAndReturnToCollections(collection.id);
                 });
 
                 collectionsList.appendChild(collectionItem);
@@ -4108,7 +5131,7 @@
                 // Remove animation class after animation completes
                 setTimeout(() => {
                     addBtn.classList.remove('clicked');
-                }, 300); // Match animation duration
+                }, 400); // Match animation duration
                 
                 addNewCollection();
             });
@@ -4268,6 +5291,11 @@
         if (unstarBtn) {
             unstarBtn.disabled = selectedMessageIds.length === 0;
         }
+        
+        // Update delete mode button states if in delete mode
+        if (selectionContext === 'messages-in-collection' || selectionContext === 'collections') {
+            updateDeleteModeButtonStates();
+        }
     }
 
     function toggleMessageSelection(messageId, checked) {
@@ -4287,9 +5315,37 @@
         }
         
         updateSelectionInfo();
+        
+        // Update delete mode button states if in delete mode
+        if (selectionContext === 'messages-in-collection') {
+            updateDeleteModeButtonStates();
+        }
+        
         console.log('Threadly: Final selected messages:', selectedMessageIds);
     }
 
+    // Function to toggle collection selection
+    function toggleCollectionSelection(collectionId, checked) {
+        console.log('Threadly: toggleCollectionSelection called:', { collectionId, checked, currentSelected: [...selectedCollectionIds] });
+        
+        const index = selectedCollectionIds.indexOf(collectionId);
+        if (checked) {
+            if (index === -1) {
+                selectedCollectionIds.push(collectionId);
+                console.log('Threadly: Added collection to selection:', collectionId);
+            }
+        } else {
+            if (index !== -1) {
+                selectedCollectionIds.splice(index, 1);
+                console.log('Threadly: Removed collection from selection:', collectionId);
+            }
+        }
+        
+        // Update delete mode button states
+        updateDeleteModeButtonStates();
+        
+        console.log('Threadly: Final selected collections:', selectedCollectionIds);
+    }
 
     // --- Metaball Search Bar Functions --- //
     function handleSearchFocus(e) {
@@ -4523,16 +5579,53 @@
         // Show success message
         showToast(`Messages added to "${collection.name}"`);
 
-        // Exit selection mode and assignment mode
-        isAssigningMode = false;
-        await exitSelectionMode();
-        
-        // Reset to default SAVED state (same as clicking SAVED button from header)
-        setSavedButtonActive(true);
-        await renderCollectionsView(false); // false = not in assignment mode
-        morphNavbarToSavedState();
+        // Use the new function to properly handle UI transition
+        await finalizeAssignmentAndReturnToCollections(collectionId);
         
         console.log('Threadly: Successfully assigned messages to collection:', collection.name);
+    }
+
+    // NEW FUNCTION: To handle the UI transition correctly after assignment.
+    async function finalizeAssignmentAndReturnToCollections(collectionId) {
+        console.log('Threadly: finalizeAssignmentAndReturnToCollections called for collectionId:', collectionId);
+        const collectionName = await getCollectionName(collectionId);
+        console.log('Threadly: Collection name:', collectionName);
+        showToast(`Moved ${selectedMessageIds.length} items to '${collectionName}'`);
+
+        // 1. Reset selection and assignment state variables
+        console.log('Threadly: Resetting isAssigningMode from', isAssigningMode, 'to false');
+        isAssigningMode = false;
+        console.log('Threadly: Clearing selectedMessageIds:', selectedMessageIds);
+        selectedMessageIds = [];
+
+        // 2. Manually reset the UI elements without a full exit
+        document.body.classList.remove('selection-mode');
+        console.log('Threadly: Removed selection-mode class from body');
+
+        const selectBulb = document.getElementById('threadly-select-bulb');
+        if (selectBulb) {
+            selectBulb.title = 'Enable selection mode';
+            selectBulb.setAttribute('data-mode', 'select');
+            console.log('Threadly: Reset select bulb');
+        }
+
+        // Uncheck all checkboxes
+        const checkboxes = document.querySelectorAll('.threadly-message-checkbox');
+        console.log('Threadly: Found', checkboxes.length, 'checkboxes to uncheck');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+            const container = checkbox.closest('.threadly-message-checkbox-container');
+            if(container) container.style.display = 'none';
+        });
+        
+        // 3. Morph the UI back to the DEFAULT SAVED state
+        console.log('Threadly: Setting savedButtonActive to true');
+        setSavedButtonActive(true); // Keep the saved button active
+        console.log('Threadly: Calling renderCollectionsView(false)');
+        await renderCollectionsView(false); // Re-render collections in default (non-assignment) mode
+        console.log('Threadly: Calling morphNavbarToSavedState()');
+        morphNavbarToSavedState(); // Morph navbar to "ADD NEW | BACK"
+        console.log('Threadly: finalizeAssignmentAndReturnToCollections completed');
     }
 
     // --- Prompt Refiner Functions --- //

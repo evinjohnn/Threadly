@@ -394,6 +394,10 @@
 }
 
 .threadly-search-container {
+    position: relative; /* For metaball canvas positioning */
+    width: 100%;
+    display: flex;
+    justify-content: center;
     padding: 9.6px 18px; /* Reduced from 12px to 9.6px (20% reduction: 12 * 0.8 = 9.6) */
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     flex-shrink: 0; /* Prevent search from shrinking */
@@ -1410,12 +1414,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     padding: 0 8px;
 }
 
-/* Container for metaball wrapper */
-.threadly-search-container {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-}
+/* Container for metaball wrapper - styles moved to main definition above */
 
 /* Responsive adjustments for smaller screens */
 @media (max-width: 400px) {
@@ -1598,8 +1597,506 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     transform: translateY(-1px);
 }
 
+/* Action List Styles - Apple Minimalistic */
+.threadly-action-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.threadly-export-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.action-list-item {
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.action-list-item:first-child {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.action-list-item:last-child {
+    border-bottom: none;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.action-list-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.action-list-item.delete {
+    color: #ff3b30;
+}
+
+.action-list-item.delete:hover {
+    background: rgba(255, 59, 48, 0.1);
+}
+
+.action-list-item.export {
+    color: #007aff;
+}
+
+.action-list-item.export:hover {
+    background: rgba(0, 122, 255, 0.1);
+}
+
+.action-list-item.export-format {
+    color: #ffffff;
+}
+
+.action-list-item.export-format:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.action-list-item.cancel {
+    color: #8e8e93;
+    font-weight: 400;
+}
+
+.action-list-item.cancel:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+}
+
+/* 4. ENHANCED ACTION ITEMS STYLING */
+.action-list-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.action-list-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.action-list-item:hover::before {
+    left: 100%;
+}
+
+.action-list-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05) translateX(3px);
+    color: rgba(255, 255, 255, 1);
+    letter-spacing: 0.8px;
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.action-list-item.export-format {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
+    color: rgba(147, 197, 253, 0.9);
+}
+
+.action-list-item.export-format:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: rgba(147, 197, 253, 1);
+}
+
+.action-list-item.cancel {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: rgba(252, 165, 165, 0.9);
+}
+
+.action-list-item.cancel:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: rgba(252, 165, 165, 1);
+}
+
+/* 5. ENHANCED CLICK ANIMATION */
+.action-list-item.clicked {
+    animation: clickPulseEnhanced 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes clickPulseEnhanced {
+    0% { 
+        transform: scale(1); 
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+    }
+    20% { 
+        transform: scale(0.95); 
+        background: rgba(255, 255, 255, 0.2);
+    }
+    50% { 
+        transform: scale(1.1); 
+        background: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.1);
+    }
+    100% { 
+        transform: scale(1); 
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    }
+}
+
 /* Background blur effect when modal is active */
 #threadly-panel.delete-confirmation-active > *:not(#threadly-delete-modal-overlay) {
+    filter: blur(4px) brightness(0.7);
+    transition: filter 0.3s ease;
+    pointer-events: none;
+}
+
+/* Message Actions Overlay Styles */
+#threadly-message-actions-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: overlayFadeInEnhanced 0.4s ease-out;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+@keyframes overlayFadeInEnhanced {
+    0% { 
+        opacity: 0; 
+        backdrop-filter: blur(0px); 
+        -webkit-backdrop-filter: blur(0px); 
+    }
+    100% { 
+        opacity: 1; 
+        backdrop-filter: blur(6px); 
+        -webkit-backdrop-filter: blur(6px); 
+    }
+}
+
+#threadly-message-actions-overlay.closing {
+    animation: overlayFadeOutEnhanced 0.3s ease-in;
+}
+
+@keyframes overlayFadeOutEnhanced {
+    0% { 
+        opacity: 1; 
+        backdrop-filter: blur(6px); 
+        -webkit-backdrop-filter: blur(6px); 
+    }
+    100% { 
+        opacity: 0; 
+        backdrop-filter: blur(0px); 
+        -webkit-backdrop-filter: blur(0px); 
+    }
+}
+
+/* 7. ENHANCED MODAL CLOSE ANIMATION */
+#threadly-message-actions-modal.closing {
+    animation: modalSlideOutEnhanced 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalSlideOutEnhanced {
+    0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0px);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.85) translateY(30px);
+        filter: blur(10px);
+    }
+}
+
+/* 8. RIPPLE EFFECT FOR INTERACTIONS */
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(0);
+    animation: rippleAnimation 0.6s ease-out;
+    pointer-events: none;
+}
+
+@keyframes rippleAnimation {
+    0% {
+        transform: scale(0);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* ===== IMPROVED COMPLETE ANIMATION SYSTEM ===== */
+
+/* 1. ENHANCED MODAL POP ANIMATION */
+#threadly-message-actions-modal {
+    background: rgba(28, 28, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    max-width: 320px;
+    width: auto;
+    max-height: 80vh;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced glow effect */
+#threadly-message-actions-modal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(145deg, transparent, rgba(255, 255, 255, 0.05));
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#threadly-message-actions-modal:hover::before {
+    opacity: 1;
+}
+
+@keyframes modalSlideIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.85) translateY(30px);
+        filter: blur(10px);
+    }
+    60% {
+        opacity: 0.8;
+        transform: scale(1.02) translateY(-5px);
+        filter: blur(2px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0px);
+    }
+}
+
+/* 2. IMPROVED CONTRACTING ANIMATION */
+#threadly-message-actions-modal.contracting {
+    max-width: 70px;
+    height: 140px;
+    border-radius: 10px;
+    padding: 12px 6px;
+    transform: scale(0.98);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Smooth content transition */
+.threadly-action-list, .threadly-export-list, .threadly-message-preview {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#threadly-message-actions-modal.contracting .threadly-action-list,
+#threadly-message-actions-modal.contracting .threadly-export-list {
+    opacity: 0;
+    transform: scale(0.7) translateX(-20px);
+    filter: blur(5px);
+}
+
+#threadly-message-actions-modal.contracting .threadly-message-preview {
+    opacity: 0;
+    transform: scale(0.7) translateY(-10px);
+    filter: blur(5px);
+}
+
+/* 3. ENHANCED TEXT APPEARING ANIMATION */
+.threadly-export-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.threadly-export-list .action-list-item {
+    opacity: 0;
+    transform: translateX(-30px) scale(0.8);
+    filter: blur(3px);
+}
+
+/* Staggered animation for each item */
+.threadly-export-list .action-list-item:nth-child(1) {
+    animation: slideInFadeEnhanced 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s forwards;
+}
+
+.threadly-export-list .action-list-item:nth-child(2) {
+    animation: slideInFadeEnhanced 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.4s forwards;
+}
+
+.threadly-export-list .action-list-item:nth-child(3) {
+    animation: slideInFadeEnhanced 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.5s forwards;
+}
+
+.threadly-export-list .action-list-item:nth-child(4) {
+    animation: slideInFadeEnhanced 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.6s forwards;
+}
+
+@keyframes slideInFadeEnhanced {
+    0% {
+        transform: translateX(-30px) scale(0.8);
+        opacity: 0;
+        filter: blur(5px);
+    }
+    40% {
+        transform: translateX(8px) scale(1.05);
+        opacity: 0.7;
+        filter: blur(1px);
+    }
+    70% {
+        transform: translateX(-2px) scale(1.02);
+        opacity: 0.9;
+        filter: blur(0px);
+    }
+    100% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+        filter: blur(0px);
+    }
+}
+
+/* 8. EXPORT MODE SPECIFIC STYLING */
+#threadly-message-actions-modal.export-mode {
+    background: rgba(28, 28, 30, 0.98);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.5),
+        0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+#threadly-message-actions-modal.collection-popup {
+    max-width: 350px;
+}
+
+/* 9. RIPPLE EFFECT FOR INTERACTIONS */
+.action-list-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(0);
+    animation: rippleAnimation 0.6s ease-out;
+    pointer-events: none;
+}
+
+@keyframes rippleAnimation {
+    0% {
+        transform: scale(0);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+
+.threadly-message-preview {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.threadly-message-preview .threadly-message-role {
+    color: #007aff;
+    font-weight: 500;
+    font-size: 12px;
+    margin-bottom: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.threadly-message-preview .threadly-message-content {
+    color: #ffffff;
+    font-size: 12px;
+    line-height: 1.3;
+    max-height: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+
+.modal-btn.export {
+    background: #3b82f6;
+    color: white;
+}
+
+.modal-btn.export:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+
+
+
+/* Background blur effects for new overlays */
+#threadly-panel.message-actions-active > *:not(#threadly-message-actions-overlay) {
+    filter: blur(4px) brightness(0.7);
+    transition: filter 0.3s ease;
+    pointer-events: none;
+}
+
+#threadly-panel.export-options-active > *:not(#threadly-export-options-overlay) {
     filter: blur(4px) brightness(0.7);
     transition: filter 0.3s ease;
     pointer-events: none;
@@ -1889,8 +2386,9 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 
-/* Fly-in animation for ADD NEW and CANCEL labels */
+/* Fly-in animation for ADD NEW, DELETE, and CANCEL labels */
 .threadly-toggle-label.add,
+.threadly-toggle-label.delete,
 .threadly-toggle-label.back {
     transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
@@ -1946,7 +2444,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 
 /* Selection mode ADD | BACK labels */
 .threadly-toggle-label.add {
-    color: #10b981;
+    color: #6ee7b7; /* Soft green */
     font-weight: 700;
     font-size: 0.75rem;
     text-transform: uppercase;
@@ -2009,20 +2507,23 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 }
 
 .threadly-toggle-label.assign-to:not(:disabled):hover {
-    color: white;
-    background: rgba(16, 185, 129, 0.6);
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.8);
+    color: white !important; /* White text on green highlight */
+    background: rgba(16, 185, 129, 0.9); /* Brighter version of text green */
+    box-shadow: 0 0 30px rgba(16, 185, 129, 1), 0 0 60px rgba(16, 185, 129, 0.6); /* More intense glow */
+    transition: none !important; /* Prevent color morphing */
 }
 
   .threadly-toggle-label.unstar:not(:disabled):hover {
-      color: white;
-      background: rgba(239, 68, 68, 0.6);
-      box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+      color: #ef4444; /* Brighter red on hover */
+      background: rgba(252, 165, 165, 0.15); /* Soft red background */
+      border: 1px solid rgba(252, 165, 165, 0.3);
+      box-shadow: 0 2px 8px rgba(252, 165, 165, 0.2);
+      filter: brightness(1.2);
   }
 
-/* CANCEL button styling - centered with soft red glow */
+/* CANCEL button styling - clean without hollow pill */
 .threadly-toggle-label.cancel {
-    color: #ef4444;
+    color: #ff4444; /* Bright red */
     font-weight: 700;
     font-size: 0.75rem;
     text-transform: uppercase;
@@ -2037,41 +2538,129 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     line-height: 1;
     padding: 4px 8px;
     border-radius: 14px;
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: transparent; /* Remove hollow pill background */
+    border: none; /* Remove hollow pill border */
     position: relative;
     z-index: 2;
     height: 28px;
     flex: 1;
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.threadly-toggle-label.cancel:hover {
+/* More specific selector for cancel button hover */
+.threadly-toggle-bar .threadly-toggle-label.cancel:hover {
     color: white;
-    background: rgba(185, 28, 28, 0.9);
-    border-color: rgba(185, 28, 28, 1);
-    box-shadow: 0 0 25px rgba(185, 28, 28, 0.6);
+    background: rgba(239, 68, 68, 0.9); /* More vibrant red background */
+    box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6); /* More intense glow */
+}
+
+/* Ensure the text inside also changes color on hover */
+.threadly-toggle-bar .threadly-toggle-label.cancel:hover .threadly-toggle-text {
+    color: white;
+}
+
+/* Even more specific selector for morphed state */
+.threadly-toggle-bar.morphed .threadly-toggle-label.cancel:hover {
+    color: white;
+    background: rgba(239, 68, 68, 0.9); /* More vibrant red background */
+    box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6); /* More intense glow */
+}
+
+.threadly-toggle-bar.morphed .threadly-toggle-label.cancel:hover .threadly-toggle-text {
+    color: white;
+}
+
+/* Additional specific selector for selection mode cancel button */
+.selection-mode .threadly-toggle-bar .threadly-toggle-label.cancel:hover {
+    color: white !important;
+    background: rgba(239, 68, 68, 0.9) !important; /* More vibrant red background */
+    box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6) !important; /* More intense glow */
+}
+
+.selection-mode .threadly-toggle-bar .threadly-toggle-label.cancel:hover .threadly-toggle-text {
+    color: #ef4444 !important;
+}
+
+/* Even more specific selector for selection mode cancel button */
+body.selection-mode .threadly-toggle-bar .threadly-toggle-label.cancel:hover {
+    color: white !important;
+    background: rgba(239, 68, 68, 0.9) !important; /* More vibrant red background */
+    box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6) !important; /* More intense glow */
+}
+
+body.selection-mode .threadly-toggle-bar .threadly-toggle-label.cancel:hover .threadly-toggle-text {
+    color: white !important;
+}
+
+/* Most specific selector for selection mode cancel button */
+body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.cancel:hover {
+    color: white !important;
+    background: rgba(239, 68, 68, 0.9) !important; /* More vibrant red background */
+    box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6) !important; /* More intense glow */
+}
+
+body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.cancel:hover .threadly-toggle-text {
+    color: white !important;
 }
 
 .threadly-toggle-label.cancel:active {
-    background: rgba(153, 27, 27, 0.95);
-    border-color: rgba(153, 27, 27, 1);
-    box-shadow: 0 0 30px rgba(153, 27, 27, 0.8);
+    color: #dc2626; /* Darker red when pressed */
+    background: rgba(252, 165, 165, 0.25);
+    border: 1px solid rgba(252, 165, 165, 0.4);
+    box-shadow: 0 1px 4px rgba(252, 165, 165, 0.3);
+    transform: scale(0.98);
 }
   
   /* Assign button - green accent */
 .threadly-toggle-label.assign-to:not(:disabled) {
-    color: #10b981;
+    color: #10b981; /* Original green */
 }
 
 /* Unstar button - red accent */
 .threadly-toggle-label.unstar:not(:disabled) {
-    color: #ef4444;
+    color: #ff4444; /* Bright red */
+}
+
+/* Delete button - green accent (like ADD NEW) */
+.threadly-toggle-label.delete {
+    color: #10b981; /* Green like ADD NEW */
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    border-radius: 14px;
+    position: relative;
+    z-index: 2;
+}
+
+.threadly-toggle-label.delete:not(:disabled) {
+    opacity: 1;
+    cursor: pointer;
+}
+
+.threadly-toggle-label.delete:not(:disabled):hover {
+    color: white !important; /* White text on green highlight */
+    background: rgba(16, 185, 129, 0.9); /* Bright green background */
+    box-shadow: 0 0 30px rgba(16, 185, 129, 1), 0 0 60px rgba(16, 185, 129, 0.6); /* Intense green glow */
+    transition: none !important; /* Prevent color morphing */
+}
+
+.threadly-toggle-label.delete:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: #666;
 }
 
 .threadly-toggle-label.back {
-    color: #ef4444;
+    color: #ff4444; /* Bright red */
     font-weight: 700;
     font-size: 0.75rem;
     text-transform: uppercase;
@@ -2104,40 +2693,27 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     display: none;
 }
 
-/* Vibrant poppy green glowing hover effect for ADD NEW - fully filled */
+/* Soft green brighten hover effect for ADD NEW */
 .threadly-toggle-label.add:hover {
-    color: white;
-    background: rgba(16, 185, 129, 0.8);
-    border: 2px solid #10b981;
-    box-shadow: 
-        0 0 25px rgba(16, 185, 129, 0.9),
-        0 0 50px rgba(16, 185, 129, 0.7),
-        0 0 75px rgba(16, 185, 129, 0.5),
-        inset 0 0 25px rgba(16, 185, 129, 0.3);
-    transform: scale(1.05);
-    text-shadow: 
-        0 0 15px rgba(255, 255, 255, 0.9),
-        0 0 30px rgba(255, 255, 255, 0.7);
+    color: white; /* White text on green highlight */
+    background: rgba(16, 185, 129, 0.9); /* Brighter version of text green */
+    box-shadow: 0 0 30px rgba(16, 185, 129, 1), 0 0 60px rgba(16, 185, 129, 0.6); /* More intense glow */
+    transition: none !important; /* Prevent color morphing */
 }
 
-/* Vibrant poppy red glowing hover effect for CANCEL - fully filled */
+/* Soft red brighten hover effect for BACK */
 .threadly-toggle-label.back:hover {
-    color: white;
-    background: rgba(239, 68, 68, 0.8);
-    border: 2px solid #ef4444;
-    box-shadow: 
-        0 0 25px rgba(239, 68, 68, 0.9),
-        0 0 50px rgba(239, 68, 68, 0.7),
-        0 0 75px rgba(239, 68, 68, 0.5),
-        inset 0 0 25px rgba(239, 68, 68, 0.3);
-    transform: scale(1.05);
-    text-shadow: 
-        0 0 15px rgba(255, 255, 255, 0.9),
-        0 0 30px rgba(255, 255, 255, 0.7);
+    color: #ef4444; /* Brighter red on hover */
+    background: rgba(252, 165, 165, 0.15); /* Soft red background */
+    border: 1px solid rgba(252, 165, 165, 0.3);
+    box-shadow: 0 2px 8px rgba(252, 165, 165, 0.2);
+    transform: scale(1.02);
+    filter: brightness(1.2);
 }
 
-/* Ensure stable positioning for ADD NEW and CANCEL labels */
+/* Ensure stable positioning for ADD NEW, DELETE, and CANCEL labels */
 .threadly-toggle-bar.morphed .threadly-toggle-label.add,
+.threadly-toggle-bar.morphed .threadly-toggle-label.delete,
 .threadly-toggle-bar.morphed .threadly-toggle-label.back {
     position: absolute !important;
     transform: none !important;
@@ -2146,6 +2722,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 
 /* Reset positioning when not in morphed state */
 .threadly-toggle-bar:not(.morphed) .threadly-toggle-label.add,
+.threadly-toggle-bar:not(.morphed) .threadly-toggle-label.delete,
 .threadly-toggle-bar:not(.morphed) .threadly-toggle-label.back {
     display: none !important;
 }
@@ -2348,19 +2925,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     border-radius: inherit;
 }
 
-/* Ensure search container has relative positioning for metaball canvas */
-.threadly-search-container {
-    position: relative;
-    padding: 12px 18px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    flex-shrink: 0; /* Prevent search from shrinking */
-    
-    /* Ultra-minimal glass effect for search area */
-    background: rgba(255, 255, 255, 0.005);
-    backdrop-filter: blur(0.5px);
-    -webkit-backdrop-filter: blur(0.5px);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-}
+/* Search container styles consolidated above */
 
 /* Legacy FAV mode styles - now handled by metaball design */
 
@@ -3072,6 +3637,36 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     transform: scale(1.3);
 }
 
+/* Tooltip for navigation dots - Pill shape with platform accent color background */
+.threadly-scroll-dot-tooltip {
+    position: absolute;
+    right: 20px;
+    background: var(--platform-color, rgba(255, 255, 255, 0.1));
+    color: white;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(10px);
+    transition: all 0.2s ease;
+    pointer-events: none;
+    z-index: 100001;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.threadly-scroll-dot:hover .threadly-scroll-dot-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+}
+
 /* Platform-specific positioning */
 .threadly-scroll-indicator.chatgpt,
 .threadly-scroll-indicator.claude,
@@ -3518,6 +4113,42 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 #threadly-panel[data-platform="copilot"] .threadly-collection-pill {
     background: rgba(0, 120, 212, 0.15);
     border-color: rgba(0, 120, 212, 0.3);
+}
+
+/* Collection pill selected for deletion state */
+.threadly-collection-pill.selected-for-deletion {
+    background: rgba(239, 68, 68, 0.8) !important;
+    border-color: rgba(239, 68, 68, 1) !important;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.6) !important;
+    transform: scale(1.02) !important;
+}
+
+.threadly-collection-pill.selected-for-deletion .collection-pill-name {
+    color: white !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+}
+
+.threadly-collection-pill.selected-for-deletion .collection-pill-arrow {
+    color: white !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+}
+
+.threadly-collection-pill.selected-for-deletion .collection-pill-add {
+    color: white !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Override platform-specific colors when selected for deletion */
+#threadly-panel[data-platform="chatgpt"] .threadly-collection-pill.selected-for-deletion,
+#threadly-panel[data-platform="gemini"] .threadly-collection-pill.selected-for-deletion,
+#threadly-panel[data-platform="claude"] .threadly-collection-pill.selected-for-deletion,
+#threadly-panel[data-platform="ai-studio"] .threadly-collection-pill.selected-for-deletion,
+#threadly-panel[data-platform="perplexity"] .threadly-collection-pill.selected-for-deletion,
+#threadly-panel[data-platform="grok"] .threadly-collection-pill.selected-for-deletion,
+#threadly-panel[data-platform="copilot"] .threadly-collection-pill.selected-for-deletion {
+    background: rgba(239, 68, 68, 0.8) !important;
+    border-color: rgba(239, 68, 68, 1) !important;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.6) !important;
 }
 
 /* --- Assignment View Styles --- */
