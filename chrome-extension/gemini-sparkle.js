@@ -96,31 +96,49 @@
             sparklePath.removeAttribute("filter");
         });
 
-        // Add hover popup functionality
+        // Add hover popup functionality with shared state management
         let hoverTimeout;
+        let hidePopupTimeout;
         let popup = null;
+        const hoverState = { isHoveringSparkle: false, isHoveringPopup: false };
+        const timeoutRef = { hidePopupTimeout };
+
+        const showPopup = () => {
+            clearTimeout(hidePopupTimeout);
+            if (popup) return; // Don't create a new popup if one is already visible
+            hoverTimeout = setTimeout(() => {
+                popup = createModeSelectionPopup(svg, hoverState, timeoutRef);
+            }, 300);
+        };
+
+        const hidePopup = () => {
+            clearTimeout(hoverTimeout);
+            timeoutRef.hidePopupTimeout = setTimeout(() => {
+                if (popup) {
+                    if (popup.classList.contains('growing')) {
+                        popup.classList.remove('growing');
+                        popup.classList.add('shrinking');
+                        // Ensure animation completes before removing
+                        setTimeout(() => {
+                            if (popup) popup.remove();
+                            popup = null;
+                        }, 650); // Slightly longer than animation duration
+                } else {
+                        if (popup) popup.remove();
+                        popup = null;
+                    }
+                }
+            }, 100); // Reduced delay for more responsive hiding
+        };
 
         svg.addEventListener('mouseenter', () => {
-            console.log('Threadly: Mouse entered sparkle');
-            hoverTimeout = setTimeout(() => {
-                console.log('Threadly: Creating popup after hover delay');
-                popup = createModeSelectionPopup(svg);
-                if (popup) {
-                    console.log('Threadly: Popup created successfully');
-                } else {
-                    console.log('Threadly: Popup creation failed');
-                }
-            }, 300); // Show popup after 300ms hover
+            hoverState.isHoveringSparkle = true;
+            showPopup();
         });
 
         svg.addEventListener('mouseleave', () => {
-            console.log('Threadly: Mouse left sparkle');
-            clearTimeout(hoverTimeout);
-            if (popup) {
-                console.log('Threadly: Removing popup');
-                popup.remove();
-                popup = null;
-            }
+            hoverState.isHoveringSparkle = false;
+            hidePopup();
         });
 
         // Add click handler (exact same as Claude)
@@ -133,6 +151,7 @@
             if (popup) {
                 popup.remove();
                 popup = null;
+                hoverState.isHoveringPopup = false;
             }
             
             handleSparkleClick();
@@ -158,53 +177,488 @@
     }
 
     // Create mode selection popup
-    function createModeSelectionPopup(sparkleElement) {
-        console.log('Threadly: Creating mode selection popup');
-        console.log('Threadly: Sparkle element:', sparkleElement);
+    function createModeSelectionPopup(sparkleElement, hoverState = {}, timeoutRef = {}) {
+        // Inject pill animation CSS if not already present
+        if (!document.querySelector('#threadly-pill-animations')) {
+            const style = document.createElement('style');
+            style.id = 'threadly-pill-animations';
+            style.textContent = `
+                /* Pill-shaped popup animation */
+                .pill-popup {
+                    position: fixed;
+                    z-index: 999999;
+                    overflow: hidden;
+                    pointer-events: none;
+                    isolation: isolate;
+                }
+
+
+                /* Growing animation */
+                .pill-popup.growing {
+                    animation: pill-emerge 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                }
+
+                /* Shrinking animation */
+                .pill-popup.shrinking {
+                    animation: pill-contract 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                    animation-fill-mode: forwards;
+                }
+
+                /* Yellow hover effect - only color change, no background, no movement */
+                .threadly-mode-option:hover {
+                    color: #ffcc00 !important;
+                    background: transparent !important;
+                    background-color: transparent !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                    outline: none !important;
+                    transform: none !important;
+                    transition: color 0.2s ease !important;
+                }
+                
+                /* Ensure no background colors or movement on any state - Gemini specific */
+                .threadly-mode-option {
+                    background: transparent !important;
+                    background-color: transparent !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                    outline: none !important;
+                    transform: none !important;
+                    transition: color 0.2s ease !important;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+                    font-size: 9px !important;
+                    font-weight: 600 !important;
+                    color: #ffffff !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.2px !important;
+                    white-space: nowrap !important;
+                    cursor: pointer !important;
+                    display: inline-block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                }
+
+                /* Text fade during contraction */
+                .pill-popup.shrinking .threadly-mode-option.correction {
+                    animation: fadeOut 0.3s ease 0.1s forwards;
+                }
+                
+                .pill-popup.shrinking .threadly-mode-option.refine {
+                    animation: fadeOut 0.3s ease 0.1s forwards;
+                }
+                
+                .pill-popup.shrinking .threadly-mode-option.image {
+                    animation: fadeOut 0.3s ease 0.4s forwards;
+                }
+
+                @keyframes fadeOut {
+                    to {
+                        opacity: 0;
+                    }
+                }
+
+                    /* Emergence keyframes */
+                    @keyframes pill-emerge {
+                        0% {
+                            width: 0;
+                            height: 0;
+                            opacity: 0;
+                            border-radius: 50%;
+                        }
+                        
+                        15% {
+                            width: 20px;
+                            height: 20px;
+                            opacity: 0.8;
+                            border-radius: 50%;
+                        }
+                        
+                        30% {
+                            width: 28px;
+                            height: 28px;
+                            opacity: 1;
+                            border-radius: 50%;
+                        }
+                        
+                        50% {
+                            width: 80px;
+                            height: 28px;
+                            border-radius: 20px;
+                        }
+                        
+                        70% {
+                            width: 140px;
+                            height: 30px;
+                            border-radius: 15px;
+                        }
+                        
+                        85% {
+                            width: 170px;
+                            height: 32px;
+                            border-radius: 16px;
+                        }
+                        
+                        100% {
+                            width: 190px;
+                            height: 32px;
+                            opacity: 1;
+                            border-radius: 16px;
+                        }
+                    }
+
+                /* Contraction keyframes */
+                @keyframes pill-contract {
+                    0% {
+                        width: 190px;
+                        height: 32px;
+                        opacity: 1;
+                        border-radius: 16px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    10% {
+                        width: 170px;
+                        height: 32px;
+                        border-radius: 16px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    20% {
+                        width: 140px;
+                        height: 30px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    35% {
+                        width: 100px;
+                        height: 30px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    50% {
+                        width: 60px;
+                        height: 30px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    70% {
+                        width: 40px;
+                        height: 30px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    85% {
+                        width: 20px;
+                        height: 20px;
+                        border-radius: 50%;
+                        transform: translateX(-50%);
+                    }
+                    
+                    100% {
+                        width: 0;
+                        height: 0;
+                        opacity: 0;
+                        border-radius: 50%;
+                        transform: translateX(-50%);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
         
-        try {
             // Remove existing popup if any
-            const existingPopup = document.querySelector('.threadly-mode-popup');
+        const existingPopup = document.querySelector('.pill-popup');
             if (existingPopup) {
-                console.log('Threadly: Removing existing popup');
                 existingPopup.remove();
             }
 
-            // Create popup container
-            console.log('Threadly: Creating popup div element');
+        // Create popup container with pill animation
             const popup = document.createElement('div');
-            popup.className = 'threadly-mode-popup';
-            console.log('Threadly: Setting popup innerHTML');
-            popup.innerHTML = `
-                <div class="threadly-mode-option correction" data-mode="correction">
-                    <span class="mode-icon">✏️</span>
-                    <span class="mode-text">CORRECT</span>
-                </div>
-                <div class="threadly-mode-option image" data-mode="image">
-                    <span class="mode-icon">🎨</span>
-                    <span class="mode-text">IMAGE</span>
-                </div>
-                <div class="threadly-mode-option refine" data-mode="refine">
-                    <span class="mode-icon">✨</span>
-                    <span class="mode-text">REFINE</span>
-                </div>
-            `;
+        popup.className = 'pill-popup';
+        
+        // Add inline styles for pill animation with higher specificity for Gemini
+        popup.style.position = 'fixed';
+        popup.style.zIndex = '999999';
+        popup.style.overflow = 'hidden';
+        popup.style.pointerEvents = 'none';
+        popup.style.isolation = 'isolate';
+        
+    // SOLUTION 1: Enhanced CSS Specificity and Gemini-specific overrides
+    const contentContainer = document.createElement('div');
+    contentContainer.style.cssText = `
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-evenly !important;
+        height: 100% !important;
+        width: 100% !important;
+        opacity: 0 !important;
+        transition: opacity 0.3s ease 0.4s !important;
+        position: relative !important;
+        z-index: 9999 !important;
+        pointer-events: auto !important;
+    `;
 
-            // Position popup relative to sparkle element
-            console.log('Threadly: Setting sparkle element position');
-            sparkleElement.style.position = 'relative';
-            console.log('Threadly: Appending popup to sparkle element');
-            sparkleElement.appendChild(popup);
-            console.log('Threadly: Popup appended to sparkle element');
-            console.log('Threadly: Popup element:', popup);
-            console.log('Threadly: Sparkle element position:', sparkleElement.getBoundingClientRect());
+    // Spans will be created programmatically below
+        
+        popup.appendChild(contentContainer);
 
-            // Show popup with animation
+        // SOLUTION 2: Inject CSS directly into the page to override Gemini styles
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Ultra-specific selectors to override Gemini styles - Base state */
+            .threadly-mode-option,
+            span.threadly-mode-option,
+            [class*="threadly-mode-option"] {
+                background: transparent !important;
+                background-color: transparent !important;
+                box-shadow: none !important;
+                border: none !important;
+                outline: none !important;
+                transform: none !important;
+                transition: color 0.2s ease !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+                font-size: 9px !important;
+                font-weight: 600 !important;
+                color: #ffffff !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.2px !important;
+                white-space: nowrap !important;
+                cursor: pointer !important;
+                display: inline-block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                position: relative !important;
+                z-index: 10000 !important;
+                text-decoration: none !important;
+                line-height: 1 !important;
+                margin: 0 8px !important;
+                padding: 0 !important;
+                min-width: auto !important;
+                max-width: none !important;
+                width: auto !important;
+                height: auto !important;
+                text-align: center !important;
+                text-shadow: none !important;
+                filter: none !important;
+            }
+
+            /* Hover state with yellow color effect */
+            .threadly-mode-option:hover,
+            span.threadly-mode-option:hover,
+            [class*="threadly-mode-option"]:hover {
+                color: #ffcc00 !important;
+                background: transparent !important;
+                background-color: transparent !important;
+                box-shadow: none !important;
+                border: none !important;
+                outline: none !important;
+                transform: none !important;
+                transition: color 0.2s ease !important;
+            }
+
+            /* Active/focus states - prevent any unwanted styling */
+            .threadly-mode-option:active,
+            .threadly-mode-option:focus,
+            span.threadly-mode-option:active,
+            span.threadly-mode-option:focus,
+            [class*="threadly-mode-option"]:active,
+            [class*="threadly-mode-option"]:focus {
+                background: transparent !important;
+                background-color: transparent !important;
+                box-shadow: none !important;
+                border: none !important;
+                outline: none !important;
+                transform: none !important;
+                color: #ffffff !important;
+            }
+
+            /* Gemini-specific overrides - target common Gemini selectors */
+            gemini-chat .threadly-mode-option,
+            [data-test-id] .threadly-mode-option,
+            .conversation-container .threadly-mode-option,
+            .chat-container .threadly-mode-option,
+            .message-container .threadly-mode-option {
+                color: #ffffff !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                display: inline-block !important;
+                background: transparent !important;
+                background-color: transparent !important;
+                transform: none !important;
+            }
+
+            /* Hover states for Gemini-specific selectors */
+            gemini-chat .threadly-mode-option:hover,
+            [data-test-id] .threadly-mode-option:hover,
+            .conversation-container .threadly-mode-option:hover,
+            .chat-container .threadly-mode-option:hover,
+            .message-container .threadly-mode-option:hover {
+                color: #ffcc00 !important;
+                background: transparent !important;
+                background-color: transparent !important;
+                transform: none !important;
+            }
+        `;
+
+        // Inject the style into the document head
+        document.head.appendChild(style);
+
+        // Position popup relative to document body to avoid clipping
+        document.body.appendChild(popup);
+
+        // SOLUTION 3: Alternative approach using textContent instead of innerHTML
+        function createTextSpan(text, mode) {
+            const span = document.createElement('span');
+            span.className = `threadly-mode-option ${mode}`;
+            span.setAttribute('data-mode', mode);
+            span.textContent = text; // Use textContent instead of innerHTML
+            
+            // Apply styles programmatically
+            const styles = {
+                cursor: 'pointer',
+                transition: 'color 0.2s ease',
+                fontSize: '9px',
+                fontWeight: '600',
+                color: '#ffffff',
+                textTransform: 'uppercase',
+                letterSpacing: '0.2px',
+                whiteSpace: 'nowrap',
+                display: 'inline-block',
+                visibility: 'visible',
+                opacity: '1',
+                position: 'relative',
+                zIndex: '10000',
+                background: 'none',
+                border: 'none',
+                outline: 'none',
+                textDecoration: 'none',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                lineHeight: '1',
+                margin: '0 8px',
+                padding: '0',
+                minWidth: 'auto',
+                maxWidth: 'none',
+                width: 'auto',
+                height: 'auto',
+                textAlign: 'center'
+            };
+            
+            Object.entries(styles).forEach(([property, value]) => {
+                span.style.setProperty(property, value, 'important');
+            });
+            
+            return span;
+        }
+
+        // Clear container and add spans programmatically (replacing innerHTML approach)
+        contentContainer.innerHTML = '';
+        const correctSpan = createTextSpan('CORRECT', 'correction');
+        const imageSpan = createTextSpan('IMAGE', 'image');
+        const refineSpan = createTextSpan('REFINE', 'refine');
+        
+        // Add hover event listeners to programmatically created spans
+        [correctSpan, imageSpan, refineSpan].forEach(span => {
+            span.addEventListener('mouseenter', function() {
+                this.style.setProperty('color', '#ffcc00', 'important');
+                this.style.setProperty('background', 'transparent', 'important');
+                this.style.setProperty('background-color', 'transparent', 'important');
+                this.style.setProperty('transform', 'none', 'important');
+            });
+            
+            span.addEventListener('mouseleave', function() {
+                this.style.setProperty('color', '#ffffff', 'important');
+                this.style.setProperty('background', 'transparent', 'important');
+                this.style.setProperty('background-color', 'transparent', 'important');
+                this.style.setProperty('transform', 'none', 'important');
+            });
+        });
+        
+        contentContainer.appendChild(correctSpan);
+        contentContainer.appendChild(imageSpan);
+        contentContainer.appendChild(refineSpan);
+
+        // SOLUTION 4: Debug function to check what's interfering
+        function debugGeminiInterference() {
+            console.log('=== GEMINI PILL DEBUG ===');
+            
+            const options = document.querySelectorAll('.threadly-mode-option');
+            options.forEach((option, index) => {
+                const computedStyle = window.getComputedStyle(option);
+                console.log(`Option ${index + 1} (${option.textContent}):`);
+                console.log('- Display:', computedStyle.display);
+                console.log('- Visibility:', computedStyle.visibility);
+                console.log('- Opacity:', computedStyle.opacity);
+                console.log('- Color:', computedStyle.color);
+                console.log('- Font-size:', computedStyle.fontSize);
+                console.log('- Z-index:', computedStyle.zIndex);
+                console.log('- Position:', computedStyle.position);
+                console.log('---');
+            });
+        }
+
+        // Run debug function after a short delay
+        setTimeout(debugGeminiInterference, 1000);
+
+        // SOLUTION 5: Force visibility with MutationObserver
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes') {
+                    const target = mutation.target;
+                    if (target.classList && target.classList.contains('threadly-mode-option')) {
+                        // Force the styles back if they get overridden
+                        target.style.setProperty('color', '#ffffff', 'important');
+                        target.style.setProperty('visibility', 'visible', 'important');
+                        target.style.setProperty('opacity', '1', 'important');
+                        target.style.setProperty('display', 'inline-block', 'important');
+                    }
+                }
+            });
+        });
+
+        // Observe style changes on the options
+        setTimeout(() => {
+            const options = document.querySelectorAll('.threadly-mode-option');
+            options.forEach(option => {
+                observer.observe(option, { attributes: true, attributeFilter: ['style', 'class'] });
+            });
+        }, 500);
+        
+        // Get sparkle element position and adjust popup position
+        const sparkleRect = sparkleElement.getBoundingClientRect();
+        
+        // Set initial position for pill animation (centered above the sparkle)
+        popup.style.top = (sparkleRect.top - 45) + 'px'; // Adjusted for smaller height + gap
+        popup.style.left = (sparkleRect.left + sparkleRect.width / 2) + 'px';
+        popup.style.transform = 'translateX(-50%)'; // Horizontally center the popup
+        
+        // Add pill animation styles with Threadly liquid glass design
+        popup.style.width = '0';
+        popup.style.height = '0';
+        popup.style.background = 'rgba(255, 255, 255, 0.08)';
+        popup.style.backdropFilter = 'blur(4px)';
+        popup.style.webkitBackdropFilter = 'blur(4px)';
+        popup.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+        popup.style.borderRadius = '50px';
+        popup.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+        popup.style.transformOrigin = 'center center';
+        popup.style.transition = 'none';
+        popup.style.opacity = '0';
+        popup.style.margin = '0';
+        popup.style.padding = '0';
+
+        // Start the pill emergence animation
+        setTimeout(() => {
+            popup.classList.add('growing');
+            popup.style.pointerEvents = 'all';
+            
+            // Show content after animation starts
             setTimeout(() => {
-                console.log('Threadly: Adding show class to popup');
-                popup.classList.add('show');
-                console.log('Threadly: Popup classes:', popup.className);
-                console.log('Threadly: Popup position:', popup.getBoundingClientRect());
+                contentContainer.style.opacity = '1';
+            }, 400);
             }, 10);
 
             // Add click handlers for each option
@@ -212,27 +666,39 @@
                 const mode = e.target.closest('.threadly-mode-option')?.dataset.mode;
                 if (mode) {
                     handleModeSelection(mode, sparkleElement);
+                if (popup) {
                     popup.remove();
+                    // Reset hover state when popup is closed
+                    hoverState.isHoveringPopup = false;
                 }
-            });
+            }
+        });
 
-            // Hide popup when clicking outside
-            const hidePopup = (e) => {
-                if (!popup.contains(e.target) && !sparkleElement.contains(e.target)) {
-                    popup.remove();
-                    document.removeEventListener('click', hidePopup);
-                }
-            };
-
+        // Keep popup open when hovering over it
+        popup.addEventListener('mouseenter', () => {
+            hoverState.isHoveringPopup = true;
+            clearTimeout(timeoutRef.hidePopupTimeout);
+        });
+        
+        popup.addEventListener('mouseleave', () => {
+            hoverState.isHoveringPopup = false;
+            // Only hide if not hovering over sparkle either
+            if (!hoverState.isHoveringSparkle) {
+                timeoutRef.hidePopupTimeout = setTimeout(() => {
+                    if (!hoverState.isHoveringSparkle && !hoverState.isHoveringPopup && popup) {
+                        popup.classList.remove('growing');
+                        popup.classList.add('shrinking');
+                        // Ensure animation completes before removing
             setTimeout(() => {
-                document.addEventListener('click', hidePopup);
+                            if (popup) popup.remove();
+                            popup = null;
+                        }, 650); // Slightly longer than animation duration
+                    }
             }, 100);
+            }
+        });
 
             return popup;
-        } catch (error) {
-            console.error('Threadly: Error creating popup:', error);
-            return null;
-        }
     }
 
     // Handle mode selection
@@ -252,7 +718,7 @@
             return;
         }
 
-        // Visual feedback
+        // Start sparkle breathing animation
         startClickAnimationSequence(sparkleElement);
 
         try {
@@ -286,10 +752,23 @@
                     // Trigger input event to notify the platform
                     textArea.dispatchEvent(new Event('input', { bubbles: true }));
                     textArea.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    console.log('Threadly: Prompt refined successfully with triage AI');
+                    
+                    // Stop sparkle breathing animation when result is replaced
+                    stopClickAnimationSequence(sparkleElement);
+                } else {
+                    // Stop animation even if no result (error case)
+                    stopClickAnimationSequence(sparkleElement);
                 }
+            } else {
+                // Stop animation if PromptRefiner is not available
+                stopClickAnimationSequence(sparkleElement);
             }
         } catch (error) {
             console.error('Threadly: Error processing prompt:', error);
+            // Stop animation on error
+            stopClickAnimationSequence(sparkleElement);
         }
     }
 

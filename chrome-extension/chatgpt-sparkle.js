@@ -218,12 +218,12 @@
 
                 /* Growing animation */
                 .pill-popup.growing {
-                    animation: pill-emerge 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+                    animation: pill-emerge 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
                 }
 
                 /* Shrinking animation */
                 .pill-popup.shrinking {
-                    animation: pill-contract 0.6s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+                    animation: pill-contract 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
                 }
 
                 /* Yellow hover effect - only color change, no background, no movement */
@@ -249,12 +249,38 @@
                     transition: color 0.2s ease !important;
                 }
 
+                /* Text fade during contraction */
+                .pill-popup.shrinking .threadly-mode-option.correction {
+                    animation: fadeOut 0.3s ease 0.1s forwards;
+                }
+                
+                .pill-popup.shrinking .threadly-mode-option.refine {
+                    animation: fadeOut 0.3s ease 0.1s forwards;
+                }
+                
+                .pill-popup.shrinking .threadly-mode-option.image {
+                    animation: fadeOut 0.3s ease 0.4s forwards;
+                }
+
+                @keyframes fadeOut {
+                    to {
+                        opacity: 0;
+                    }
+                }
+
                     /* Emergence keyframes */
                     @keyframes pill-emerge {
                         0% {
                             width: 0;
                             height: 0;
                             opacity: 0;
+                            border-radius: 50%;
+                        }
+                        
+                        15% {
+                            width: 20px;
+                            height: 20px;
+                            opacity: 0.8;
                             border-radius: 50%;
                         }
                         
@@ -265,10 +291,22 @@
                             border-radius: 50%;
                         }
                         
+                        50% {
+                            width: 80px;
+                            height: 28px;
+                            border-radius: 20px;
+                        }
+                        
                         70% {
                             width: 140px;
-                            height: 28px;
-                            border-radius: 14px;
+                            height: 30px;
+                            border-radius: 15px;
+                        }
+                        
+                        85% {
+                            width: 170px;
+                            height: 32px;
+                            border-radius: 16px;
                         }
                         
                         100% {
@@ -286,18 +324,49 @@
                         height: 32px;
                         opacity: 1;
                         border-radius: 16px;
+                        transform: translateX(-50%);
                     }
                     
-                    30% {
-                        width: 120px;
-                        height: 28px;
-                        border-radius: 14px;
+                    10% {
+                        width: 170px;
+                        height: 32px;
+                        border-radius: 16px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    20% {
+                        width: 140px;
+                        height: 30px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    35% {
+                        width: 100px;
+                        height: 30px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    50% {
+                        width: 60px;
+                        height: 30px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
                     }
                     
                     70% {
-                        width: 32px;
-                        height: 32px;
+                        width: 40px;
+                        height: 30px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    85% {
+                        width: 20px;
+                        height: 20px;
                         border-radius: 50%;
+                        transform: translateX(-50%);
                     }
                     
                     100% {
@@ -305,6 +374,7 @@
                         height: 0;
                         opacity: 0;
                         border-radius: 50%;
+                        transform: translateX(-50%);
                     }
                 }
             `;
@@ -331,17 +401,16 @@
         const contentContainer = document.createElement('div');
         contentContainer.style.display = 'flex';
         contentContainer.style.alignItems = 'center';
-        contentContainer.style.justifyContent = 'space-between';
+        contentContainer.style.justifyContent = 'space-evenly';
         contentContainer.style.height = '100%';
         contentContainer.style.width = '100%';
         contentContainer.style.opacity = '0';
         contentContainer.style.transition = 'opacity 0.3s ease 0.4s';
-        contentContainer.style.padding = '0 12px 0 20px';
-        
+
         contentContainer.innerHTML = `
-            <span class="threadly-mode-option correction" data-mode="correction" style="cursor: pointer; transition: color 0.2s ease; font-size: 9px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.4px; flex: 1; text-align: center;">CORRECT</span>
-            <span class="threadly-mode-option image" data-mode="image" style="cursor: pointer; transition: color 0.2s ease; font-size: 9px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.4px; flex: 1; text-align: center;">IMAGE</span>
-            <span class="threadly-mode-option refine" data-mode="refine" style="cursor: pointer; transition: color 0.2s ease; font-size: 9px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.4px; flex: 1; text-align: center;">REFINE</span>
+            <span class="threadly-mode-option correction" data-mode="correction" style="cursor: pointer; transition: color 0.2s ease; font-size: 9px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.2px; white-space: nowrap;">CORRECT</span>
+            <span class="threadly-mode-option image" data-mode="image" style="cursor: pointer; transition: color 0.2s ease; font-size: 9px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.2px; white-space: nowrap;">IMAGE</span>
+            <span class="threadly-mode-option refine" data-mode="refine" style="cursor: pointer; transition: color 0.2s ease; font-size: 9px; font-weight: 600; color: #ffffff; text-transform: uppercase; letter-spacing: 0.2px; white-space: nowrap;">REFINE</span>
         `;
         
         popup.appendChild(contentContainer);
@@ -357,14 +426,15 @@
         popup.style.left = (sparkleRect.left + sparkleRect.width / 2) + 'px';
         popup.style.transform = 'translateX(-50%)'; // Horizontally center the popup
         
-        // Add pill animation styles
+        // Add pill animation styles with Threadly liquid glass design
         popup.style.width = '0';
         popup.style.height = '0';
-        popup.style.background = 'rgba(255, 255, 255, 0.15)';
-        popup.style.backdropFilter = 'blur(20px)';
-        popup.style.border = '1px solid rgba(255, 255, 255, 0.25)';
+        popup.style.background = 'rgba(255, 255, 255, 0.08)';
+        popup.style.backdropFilter = 'blur(4px)';
+        popup.style.webkitBackdropFilter = 'blur(4px)';
+        popup.style.border = '1px solid rgba(255, 255, 255, 0.1)';
         popup.style.borderRadius = '50px';
-        popup.style.boxShadow = '0 20px 60px rgba(0, 0, 0, 0.3)';
+        popup.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
         popup.style.transformOrigin = 'center center';
         popup.style.transition = 'none';
         popup.style.opacity = '0';
@@ -446,7 +516,7 @@
         
         console.log('Threadly: Found text to process:', currentText);
 
-        // Visual feedback
+        // Start sparkle breathing animation
         startClickAnimationSequence(sparkleElement);
 
         try {
@@ -485,10 +555,21 @@
                     textArea.dispatchEvent(new Event('change', { bubbles: true }));
                     
                     console.log('Threadly: Prompt refined successfully with triage AI');
+                    
+                    // Stop sparkle breathing animation when result is replaced
+                    stopClickAnimationSequence(sparkleElement);
+                } else {
+                    // Stop animation even if no result (error case)
+                    stopClickAnimationSequence(sparkleElement);
                 }
+            } else {
+                // Stop animation if PromptRefiner is not available
+                stopClickAnimationSequence(sparkleElement);
             }
         } catch (error) {
             console.error('Threadly: Error processing prompt with triage AI:', error);
+            // Stop animation on error
+            stopClickAnimationSequence(sparkleElement);
         }
     }
 
@@ -645,41 +726,84 @@
         }));
     }
     
-    // Clean up refined prompt to remove XML tags and unnecessary formatting (same as Claude)
+    // Clean up refined prompt to intelligently parse XML format and remove unnecessary formatting
     function cleanRefinedPrompt(rawText) {
         let cleaned = rawText.trim();
         
         console.log('Threadly: Raw refined text:', cleaned);
         
-        // Remove XML/HTML tags (more comprehensive)
-        cleaned = cleaned.replace(/<[^>]*>/g, '');
-        cleaned = cleaned.replace(/<\/?[^>]+(>|$)/g, '');
+        // Check if the text contains structured XML format with instruction, context, task, example
+        const xmlPattern = /```xml\s*<instruction>(.*?)<\/instruction>\s*<context>(.*?)<\/context>\s*<task>(.*?)<\/task>\s*(?:<example>(.*?)<\/example>)?\s*```/is;
+        const xmlMatch = cleaned.match(xmlPattern);
         
-        // Remove XML-like patterns
-        cleaned = cleaned.replace(/\[xml[^\]]*\]/gi, '');
-        cleaned = cleaned.replace(/\[content[^\]]*\]/gi, '');
-        cleaned = cleaned.replace(/\[refined[^\]]*\]/gi, '');
-        cleaned = cleaned.replace(/\[response[^\]]*\]/gi, '');
-        
-        // Remove markdown formatting
-        cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
-        cleaned = cleaned.replace(/\*(.*?)\*/g, '$1'); // Italic
-        cleaned = cleaned.replace(/`(.*?)`/g, '$1'); // Code
-        cleaned = cleaned.replace(/```[\s\S]*?```/g, ''); // Code blocks
-        
-        // Remove common AI response prefixes and wrappers
-        cleaned = cleaned.replace(/^(refined|improved|enhanced|optimized|xml contents?)[:\-\s]*/gi, '');
-        cleaned = cleaned.replace(/^(here's|here is|the following|below is)[:\-\s]*/gi, '');
-        cleaned = cleaned.replace(/^(the refined prompt is|refined prompt|response|answer)[:\-\s]*/gi, '');
-        
-        // Remove XML-like content indicators
-        cleaned = cleaned.replace(/^xml\s+contents?[:\-\s]*/gi, '');
-        cleaned = cleaned.replace(/^content[:\-\s]*/gi, '');
-        cleaned = cleaned.replace(/^response[:\-\s]*/gi, '');
-        
-        // Remove brackets and parentheses content that looks like metadata
-        cleaned = cleaned.replace(/\[[^\]]*(xml|content|response|refined)[^\]]*\]/gi, '');
-        cleaned = cleaned.replace(/\([^)]*(xml|content|response|refined)[^)]*\)/gi, '');
+        if (xmlMatch) {
+            console.log('Threadly: Detected structured XML format, parsing intelligently');
+            
+            // Extract content from XML tags
+            const instruction = xmlMatch[1]?.trim() || '';
+            const context = xmlMatch[2]?.trim() || '';
+            const task = xmlMatch[3]?.trim() || '';
+            const example = xmlMatch[4]?.trim() || '';
+            
+            // Combine the most relevant parts - prioritize instruction and context
+            let combinedContent = '';
+            
+            if (instruction) {
+                combinedContent += instruction;
+            }
+            
+            if (context && context !== instruction) {
+                if (combinedContent) combinedContent += ' ';
+                combinedContent += context;
+            }
+            
+            // Add task if it's concise and adds value
+            if (task && task.length < 200) {
+                if (combinedContent) combinedContent += ' ';
+                combinedContent += task;
+            }
+            
+            // Use the combined content as the cleaned result
+            cleaned = combinedContent.trim();
+            
+            console.log('Threadly: Extracted from XML - instruction:', instruction);
+            console.log('Threadly: Extracted from XML - context:', context);
+            console.log('Threadly: Extracted from XML - task:', task);
+            console.log('Threadly: Combined content:', cleaned);
+        } else {
+            // Fallback to original cleaning logic for non-XML content
+            console.log('Threadly: No structured XML detected, using standard cleaning');
+            
+            // Remove XML/HTML tags (more comprehensive)
+            cleaned = cleaned.replace(/<[^>]*>/g, '');
+            cleaned = cleaned.replace(/<\/?[^>]+(>|$)/g, '');
+            
+            // Remove XML-like patterns
+            cleaned = cleaned.replace(/\[xml[^\]]*\]/gi, '');
+            cleaned = cleaned.replace(/\[content[^\]]*\]/gi, '');
+            cleaned = cleaned.replace(/\[refined[^\]]*\]/gi, '');
+            cleaned = cleaned.replace(/\[response[^\]]*\]/gi, '');
+            
+            // Remove markdown formatting
+            cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
+            cleaned = cleaned.replace(/\*(.*?)\*/g, '$1'); // Italic
+            cleaned = cleaned.replace(/`(.*?)`/g, '$1'); // Code
+            cleaned = cleaned.replace(/```[\s\S]*?```/g, ''); // Code blocks
+            
+            // Remove common AI response prefixes and wrappers
+            cleaned = cleaned.replace(/^(refined|improved|enhanced|optimized|xml contents?)[:\-\s]*/gi, '');
+            cleaned = cleaned.replace(/^(here's|here is|the following|below is)[:\-\s]*/gi, '');
+            cleaned = cleaned.replace(/^(the refined prompt is|refined prompt|response|answer)[:\-\s]*/gi, '');
+            
+            // Remove XML-like content indicators
+            cleaned = cleaned.replace(/^xml\s+contents?[:\-\s]*/gi, '');
+            cleaned = cleaned.replace(/^content[:\-\s]*/gi, '');
+            cleaned = cleaned.replace(/^response[:\-\s]*/gi, '');
+            
+            // Remove brackets and parentheses content that looks like metadata
+            cleaned = cleaned.replace(/\[[^\]]*(xml|content|response|refined)[^\]]*\]/gi, '');
+            cleaned = cleaned.replace(/\([^)]*(xml|content|response|refined)[^)]*\)/gi, '');
+        }
         
         // Remove extra whitespace and normalize
         cleaned = cleaned.replace(/\s+/g, ' ').trim();
@@ -702,7 +826,7 @@
             cleaned += '.';
         }
         
-        console.log('Threadly: Cleaned refined text:', cleaned);
+        console.log('Threadly: Final cleaned text:', cleaned);
         
         return cleaned;
     }
