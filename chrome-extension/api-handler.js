@@ -86,6 +86,12 @@ class PromptRefiner {
 
     async initialize() {
         try {
+            // Check if chrome.storage is available (extension context not invalidated)
+            if (!chrome || !chrome.storage || !chrome.storage.local) {
+                console.error('Threadly: Extension context invalidated. Please refresh the page.');
+                throw new Error('Extension context invalidated. Please refresh the page to continue using Threadly.');
+            }
+            
             const result = await chrome.storage.local.get(['geminiApiKey']);
             this.apiKey = result.geminiApiKey;
             
@@ -95,6 +101,12 @@ class PromptRefiner {
             return !!this.apiKey;
         } catch (error) {
             console.error('Failed to initialize PromptRefiner:', error);
+            
+            // If it's a context invalidation error, provide a helpful message
+            if (error.message.includes('Extension context invalidated')) {
+                throw error; // Re-throw to be handled by the calling code
+            }
+            
             return false;
         }
     }

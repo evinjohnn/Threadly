@@ -662,14 +662,20 @@
             } catch (error) {
                 console.error('Threadly: Error refining prompt:', error);
                 
-                // Dispatch error event
-                window.dispatchEvent(new CustomEvent('threadly-prompt-refine-error', {
-                    detail: { 
-                        platform: 'ai-studio', 
-                        error: error.message,
-                        originalText: currentText
-                    }
-                }));
+                // Handle extension context invalidation specifically
+                if (error.message.includes('Extension context invalidated')) {
+                    // Show a user-friendly notification
+                    showContextInvalidatedNotification();
+                } else {
+                    // Dispatch error event for other errors
+                    window.dispatchEvent(new CustomEvent('threadly-prompt-refine-error', {
+                        detail: { 
+                            platform: 'ai-studio', 
+                            error: error.message,
+                            originalText: currentText
+                        }
+                    }));
+                }
                 
             } finally {
                 // Stop animation and end at fade out state
@@ -1210,6 +1216,72 @@
             childList: true,
             subtree: true
         });
+    }
+
+    // Function to show context invalidated notification
+    function showContextInvalidatedNotification() {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ff6b6b;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            max-width: 300px;
+            cursor: pointer;
+            animation: slideInRight 0.3s ease-out;
+        `;
+        
+        notification.innerHTML = `
+            <div style="font-weight: 600; margin-bottom: 4px;">🔄 Threadly Extension Updated</div>
+            <div style="font-size: 13px; opacity: 0.9;">Please refresh the page to continue using the refine feature.</div>
+        `;
+        
+        // Add animation keyframes
+        if (!document.getElementById('threadly-notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'threadly-notification-styles';
+            style.textContent = `
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOutRight {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Add click handler to refresh page
+        notification.addEventListener('click', () => {
+            notification.style.animation = 'slideOutRight 0.3s ease-in forwards';
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        });
+        
+        // Auto-remove after 10 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOutRight 0.3s ease-in forwards';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }
+        }, 10000);
+        
+        document.body.appendChild(notification);
     }
 
     // Initialize only if on AI Studio's website

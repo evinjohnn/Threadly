@@ -28,7 +28,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["sidebar.css", "Borel/Borel-Regular.ttf", "popup.html", "popup.js", "api-handler.js", "claude-icon.js", "chatgpt-sparkle.js", "ai-studio-sparkle.js", "gemini-sparkle.js", "perplexity-sparkle.js"],
+      "resources": ["sidebar.css", "Borel/Borel-Regular.ttf", "popup.html", "popup.js", "api-handler.js", "claude-icon.js", "chatgpt-sparkle.js", "ai-studio-sparkle.js", "gemini-sparkle.js", "perplexity-sparkle.js", "prompts.json"],
       "matches": [
         "https://chat.openai.com/*",
         "https://copilot.microsoft.com/*",

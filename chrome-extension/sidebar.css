@@ -1311,24 +1311,24 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 /* ALL HOVER EFFECTS REMOVED */
 
 /* Selection bulb active state - square to X transformation when clicked */
-.threadly-circle-bulb.square[data-mode="close"] .xbox-side.top {
+.threadly-circle-bulb[data-mode="close"] .xbox-side.top {
     transform: translateY(calc((var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleX(var(--diag-scale));
 }
 
-.threadly-circle-bulb.square[data-mode="close"] .xbox-side.right {
+.threadly-circle-bulb[data-mode="close"] .xbox-side.right {
     transform: translateX(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(45deg) scaleY(var(--diag-scale));
 }
 
-.threadly-circle-bulb.square[data-mode="close"] .xbox-side.bottom {
+.threadly-circle-bulb[data-mode="close"] .xbox-side.bottom {
     transform: translateY(calc(-1 * (var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleX(var(--diag-scale));
 }
 
-.threadly-circle-bulb.square[data-mode="close"] .xbox-side.left {
+.threadly-circle-bulb[data-mode="close"] .xbox-side.left {
     transform: translateX(calc((var(--box-size) - var(--stroke)) / 2)) rotate(-45deg) scaleY(var(--diag-scale));
 }
 
 /* Red color for X when in close mode */
-.threadly-circle-bulb.square[data-mode="close"] .xbox-side {
+.threadly-circle-bulb[data-mode="close"] .xbox-side {
     background: #ff4444 !important;
 }
 
@@ -1336,6 +1336,12 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 .threadly-circle-bulb.square .xbox-side.bottom { bottom: 0; left: 0; right: 0; height: var(--stroke); }
 .threadly-circle-bulb.square .xbox-side.left   { left: 0; top: 0; bottom: 0; width: var(--stroke); }
 .threadly-circle-bulb.square .xbox-side.right  { right: 0; top: 0; bottom: 0; width: var(--stroke); }
+
+/* Close mode has same base styles as square */
+.threadly-circle-bulb.close .xbox-side.top    { top: 0; left: 0; right: 0; height: var(--stroke); }
+.threadly-circle-bulb.close .xbox-side.bottom { bottom: 0; left: 0; right: 0; height: var(--stroke); }
+.threadly-circle-bulb.close .xbox-side.left   { left: 0; top: 0; bottom: 0; width: var(--stroke); }
+.threadly-circle-bulb.close .xbox-side.right  { right: 0; top: 0; bottom: 0; width: var(--stroke); }
 
 /* Hover morph: Square → X ONLY when in selection mode - REMOVED */
 
