@@ -1378,7 +1378,7 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
 
 /* In State A: Keep selection bulb (last-child) visible and positioned */
 .threadly-metaball-wrapper.stateA .threadly-circle-bulb:last-child {
-    transform: scale(1) translateX(var(--bulb-spacing));
+    transform: scale(1) translateX(60px);
     opacity: 1;
     transition: transform 0.5s var(--transition-easing), opacity 0.3s ease;
 }
@@ -2728,25 +2728,31 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
 
 /* Ensure the container uses flexbox and has padding for the "pill" border effect */
 .threadly-toggle-bar.morphed {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    padding: 2px;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 2px !important;
+    height: 32px !important;
+    position: relative !important;
 }
 
-/* Base styles for DELETE and CANCEL buttons */
-.threadly-toggle-label.delete,
-.threadly-toggle-label.cancel {
-    position: relative; /* Use relative positioning */
-    top: auto;
-    left: auto;
-    height: 28px;
-    width: 50%; /* Each button takes exactly half the space */
-    flex-grow: 1; /* Ensure they fill the container */
-    display: flex;
-    align-items: center;
-    justify-content: center;
+/* Base styles for DELETE, CANCEL, and ASSIGN TO buttons in morphed state */
+.threadly-toggle-bar.morphed .threadly-toggle-label.delete,
+.threadly-toggle-bar.morphed .threadly-toggle-label.cancel,
+.threadly-toggle-bar.morphed .threadly-toggle-label.assign-to {
+    position: relative !important; /* Override absolute positioning */
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important; /* Override translateY(-50%) */
+    height: 28px !important;
+    width: 50% !important; /* Each button takes exactly half the space */
+    flex-grow: 1 !important; /* Ensure they fill the container */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 700;
@@ -2756,23 +2762,42 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     -webkit-tap-highlight-color: transparent;
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     z-index: 2;
-    color: #ff4444; /* Red color for both buttons */
-    margin: 0; /* No margin between buttons */
+    color: #ff4444; /* Red color for delete and cancel buttons */
+    margin: 0 !important; /* No margin between buttons */
+    padding: 0 !important; /* Reset padding */
 }
 
 /* Apply border-radius to the outer corners to form the pill shape */
-.threadly-toggle-label.delete {
+.threadly-toggle-bar.morphed .threadly-toggle-label.delete,
+.threadly-toggle-bar.morphed .threadly-toggle-label.assign-to {
     border-top-left-radius: 14px;
     border-bottom-left-radius: 14px;
 }
 
-.threadly-toggle-label.delete:not(:disabled):hover {
+/* Make ASSIGN TO button green like in previous versions */
+.threadly-toggle-bar.morphed .threadly-toggle-label.assign-to {
+    color: #10b981 !important; /* Green color for assign-to button */
+}
+
+/* Make DELETE button red for destructive action */
+.threadly-toggle-bar.morphed .threadly-toggle-label.delete {
+    color: #ef4444 !important; /* Red color for delete button */
+}
+
+.threadly-toggle-bar.morphed .threadly-toggle-label.delete:not(:disabled):hover {
     color: white !important;
     background: rgba(239, 68, 68, 0.9) !important;
     box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6) !important;
 }
 
-.threadly-toggle-label.delete:disabled {
+.threadly-toggle-bar.morphed .threadly-toggle-label.assign-to:not(:disabled):hover {
+    color: white !important;
+    background: rgba(16, 185, 129, 0.9) !important;
+    box-shadow: 0 0 30px rgba(16, 185, 129, 1), 0 0 60px rgba(16, 185, 129, 0.6) !important;
+}
+
+.threadly-toggle-bar.morphed .threadly-toggle-label.delete:disabled,
+.threadly-toggle-bar.morphed .threadly-toggle-label.assign-to:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     color: #666 !important;
@@ -2780,12 +2805,12 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     box-shadow: none !important;
 }
 
-.threadly-toggle-label.cancel {
+.threadly-toggle-bar.morphed .threadly-toggle-label.cancel {
     border-top-right-radius: 14px;
     border-bottom-right-radius: 14px;
 }
 
-.threadly-toggle-label.cancel:hover {
+.threadly-toggle-bar.morphed .threadly-toggle-label.cancel:hover {
     color: white !important;
     background: rgba(239, 68, 68, 0.9) !important;
     box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6) !important;
@@ -2945,45 +2970,6 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     font-style: italic;
 }
 
-/* Toast notifications - dynamically sized based on content */
-.threadly-toast {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    height: var(--bulb-size);
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 999px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--threadly-text-primary);
-    font-size: 0.75rem;
-    white-space: nowrap;
-    padding: 0 20px;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    
-    /* Glass effect - matches text card blur */
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    
-    /* Animation */
-    animation: threadly-toast-in 0.3s ease-out;
-}
-
-@keyframes threadly-toast-in {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-    }
-}
 
 /* --- Metaball Canvas Styling --- */
 .metaball-canvas {

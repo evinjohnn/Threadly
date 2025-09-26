@@ -10,22 +10,22 @@ class PromptRefiner {
         this.platformConfigs = {
             'chatgpt': {
                 name: 'ChatGPT',
-                baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
+                baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
                 systemPrompt: this.getChatGPTSystemPrompt()
             },
             'claude': {
                 name: 'Claude',
-                baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
+                baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
                 systemPrompt: this.getClaudeSystemPrompt()
             },
             'gemini': {
                 name: 'Gemini',
-                baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
+                baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
                 systemPrompt: this.getGeminiSystemPrompt()
             },
             'perplexity': {
                 name: 'Perplexity',
-                baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
+                baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
                 systemPrompt: this.getPerplexitySystemPrompt()
             }
         };

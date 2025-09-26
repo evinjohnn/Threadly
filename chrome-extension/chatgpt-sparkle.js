@@ -726,84 +726,41 @@
         }));
     }
     
-    // Clean up refined prompt to intelligently parse XML format and remove unnecessary formatting
+    // Clean up refined prompt to remove XML tags and unnecessary formatting (same as Claude)
     function cleanRefinedPrompt(rawText) {
         let cleaned = rawText.trim();
         
         console.log('Threadly: Raw refined text:', cleaned);
         
-        // Check if the text contains structured XML format with instruction, context, task, example
-        const xmlPattern = /```xml\s*<instruction>(.*?)<\/instruction>\s*<context>(.*?)<\/context>\s*<task>(.*?)<\/task>\s*(?:<example>(.*?)<\/example>)?\s*```/is;
-        const xmlMatch = cleaned.match(xmlPattern);
+        // Remove XML/HTML tags (more comprehensive)
+        cleaned = cleaned.replace(/<[^>]*>/g, '');
+        cleaned = cleaned.replace(/<\/?[^>]+(>|$)/g, '');
         
-        if (xmlMatch) {
-            console.log('Threadly: Detected structured XML format, parsing intelligently');
-            
-            // Extract content from XML tags
-            const instruction = xmlMatch[1]?.trim() || '';
-            const context = xmlMatch[2]?.trim() || '';
-            const task = xmlMatch[3]?.trim() || '';
-            const example = xmlMatch[4]?.trim() || '';
-            
-            // Combine the most relevant parts - prioritize instruction and context
-            let combinedContent = '';
-            
-            if (instruction) {
-                combinedContent += instruction;
-            }
-            
-            if (context && context !== instruction) {
-                if (combinedContent) combinedContent += ' ';
-                combinedContent += context;
-            }
-            
-            // Add task if it's concise and adds value
-            if (task && task.length < 200) {
-                if (combinedContent) combinedContent += ' ';
-                combinedContent += task;
-            }
-            
-            // Use the combined content as the cleaned result
-            cleaned = combinedContent.trim();
-            
-            console.log('Threadly: Extracted from XML - instruction:', instruction);
-            console.log('Threadly: Extracted from XML - context:', context);
-            console.log('Threadly: Extracted from XML - task:', task);
-            console.log('Threadly: Combined content:', cleaned);
-        } else {
-            // Fallback to original cleaning logic for non-XML content
-            console.log('Threadly: No structured XML detected, using standard cleaning');
-            
-            // Remove XML/HTML tags (more comprehensive)
-            cleaned = cleaned.replace(/<[^>]*>/g, '');
-            cleaned = cleaned.replace(/<\/?[^>]+(>|$)/g, '');
-            
-            // Remove XML-like patterns
-            cleaned = cleaned.replace(/\[xml[^\]]*\]/gi, '');
-            cleaned = cleaned.replace(/\[content[^\]]*\]/gi, '');
-            cleaned = cleaned.replace(/\[refined[^\]]*\]/gi, '');
-            cleaned = cleaned.replace(/\[response[^\]]*\]/gi, '');
-            
-            // Remove markdown formatting
-            cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
-            cleaned = cleaned.replace(/\*(.*?)\*/g, '$1'); // Italic
-            cleaned = cleaned.replace(/`(.*?)`/g, '$1'); // Code
-            cleaned = cleaned.replace(/```[\s\S]*?```/g, ''); // Code blocks
-            
-            // Remove common AI response prefixes and wrappers
-            cleaned = cleaned.replace(/^(refined|improved|enhanced|optimized|xml contents?)[:\-\s]*/gi, '');
-            cleaned = cleaned.replace(/^(here's|here is|the following|below is)[:\-\s]*/gi, '');
-            cleaned = cleaned.replace(/^(the refined prompt is|refined prompt|response|answer)[:\-\s]*/gi, '');
-            
-            // Remove XML-like content indicators
-            cleaned = cleaned.replace(/^xml\s+contents?[:\-\s]*/gi, '');
-            cleaned = cleaned.replace(/^content[:\-\s]*/gi, '');
-            cleaned = cleaned.replace(/^response[:\-\s]*/gi, '');
-            
-            // Remove brackets and parentheses content that looks like metadata
-            cleaned = cleaned.replace(/\[[^\]]*(xml|content|response|refined)[^\]]*\]/gi, '');
-            cleaned = cleaned.replace(/\([^)]*(xml|content|response|refined)[^)]*\)/gi, '');
-        }
+        // Remove XML-like patterns
+        cleaned = cleaned.replace(/\[xml[^\]]*\]/gi, '');
+        cleaned = cleaned.replace(/\[content[^\]]*\]/gi, '');
+        cleaned = cleaned.replace(/\[refined[^\]]*\]/gi, '');
+        cleaned = cleaned.replace(/\[response[^\]]*\]/gi, '');
+        
+        // Remove markdown formatting
+        cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
+        cleaned = cleaned.replace(/\*(.*?)\*/g, '$1'); // Italic
+        cleaned = cleaned.replace(/`(.*?)`/g, '$1'); // Code
+        cleaned = cleaned.replace(/```[\s\S]*?```/g, ''); // Code blocks
+        
+        // Remove common AI response prefixes and wrappers
+        cleaned = cleaned.replace(/^(refined|improved|enhanced|optimized|xml contents?)[:\-\s]*/gi, '');
+        cleaned = cleaned.replace(/^(here's|here is|the following|below is)[:\-\s]*/gi, '');
+        cleaned = cleaned.replace(/^(the refined prompt is|refined prompt|response|answer)[:\-\s]*/gi, '');
+        
+        // Remove XML-like content indicators
+        cleaned = cleaned.replace(/^xml\s+contents?[:\-\s]*/gi, '');
+        cleaned = cleaned.replace(/^content[:\-\s]*/gi, '');
+        cleaned = cleaned.replace(/^response[:\-\s]*/gi, '');
+        
+        // Remove brackets and parentheses content that looks like metadata
+        cleaned = cleaned.replace(/\[[^\]]*(xml|content|response|refined)[^\]]*\]/gi, '');
+        cleaned = cleaned.replace(/\([^)]*(xml|content|response|refined)[^)]*\)/gi, '');
         
         // Remove extra whitespace and normalize
         cleaned = cleaned.replace(/\s+/g, ' ').trim();
@@ -826,7 +783,7 @@
             cleaned += '.';
         }
         
-        console.log('Threadly: Final cleaned text:', cleaned);
+        console.log('Threadly: Cleaned refined text:', cleaned);
         
         return cleaned;
     }

@@ -3529,145 +3529,81 @@
     }
 
     function showToast(message) {
-        console.log('Threadly: showToast called with message:', message);
-        
-        // Find the search elements
-        const searchInput = document.querySelector('.threadly-search-pill input');
+        const wrapper = document.querySelector('.threadly-metaball-wrapper');
         const searchPill = document.querySelector('.threadly-search-pill');
-        
-        console.log('Threadly: searchInput found:', !!searchInput);
-        console.log('Threadly: searchPill found:', !!searchPill);
-        console.log('Threadly: searchInput element:', searchInput);
-        console.log('Threadly: searchPill element:', searchPill);
-        
-        if (searchInput && searchPill) {
-            // Store original state
-            const originalPlaceholder = searchInput.placeholder;
-            const originalValue = searchInput.value;
-            
-            // Calculate dynamic width based on actual text measurement
-            const baseWidth = 184; // Same as --search-pill-compact-width
-            const maxWidth = 500; // Allow for longer messages
-            const padding = 32; // Account for padding (16px on each side)
-            
-            // Create a temporary element to measure text width accurately
-            const tempElement = document.createElement('span');
-            tempElement.style.position = 'absolute';
-            tempElement.style.visibility = 'hidden';
-            tempElement.style.whiteSpace = 'nowrap';
-            tempElement.style.fontSize = '1rem'; // Same as search input
-            tempElement.style.fontFamily = 'inherit';
-            tempElement.textContent = message;
-            document.body.appendChild(tempElement);
-            
-            const textWidth = tempElement.offsetWidth;
-            document.body.removeChild(tempElement);
-            
-            const dynamicWidth = Math.min(Math.max(textWidth + padding, baseWidth), maxWidth);
-            
-            console.log('Threadly: Message length:', message.length);
-            console.log('Threadly: Calculated dynamic width:', dynamicWidth);
-            
-            // Set up toast message
-            searchInput.placeholder = '';
-            searchInput.value = message;
-            searchInput.readOnly = true;
-            searchInput.style.textAlign = 'center';
-            searchInput.style.cursor = 'default';
-            
-            // Apply dynamic width to search pill using CSS custom property
-            // This ensures the transition works properly
-            searchPill.style.setProperty('--search-pill-expanded-width', `${dynamicWidth}px`);
-            searchPill.style.width = `${dynamicWidth}px`;
-            
-            // Add toast styling (subtle success color)
-            searchPill.style.background = 'rgba(0, 191, 174, 0.12)';
-            searchPill.style.borderColor = 'rgba(0, 191, 174, 0.25)';
-            searchPill.style.boxShadow = '0 0 0 2px rgba(0, 191, 174, 0.15)';
-            
-            // Reuse the existing metaball animation system
-            // This will trigger the same expansion animation as typing
-            console.log('Threadly: Calling handleSearchFocus for toast');
-            
-            // Create a proper event object that will pass the ID check
-            const fakeEvent = {
-                target: {
-                    ...searchInput,
-                    id: 'threadly-search-input'
-                }
-            };
-            handleSearchFocus(fakeEvent);
-            
-            console.log('Threadly: Toast expanded with message:', message);
-            
-            // Restore original state after 3 seconds
-            setTimeout(() => {
-                // Restore input state
-                searchInput.placeholder = originalPlaceholder;
-                searchInput.value = originalValue;
-                searchInput.readOnly = false;
-                searchInput.style.textAlign = '';
-                searchInput.style.cursor = '';
-                
-                // Restore original pill styling
-                searchPill.style.removeProperty('--search-pill-expanded-width');
-                searchPill.style.width = '';
-                searchPill.style.background = '';
-                searchPill.style.borderColor = '';
-                searchPill.style.boxShadow = '';
-                
-                // Reuse the existing metaball animation system to collapse
-                // This will trigger the same collapse animation as blur
-                const fakeBlurEvent = {
-                    target: {
-                        ...searchInput,
-                        id: 'threadly-search-input'
-                    }
-                };
-                handleSearchBlur(fakeBlurEvent);
-                
-                console.log('Threadly: Toast collapsed, restored to normal state');
-            }, 3000);
-        } else {
-            // Fallback: create traditional toast if search elements not found
-            const toast = document.createElement('div');
-            toast.className = 'threadly-toast';
-            toast.textContent = message;
-            
-            // Calculate dynamic width based on message length
-            const baseWidth = 200;
-            const charWidth = 8;
-            const maxWidth = 400;
-            const dynamicWidth = Math.min(Math.max(message.length * charWidth, baseWidth), maxWidth);
-            
-            toast.style.width = `${dynamicWidth}px`;
-            toast.style.minWidth = `${baseWidth}px`;
-            toast.style.maxWidth = `${maxWidth}px`;
-            
-            // Find the search container
-            const searchContainer = document.querySelector('.threadly-search-container');
-            if (searchContainer) {
-                searchContainer.style.position = 'relative';
-                searchContainer.appendChild(toast);
-                
-                setTimeout(() => {
-                    if (toast.parentNode) {
-                        toast.parentNode.removeChild(toast);
-                    }
-                }, 3000);
-            } else {
-                // Final fallback to panel
-                const panel = document.getElementById('threadly-panel');
-                if (panel) {
-                    panel.appendChild(toast);
-                    setTimeout(() => {
-                        if (toast.parentNode) {
-                            toast.parentNode.removeChild(toast);
-                        }
-                    }, 3000);
-                }
-            }
+        const searchInput = document.getElementById('threadly-search-input');
+
+        // Exit if the necessary elements aren't on the page
+        if (!wrapper || !searchPill || !searchInput) {
+            console.error("Threadly: Cannot show toast, search elements not found.");
+            // Fallback to a simple alert if UI is missing
+            alert(message);
+            return;
         }
+
+        // --- 1. Store the original state of the search bar ---
+        const originalPlaceholder = searchInput.placeholder;
+        const originalValue = searchInput.value;
+
+        // --- 2. Calculate the dynamic width for the toast message ---
+        // Create a temporary element to measure the text width accurately
+        const tempSpan = document.createElement('span');
+        tempSpan.style.position = 'absolute';
+        tempSpan.style.visibility = 'hidden';
+        tempSpan.style.whiteSpace = 'nowrap';
+        tempSpan.style.fontSize = getComputedStyle(searchInput).fontSize;
+        tempSpan.style.fontFamily = getComputedStyle(searchInput).fontFamily;
+        tempSpan.textContent = message;
+        document.body.appendChild(tempSpan);
+        
+        const textWidth = tempSpan.offsetWidth;
+        document.body.removeChild(tempSpan);
+
+        const PADDING = 32; // 16px padding on each side
+        const MIN_WIDTH = 184; // Same as --search-pill-compact-width
+        const MAX_WIDTH = 295; // Same as --search-pill-expanded-width
+        const dynamicWidth = Math.min(Math.max(textWidth + PADDING, MIN_WIDTH), MAX_WIDTH);
+
+        // --- 3. Transform the search bar into a toast message ---
+        searchInput.value = message;
+        searchInput.readOnly = true;
+        searchInput.style.textAlign = 'center';
+        searchInput.style.cursor = 'default';
+
+        // Give it a subtle "success" tint
+        searchPill.style.background = 'rgba(16, 185, 129, 0.2)';
+        searchPill.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+
+        // --- 4. Trigger the expansion animation ---
+        // Set the dynamic width
+        searchPill.style.width = `${dynamicWidth}px`;
+        
+        // Add the 'stateA' class to the wrapper to push the bulbs out
+        wrapper.classList.remove('stateB');
+        wrapper.classList.add('stateA');
+
+        // --- 5. Set a timer to restore the search bar ---
+        const TOAST_DURATION = 3000; // 3 seconds
+        setTimeout(() => {
+            // Restore the input's original state
+            searchInput.value = originalValue;
+            searchInput.placeholder = originalPlaceholder;
+            searchInput.readOnly = false;
+            searchInput.style.textAlign = '';
+            searchInput.style.cursor = '';
+
+            // Remove the toast-specific styling
+            searchPill.style.background = '';
+            searchPill.style.borderColor = '';
+            
+            // Remove the inline width so it can animate back to its original size
+            searchPill.style.width = '';
+
+            // Trigger the collapse animation by switching back to stateB
+            wrapper.classList.remove('stateA');
+            wrapper.classList.add('stateB');
+
+        }, TOAST_DURATION);
     }
 
     // --- Enhanced Update Logic --- //
@@ -4170,8 +4106,8 @@
         console.log('Threadly: enterSelectionMode - isInCollectionsView:', isInCollectionsView, 'currentCollectionId:', currentCollectionId);
         
         if (isInCollectionsView && currentCollectionId) {
-            // We're viewing messages within a specific collection
-            selectionContext = 'messages-in-collection';
+            // We're viewing messages within a specific collection - show DELETE | CANCEL for bulk deletion
+            selectionContext = 'collections';
             console.log('Threadly: Entering selection mode for messages in collection:', currentCollectionId);
         } else if (isInCollectionsView && !currentCollectionId) {
             // We're viewing the collections list
@@ -4183,11 +4119,6 @@
             console.log('Threadly: Entering selection mode for messages in main view');
         }
         
-        // TEMPORARY DEBUG: Force collections context when in collections view
-        if (isInCollectionsView) {
-            selectionContext = 'collections';
-            console.log('Threadly: FORCED selection context to collections for debugging');
-        }
         
         console.log('Threadly: Selection context set to:', selectionContext);
         
@@ -4308,6 +4239,9 @@
         }
 
         
+        // Add morphing class for animation
+        toggleBar.classList.add('morphed');
+        
         // Create ASSIGN TO | CANCEL layout
         toggleBar.innerHTML = `
             <div class="threadly-toggle-label assign-to">
@@ -4405,6 +4339,9 @@
         }
 
         
+        // Add morphing class for animation
+        toggleBar.classList.add('morphed');
+        
         // Create ADD NEW | CANCEL layout
         toggleBar.innerHTML = `
             <div class="threadly-toggle-label add">
@@ -4466,6 +4403,9 @@
             return;
         }
 
+        // Add morphing class for animation
+        toggleBar.classList.add('morphed');
+        
         // Create DELETE | CANCEL layout (same approach as morphNavbarToSelectionMode)
         toggleBar.innerHTML = `
             <div class="threadly-toggle-label delete">

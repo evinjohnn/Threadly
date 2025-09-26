@@ -164,7 +164,7 @@
             color: #f44336;
         }
 
-        .rating-btn {
+        .rating-btn, .guide-btn {
             width: 100%;
             padding: 6px;
             background: #3a3a3a;
@@ -178,8 +178,31 @@
             margin-top: 4px;
         }
 
-        .rating-btn:hover {
+        .rating-btn:hover, .guide-btn:hover {
             background: #4a4a4a;
+        }
+
+        .guide-btn {
+            background: #00bfae;
+            border-color: #00bfae;
+            color: white;
+        }
+
+        .guide-btn:hover {
+            background: #0f766e;
+            border-color: #0f766e;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .button-group .rating-btn,
+        .button-group .guide-btn {
+            flex: 1;
+            margin-top: 0;
         }
     </style>
 </head>
@@ -208,9 +231,14 @@
 
             <div class="status" id="status"></div>
             
-            <button class="rating-btn" id="ratingBtn">
-                ⭐ Rate Threadly
-            </button>
+            <div class="button-group">
+                <button class="guide-btn" id="guideBtn" title="Click to open guide, right-click to restart tooltips">
+                    📖 Guide
+                </button>
+                <button class="rating-btn" id="ratingBtn" title="Rate Threadly on Chrome Web Store">
+                    ⭐ Rate
+                </button>
+            </div>
         </div>
     </div>
 

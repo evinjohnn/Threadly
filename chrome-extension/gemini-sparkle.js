@@ -446,11 +446,11 @@
                 filter: none !important;
             }
 
-            /* Hover state with yellow color effect */
+            /* Hover state with platform-specific color effect */
             .threadly-mode-option:hover,
             span.threadly-mode-option:hover,
             [class*="threadly-mode-option"]:hover {
-                color: #ffcc00 !important;
+                color: ${getPlatformAccentColor(detectCurrentPlatform())} !important;
                 background: transparent !important;
                 background-color: transparent !important;
                 box-shadow: none !important;
@@ -497,7 +497,7 @@
             .conversation-container .threadly-mode-option:hover,
             .chat-container .threadly-mode-option:hover,
             .message-container .threadly-mode-option:hover {
-                color: #ffcc00 !important;
+                color: ${getPlatformAccentColor(detectCurrentPlatform())} !important;
                 background: transparent !important;
                 background-color: transparent !important;
                 transform: none !important;
@@ -563,7 +563,7 @@
         // Add hover event listeners to programmatically created spans
         [correctSpan, imageSpan, refineSpan].forEach(span => {
             span.addEventListener('mouseenter', function() {
-                this.style.setProperty('color', '#ffcc00', 'important');
+                this.style.setProperty('color', getPlatformAccentColor(detectCurrentPlatform()), 'important');
                 this.style.setProperty('background', 'transparent', 'important');
                 this.style.setProperty('background-color', 'transparent', 'important');
                 this.style.setProperty('transform', 'none', 'important');
@@ -620,7 +620,7 @@
         });
 
         // Observe style changes on the options
-        setTimeout(() => {
+            setTimeout(() => {
             const options = document.querySelectorAll('.threadly-mode-option');
             options.forEach(option => {
                 observer.observe(option, { attributes: true, attributeFilter: ['style', 'class'] });
@@ -787,6 +787,17 @@
             return 'perplexity';
         }
         return 'chatgpt'; // default fallback
+    }
+
+    function getPlatformAccentColor(platform) {
+        const accentColors = {
+            'chatgpt': '#10a37f',    // ChatGPT green
+            'claude': '#d97706',     // Claude orange
+            'ai-studio': '#4285f4',  // Google AI Studio blue
+            'gemini': '#34a853',     // Gemini green
+            'perplexity': '#6366f1'  // Perplexity purple
+        };
+        return accentColors[platform] || '#ffcc00'; // fallback to yellow
     }
 
     // Handle sparkle click functionality with prompt refine feature (exact copy from Claude)

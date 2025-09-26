@@ -123,7 +123,7 @@
                             if (popup) popup.remove();
                             popup = null;
                         }, 650); // Slightly longer than animation duration
-                    } else {
+                } else {
                         if (popup) popup.remove();
                         popup = null;
                     }
@@ -199,9 +199,9 @@
                     animation-fill-mode: forwards;
                 }
 
-                /* Yellow hover effect - only color change, no background, no movement */
+                /* Platform-specific hover effect - only color change, no background, no movement */
                 .threadly-mode-option:hover {
-                    color: #ffcc00 !important;
+                    color: ${getPlatformAccentColor(detectCurrentPlatform())} !important;
                     background: transparent !important;
                     background-color: transparent !important;
                     box-shadow: none !important;
@@ -354,14 +354,14 @@
             document.head.appendChild(style);
         }
         
-        // Remove existing popup if any
+            // Remove existing popup if any
         const existingPopup = document.querySelector('.pill-popup');
-        if (existingPopup) {
-            existingPopup.remove();
-        }
+            if (existingPopup) {
+                existingPopup.remove();
+            }
 
         // Create popup container with pill animation
-        const popup = document.createElement('div');
+            const popup = document.createElement('div');
         popup.className = 'pill-popup';
         
         // Add inline styles for pill animation
@@ -413,7 +413,7 @@
         popup.style.opacity = '0';
 
         // Start the pill emergence animation
-        setTimeout(() => {
+            setTimeout(() => {
             popup.classList.add('growing');
             popup.style.pointerEvents = 'all';
             
@@ -421,13 +421,13 @@
             setTimeout(() => {
                 contentContainer.style.opacity = '1';
             }, 400);
-        }, 10);
+            }, 10);
 
-        // Add click handlers for each option
-        popup.addEventListener('click', (e) => {
-            const mode = e.target.closest('.threadly-mode-option')?.dataset.mode;
-            if (mode) {
-                handleModeSelection(mode, sparkleElement);
+            // Add click handlers for each option
+            popup.addEventListener('click', (e) => {
+                const mode = e.target.closest('.threadly-mode-option')?.dataset.mode;
+                if (mode) {
+                    handleModeSelection(mode, sparkleElement);
                 if (popup) {
                     popup.remove();
                     // Reset hover state when popup is closed
@@ -451,16 +451,16 @@
                         popup.classList.remove('growing');
                         popup.classList.add('shrinking');
                         // Ensure animation completes before removing
-                        setTimeout(() => {
+            setTimeout(() => {
                             if (popup) popup.remove();
                             popup = null;
                         }, 650); // Slightly longer than animation duration
                     }
-                }, 100);
+            }, 100);
             }
         });
 
-        return popup;
+            return popup;
     }
 
     // Handle mode selection
@@ -549,6 +549,17 @@
             return 'perplexity';
         }
         return 'chatgpt'; // default fallback
+    }
+
+    function getPlatformAccentColor(platform) {
+        const accentColors = {
+            'chatgpt': '#ffcc00',    // ChatGPT yellow
+            'claude': '#d97706',     // Claude orange
+            'ai-studio': '#4285f4',  // AI Studio blue
+            'gemini': '#87ceeb',     // Gemini sky blue
+            'perplexity': '#20b2aa'  // Perplexity teal
+        };
+        return accentColors[platform] || '#ffcc00'; // fallback to yellow
     }
 
     // Handle sparkle click functionality with prompt refine feature (exact copy from Claude)

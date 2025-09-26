@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const statusDiv = document.getElementById('status');
     const form = document.getElementById('apiKeyForm');
     const ratingBtn = document.getElementById('ratingBtn');
+    const guideBtn = document.getElementById('guideBtn');
 
     // Add help text dynamically
     const helpText = document.createElement('div');
@@ -74,6 +75,29 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (e.key === 'Enter') {
             form.dispatchEvent(new Event('submit'));
         }
+    });
+
+    // Handle guide button click
+    guideBtn.addEventListener('click', function() {
+        // Open the Chrome Web Store page for the extension guide
+        chrome.tabs.create({
+            url: 'https://chromewebstore.google.com/detail/gnnpjnaahnccnccaaaegapdnplkhfckh'
+        });
+    });
+
+    // Add right-click context menu for guide button to restart tooltips
+    guideBtn.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        // Send message to content script to restart tooltips
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            chrome.tabs.sendMessage(tabs[0].id, {action: 'restartTooltips'}, function(response) {
+                if (chrome.runtime.lastError) {
+                    console.log('Could not restart tooltips:', chrome.runtime.lastError);
+                } else {
+                    showStatus('Tooltips restarted! Check the current tab.', 'success');
+                }
+            });
+        });
     });
 
     // Handle rating button click
