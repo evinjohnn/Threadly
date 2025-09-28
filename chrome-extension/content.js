@@ -1082,7 +1082,8 @@
                     
                     const messagesWithPlatform = messages.map(msg => ({
                         ...msg,
-                        platform: msg.platform || platformFromKey // Use stored platform or extract from key
+                        platform: msg.platform || platformFromKey, // Use stored platform or extract from key
+                        originalStorageKey: key // Preserve the original storage key for saving back
                     }));
                     
                     allMessages.push(...messagesWithPlatform);
@@ -1934,6 +1935,13 @@
     // --- Collections View Functions --- //
     async function renderCollectionsView(isAssigning = false) {
         try {
+            // --- FIX START: Ensure the navbar is visible on the main collections screen ---
+            const toggleBar = document.getElementById('threadly-toggle-bar');
+            if (toggleBar) {
+                toggleBar.style.display = 'flex'; // Use 'flex' as it's a flex container
+            }
+            // --- FIX END ---
+
             if (!messageList) {
                 console.error('Threadly: messageList not found in renderCollectionsView');
                 return;
@@ -2666,6 +2674,13 @@
     
     async function renderMessagesForCollection(collectionId) {
         try {
+            // --- FIX START: Hide the main navbar when inside a collection ---
+            const toggleBar = document.getElementById('threadly-toggle-bar');
+            if (toggleBar) {
+                toggleBar.style.display = 'none';
+            }
+            // --- FIX END ---
+
             // --- FIX: Set the flag to true to correctly identify the current view context ---
             isInCollectionsView = true;
             
@@ -3181,6 +3196,13 @@
     function returnToMainMessages() {
         if (!messageList) return;
         
+        // --- FIX START: Ensure the navbar is visible when returning to main messages ---
+        const toggleBar = document.getElementById('threadly-toggle-bar');
+        if (toggleBar) {
+            toggleBar.style.display = 'flex';
+        }
+        // --- FIX END ---
+        
         // Reset flag
         isInCollectionsView = false;
         
@@ -3337,26 +3359,42 @@
 
             // --- FIX: Load ALL messages from storage to find and update the correct ones ---
             const allMessages = await loadAllMessagesFromAllPlatforms();
+            console.log('Threadly: Loaded', allMessages.length, 'total messages from all platforms');
+            console.log('Threadly: All messages platforms:', [...new Set(allMessages.map(m => m.platform))]);
             let messagesUpdated = 0;
 
             // Find and update each selected message
             allMessages.forEach(message => {
                 if (selectedMessageIds.includes(message.id)) {
+                    console.log('Threadly: Found selected message:', message.id, 'Platform:', message.platform, 'CollectionIds:', message.collectionIds);
                     if (message.collectionIds && message.collectionIds.includes(currentCollectionId)) {
                         // Remove the current collection ID from the message's list
                         message.collectionIds = message.collectionIds.filter(id => id !== currentCollectionId);
                         messagesUpdated++;
-                        console.log('Threadly: Removed collection from message:', message.id);
+                        console.log('Threadly: Removed collection from message:', message.id, 'New collectionIds:', message.collectionIds);
+                    } else {
+                        console.log('Threadly: Message', message.id, 'does not contain collection', currentCollectionId);
                     }
                 }
             });
 
-            // Save the modified messages back to storage
-            // Update each platform's storage with its respective messages
-            const platforms = [...new Set(allMessages.map(m => m.platform))];
-            for (const platform of platforms) {
-                const platformMessages = allMessages.filter(m => m.platform === platform);
-                await saveMessagesToStorage(platformMessages);
+            // Save the modified messages back to their respective platform storages
+            // Group messages by their original storage key to maintain proper organization
+            const messagesByStorageKey = allMessages.reduce((acc, msg) => {
+                const storageKey = msg.originalStorageKey || `threadly_${msg.platform}_${window.location.pathname}`;
+                if (!acc[storageKey]) {
+                    acc[storageKey] = [];
+                }
+                acc[storageKey].push(msg);
+                return acc;
+            }, {});
+
+            // Save each group of messages back to their original storage location
+            for (const storageKey in messagesByStorageKey) {
+                if (storageKey && storageKey !== 'unknown') {
+                    await chrome.storage.local.set({ [storageKey]: messagesByStorageKey[storageKey] });
+                    console.log('Threadly: Saved', messagesByStorageKey[storageKey].length, 'messages to storage key:', storageKey);
+                }
             }
             
             console.log('Threadly: Removed', messagesUpdated, 'messages from collection:', currentCollectionId);
@@ -4538,10 +4576,12 @@
             return;
         }
 
+        console.log('Threadly: Toggle bar found, adding morphed class');
         // Add morphing class for animation
         toggleBar.classList.add('morphed');
         
         // Create DELETE | CANCEL layout (same approach as morphNavbarToSelectionMode)
+        console.log('Threadly: Creating DELETE | CANCEL contextual bar');
         toggleBar.innerHTML = `
             <div class="threadly-toggle-label delete">
                 <span class="threadly-toggle-text">DELETE</span>
@@ -4550,10 +4590,14 @@
                 <span class="threadly-toggle-text">CANCEL</span>
             </div>
         `;
+        console.log('Threadly: Contextual bar created, innerHTML length:', toggleBar.innerHTML.length);
 
         // Add event listeners for the new buttons
         const deleteBtn = toggleBar.querySelector('.delete');
         const cancelBtn = toggleBar.querySelector('.cancel');
+        
+        console.log('Threadly: Delete button found:', !!deleteBtn);
+        console.log('Threadly: Cancel button found:', !!cancelBtn);
         
         if (deleteBtn) {
             deleteBtn.addEventListener('click', () => {
@@ -4575,9 +4619,13 @@
         }
         
         if (cancelBtn) {
+            console.log('Threadly: Adding cancel button event listener');
             cancelBtn.addEventListener('click', () => {
+                console.log('Threadly: Cancel button clicked, exiting selection mode');
                 exitSelectionMode();
             });
+        } else {
+            console.log('Threadly: Cancel button not found');
         }
 
         // Update button states based on selection
@@ -4884,8 +4932,12 @@
         const toggleBar = document.getElementById('threadly-toggle-bar');
         if (!toggleBar) return;
 
+        // Remove any existing event listeners to prevent duplicates
+        const newToggleBar = toggleBar.cloneNode(true);
+        toggleBar.parentNode.replaceChild(newToggleBar, toggleBar);
+
         // Add click listeners for each label to allow direct selection
-        toggleBar.addEventListener('click', async (e) => {
+        newToggleBar.addEventListener('click', async (e) => {
             if (e.target.classList.contains('threadly-toggle-label')) {
                 if (e.target.classList.contains('user') || e.target.classList.contains('you')) {
                     await selectFilterState('user');
