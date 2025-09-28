@@ -1361,6 +1361,29 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     background: white !important; /* White color by default */
 }
 
+/* Select mode - same as square but ensure it's white */
+.threadly-circle-bulb[data-mode="select"] {
+    --box-size: 18.36px; /* 20.4px * 0.9 (10% smaller) */
+    --stroke: 2px;
+    --duration: 280ms;
+    --easing: cubic-bezier(.2,.7,.2,1);
+    --diag-scale: 1.41421356;
+    color: var(--threadly-text-secondary); /* Set the color for the checkbox */
+}
+
+.threadly-circle-bulb[data-mode="select"] .xbox-side {
+    position: absolute;
+    background: white !important; /* White color for select mode */
+    transform-origin: 50% 50%;
+    transition: transform var(--duration) var(--easing);
+    will-change: transform;
+}
+
+.threadly-circle-bulb[data-mode="select"] .xbox-side.top    { top: 0; left: 0; right: 0; height: var(--stroke); }
+.threadly-circle-bulb[data-mode="select"] .xbox-side.bottom { bottom: 0; left: 0; right: 0; height: var(--stroke); }
+.threadly-circle-bulb[data-mode="select"] .xbox-side.left   { left: 0; top: 0; bottom: 0; width: var(--stroke); }
+.threadly-circle-bulb[data-mode="select"] .xbox-side.right  { right: 0; top: 0; bottom: 0; width: var(--stroke); }
+
 /* .threadly-circle-bulb:hover svg - REMOVED */
 
 /* Advanced fill animation for saved icon - simplified like reference code */
@@ -2735,7 +2758,6 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
 /* Ensure the container uses flexbox and has padding for the "pill" border effect */
 .threadly-toggle-bar.morphed {
     display: flex !important;
-    flex-direction: row !important;
     justify-content: center !important;
     align-items: center !important;
     padding: 2px !important;
@@ -2754,8 +2776,8 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     bottom: auto !important;
     transform: none !important; /* Override translateY(-50%) */
     height: 28px !important;
-    width: 50% !important; /* Each button takes exactly half the space */
-    flex-grow: 1 !important; /* Ensure they fill the container */
+    width: auto !important; /* Let flexbox handle the width */
+    flex: 1 !important; /* This is the key change for equal distribution */
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -2780,28 +2802,30 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     border-bottom-left-radius: 14px;
 }
 
-/* Make ASSIGN TO button green like in previous versions */
+/* Make ASSIGN TO and DELETE buttons have their respective colors */
 .threadly-toggle-bar.morphed .threadly-toggle-label.assign-to {
     color: #10b981 !important; /* Green color for assign-to button */
 }
 
-/* Make DELETE button red for destructive action */
 .threadly-toggle-bar.morphed .threadly-toggle-label.delete {
     color: #ef4444 !important; /* Red color for delete button */
 }
 
+/* Hover effect for the DELETE button */
 .threadly-toggle-bar.morphed .threadly-toggle-label.delete:not(:disabled):hover {
     color: white !important;
     background: rgba(239, 68, 68, 0.9) !important;
     box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6) !important;
 }
 
+/* Hover effect for the ASSIGN TO button */
 .threadly-toggle-bar.morphed .threadly-toggle-label.assign-to:not(:disabled):hover {
     color: white !important;
     background: rgba(16, 185, 129, 0.9) !important;
     box-shadow: 0 0 30px rgba(16, 185, 129, 1), 0 0 60px rgba(16, 185, 129, 0.6) !important;
 }
 
+/* Disabled state for the buttons */
 .threadly-toggle-bar.morphed .threadly-toggle-label.delete:disabled,
 .threadly-toggle-bar.morphed .threadly-toggle-label.assign-to:disabled {
     opacity: 0.5;
@@ -2811,6 +2835,7 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     box-shadow: none !important;
 }
 
+/* Styling for the CANCEL button */
 .threadly-toggle-bar.morphed .threadly-toggle-label.cancel {
     border-top-right-radius: 14px;
     border-bottom-right-radius: 14px;

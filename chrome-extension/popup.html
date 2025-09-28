@@ -164,7 +164,7 @@
             color: #f44336;
         }
 
-        .rating-btn, .guide-btn {
+        .rating-btn, .community-btn, .github-btn, .report-btn {
             width: 100%;
             padding: 6px;
             background: #3a3a3a;
@@ -178,19 +178,72 @@
             margin-top: 4px;
         }
 
-        .rating-btn:hover, .guide-btn:hover {
+        .rating-btn:hover, .community-btn:hover, .github-btn:hover, .report-btn:hover {
             background: #4a4a4a;
         }
 
-        .guide-btn {
-            background: #00bfae;
-            border-color: #00bfae;
+        .community-btn {
+            background: #ff4500;
+            border-color: #ff4500;
             color: white;
         }
 
-        .guide-btn:hover {
-            background: #0f766e;
-            border-color: #0f766e;
+        .community-btn:hover {
+            background: #e03e00;
+            border-color: #e03e00;
+        }
+
+        .rating-btn {
+            background: #4caf50;
+            border-color: #4caf50;
+            color: white;
+        }
+
+        .rating-btn:hover {
+            background: #45a049;
+            border-color: #45a049;
+        }
+
+        .github-btn {
+            background: #333333;
+            border-color: #333333;
+            color: white;
+        }
+
+        .github-btn:hover {
+            background: #444444;
+            border-color: #444444;
+        }
+
+        .report-btn {
+            background: #f44336;
+            border-color: #f44336;
+            color: white;
+        }
+
+        .report-btn:hover {
+            background: #d32f2f;
+            border-color: #d32f2f;
+        }
+
+        .donate-btn {
+            width: 100%;
+            padding: 10px;
+            background: #ffd700;
+            border: 1px solid #ffd700;
+            border-radius: 25px;
+            color: #333333;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .donate-btn:hover {
+            background: #ffed4e;
+            border-color: #ffed4e;
         }
 
         .button-group {
@@ -200,7 +253,23 @@
         }
 
         .button-group .rating-btn,
-        .button-group .guide-btn {
+        .button-group .community-btn,
+        .button-group .github-btn,
+        .button-group .report-btn {
+            flex: 1;
+            margin-top: 0;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .button-row .rating-btn,
+        .button-row .community-btn,
+        .button-row .github-btn,
+        .button-row .report-btn {
             flex: 1;
             margin-top: 0;
         }
@@ -232,13 +301,26 @@
             <div class="status" id="status"></div>
             
             <div class="button-group">
-                <button class="guide-btn" id="guideBtn" title="Click to open guide, right-click to restart tooltips">
-                    📖 Guide
+                <button class="community-btn" id="communityBtn" title="Join our Reddit community">
+                    Community
                 </button>
                 <button class="rating-btn" id="ratingBtn" title="Rate Threadly on Chrome Web Store">
-                    ⭐ Rate
+                    Rate
                 </button>
             </div>
+            
+            <div class="button-row">
+                <button class="github-btn" id="githubBtn" title="View source code on GitHub">
+                    GitHub
+                </button>
+                <button class="report-btn" id="reportBtn" title="Report an issue">
+                    Report
+                </button>
+            </div>
+            
+            <button class="donate-btn" id="donateBtn" title="Support the creator">
+                Donate to Creator
+            </button>
         </div>
     </div>
 

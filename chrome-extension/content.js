@@ -324,7 +324,16 @@
         
         // Only show dots for user messages
         const userMessages = messages.filter(msg => msg.role === 'user');
-        console.log('Threadly: Found', userMessages.length, 'user messages');
+        console.log('Threadly: Found', userMessages.length, 'user messages out of', messages.length, 'total messages');
+        
+        // Debug: Log all message roles to help diagnose issues
+        const allRoles = messages.map(msg => msg.role).filter(role => role);
+        const uniqueRoles = [...new Set(allRoles)];
+        console.log('Threadly: All message roles found:', uniqueRoles);
+        console.log('Threadly: Role distribution:', uniqueRoles.map(role => ({
+            role,
+            count: messages.filter(msg => msg.role === role).length
+        })));
         
         if (userMessages.length === 0) {
             console.log('Threadly: No user messages, hiding dots');
@@ -811,6 +820,13 @@
             savedBulb.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                
+                // Exit selection mode if active when toggling SAVED state
+                if (isInSelectionMode) {
+                    console.log('Threadly: Exiting selection mode due to SAVED button toggle');
+                    exitSelectionMode();
+                }
+                
                 // Toggle the visual state - like selection button (square ↔ X)
                 console.log('Threadly: SAVED bulb clicked - current state:', savedButtonActive);
                 setSavedButtonActive(!savedButtonActive);
@@ -857,6 +873,13 @@
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     e.stopPropagation();
+                    
+                    // Exit selection mode if active when toggling SAVED state
+                    if (isInSelectionMode) {
+                        console.log('Threadly: Exiting selection mode due to SAVED button keyboard toggle');
+                        exitSelectionMode();
+                    }
+                    
                     setSavedButtonActive(!savedButtonActive);
                     
                     if (!savedButtonActive) {
@@ -1161,6 +1184,7 @@
                             content: text,
                             element: userEl
                         });
+                        console.log('Threadly: Extracted user message:', text.substring(0, 50) + '...');
                     }
                 });
                 
@@ -1246,6 +1270,7 @@
                         content: text,
                         element: aiEl
                     });
+                    console.log('Threadly: Extracted AI message:', text.substring(0, 50) + '...');
                 }
             });
             
@@ -1289,6 +1314,11 @@
                 }
             });
         }
+        
+        console.log('Threadly: extractConversation returning', extracted.length, 'messages');
+        const userCount = extracted.filter(msg => msg.role === 'user').length;
+        const assistantCount = extracted.filter(msg => msg.role === 'assistant').length;
+        console.log('Threadly: - User messages:', userCount, 'Assistant messages:', assistantCount);
         
         return extracted;
     }
@@ -1537,14 +1567,17 @@
         // Filter by message type based on toggle state
         if (messageFilterState === 'user') {
             filtered = filtered.filter(m => m.role === 'user');
+            console.log('Threadly: Filtered to user messages:', filtered.length, 'out of', allMessages.length, 'total');
         } else if (messageFilterState === 'assistant') {
             filtered = filtered.filter(m => m.role === 'assistant');
+            console.log('Threadly: Filtered to assistant messages:', filtered.length, 'out of', allMessages.length, 'total');
         } else if (messageFilterState === 'favorites') {
             // For favorites, we need to load and show all global favorites
             await loadAndShowAllFavorites();
             return; // Exit early as loadAndShowAllFavorites will handle rendering
         }
         
+        console.log('Threadly: About to render', filtered.length, 'filtered messages');
         renderMessages(filtered);
     }
 
@@ -1791,6 +1824,12 @@
 
     // --- Filter State Management --- //
     async function selectFilterState(state) {
+        // Exit selection mode if active when changing states
+        if (isInSelectionMode) {
+            console.log('Threadly: Exiting selection mode due to state change');
+            exitSelectionMode();
+        }
+        
         // If we're in collections view, return to main messages first
         if (isInCollectionsView) {
             isInCollectionsView = false;
@@ -1951,6 +1990,12 @@
     // --- Collections View Functions --- //
     async function renderCollectionsView(isAssigning = false) {
         try {
+            // Exit selection mode if active when entering collections view
+            if (isInSelectionMode) {
+                console.log('Threadly: Exiting selection mode due to entering collections view');
+                exitSelectionMode();
+            }
+            
             // --- FIX START: Ensure the navbar is visible on the main collections screen ---
             const toggleBar = document.getElementById('threadly-toggle-bar');
             if (toggleBar) {
@@ -2075,12 +2120,12 @@
                     console.log('Threadly: Adding messages to collection:', collection.name);
                     console.log('Threadly: About to call assignMessagesToCollection for:', collection.name);
                     // Step 1: Assign the messages to the collection
-                    await assignMessagesToCollection(collection.id);
-                    console.log('Threadly: assignMessagesToCollection completed for:', collection.name);
+                    const messagesAddedCount = await assignMessagesToCollection(collection.id);
+                    console.log('Threadly: assignMessagesToCollection completed for:', collection.name, 'added', messagesAddedCount, 'messages');
                     
                     // Step 2: Call the new function to correctly reset the UI
                     console.log('Threadly: About to call finalizeAssignmentAndReturnToCollections for:', collection.name);
-                    await finalizeAssignmentAndReturnToCollections(collection.id);
+                    await finalizeAssignmentAndReturnToCollections(collection.id, messagesAddedCount);
                     console.log('Threadly: finalizeAssignmentAndReturnToCollections completed for:', collection.name);
                 } else if (selectionContext === 'collections') {
                     // Collection selection mode: toggle selection instead of navigating
@@ -2690,6 +2735,12 @@
     
     async function renderMessagesForCollection(collectionId) {
         try {
+            // Exit selection mode if active when entering a collection
+            if (isInSelectionMode) {
+                console.log('Threadly: Exiting selection mode due to entering collection');
+                exitSelectionMode();
+            }
+            
             // --- FIX START: Hide the main navbar when inside a collection ---
             const toggleBar = document.getElementById('threadly-toggle-bar');
             if (toggleBar) {
@@ -3734,6 +3785,9 @@
             // Update collection message counts
             await updateCollectionMessageCounts();
             
+            // Store the count before clearing selectedMessageIds
+            const unstarredCount = selectedMessageIds.length;
+            
             // Exit selection mode
             exitSelectionMode();
             
@@ -3741,7 +3795,7 @@
             await filterMessages(searchInput.value);
             
             // Show success toast
-            showToast(`Unstarred ${selectedMessageIds.length} message(s)`);
+            showToast(`Unstarred ${unstarredCount} message(s)`);
             
         } catch (error) {
             console.error('Threadly: Error unstarring messages:', error);
@@ -4498,8 +4552,8 @@
         await renderCollectionsView(true); // true = isAssigning mode
         console.log('Threadly: Switched to SAVED state with assignment mode');
         
-        // Morph navbar to show ADD NEW | CANCEL for assignment mode
-        morphNavbarToAssignmentMode();
+        // Morph navbar to show ADD NEW | BACK for normal SAVED state
+        morphNavbarToSavedState();
         console.log('Threadly: Entered assignment mode');
     }
 
@@ -4818,12 +4872,16 @@
                     toggleSegment.classList.add('cancel');
                 }
                 
-                // BACK button - should work like double-clicking the saved state bulb
-                console.log('Threadly: BACK clicked - calling exitSavedState()');
-                
-                // Call exitSavedState() which properly handles going back to previous state
-                // while keeping the saved state active (like double-clicking the bulb)
-                exitSavedState();
+                // BACK button - check if we're in assignment mode
+                if (isAssigningMode) {
+                    console.log('Threadly: BACK clicked in assignment mode - calling cancelAssignment()');
+                    cancelAssignment();
+                } else {
+                    console.log('Threadly: BACK clicked - calling exitSavedState()');
+                    // Call exitSavedState() which properly handles going back to previous state
+                    // while keeping the saved state active (like double-clicking the bulb)
+                    exitSavedState();
+                }
                 
                 console.log('Threadly: BACK - returned to previous state');
             });
@@ -4852,6 +4910,12 @@
 
     // Function to exit saved state - same pattern as exitAssignmentMode
     function exitSavedState() {
+        // Exit selection mode if active when exiting saved state
+        if (isInSelectionMode) {
+            console.log('Threadly: Exiting selection mode due to exiting saved state');
+            exitSelectionMode();
+        }
+        
         // Reset navbar to original YOU AI FAV state
         resetNavbarToOriginal();
         
@@ -5075,7 +5139,7 @@
             console.log('Threadly: Created new collection:', collectionName);
             
             // Show success feedback
-            showToast(`"${collectionName}" created!`);
+            showToast(`The collection "${collectionName}" has been created`);
             
             // Stay in SAVED state and re-render collections with a small delay for smooth transition
             setTimeout(async () => {
@@ -5279,7 +5343,11 @@
 
                 // Add click handler to assign to this collection
                 collectionItem.addEventListener('click', async () => {
-                    await assignMessagesToCollection(collection.id);
+                    const messagesAddedCount = await assignMessagesToCollection(collection.id);
+                    if (messagesAddedCount > 0) {
+                        const collectionName = await getCollectionName(collection.id);
+                        showToast(`Added ${messagesAddedCount} message(s) to '${collectionName}'`);
+                    }
                 });
 
                 collectionsList.appendChild(collectionItem);
@@ -5865,73 +5933,53 @@
             // 5. Update collection message counts
             await updateCollectionMessageCounts();
 
-            // 6. Update UI and provide feedback.
-            const collectionName = await getCollectionName(collectionId);
-            showToast(`Added ${messagesUpdatedCount} message(s) to '${collectionName}'`);
-            
-            // 7. Reset UI after all processing is complete
-            console.log('Threadly: Assignment completed, resetting UI');
-            isAssigningMode = false;
-            selectedMessageIds = [];
-            document.body.classList.remove('selection-mode');
-            
-            // Reset checkboxes
-            const checkboxes = document.querySelectorAll('.threadly-message-checkbox');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            
-            // Return to collections view
-            setSavedButtonActive(true);
-            await renderCollectionsView(false);
-            morphNavbarToSavedState();
+            // Return the count of messages that were actually added
+            return messagesUpdatedCount;
 
         } catch (error) {
             console.error('Threadly: Error assigning messages to collection:', error);
             showToast('Error assigning messages');
+            return 0;
         }
     }
 
     // NEW FUNCTION: To handle the UI transition correctly after assignment.
-    async function finalizeAssignmentAndReturnToCollections(collectionId) {
-        console.log('Threadly: finalizeAssignmentAndReturnToCollections called for collectionId:', collectionId);
+    async function finalizeAssignmentAndReturnToCollections(collectionId, messagesAddedCount = 0) {
+        console.log('Threadly: finalizeAssignmentAndReturnToCollections called for collectionId:', collectionId, 'with', messagesAddedCount, 'messages added');
         const collectionName = await getCollectionName(collectionId);
         console.log('Threadly: Collection name:', collectionName);
-        showToast(`Moved ${selectedMessageIds.length} items to '${collectionName}'`);
+        
+        // Use the actual count of messages that were added
+        showToast(`Added ${messagesAddedCount} message(s) to '${collectionName}'`);
 
         // 1. Reset selection and assignment state variables
         console.log('Threadly: Resetting isAssigningMode from', isAssigningMode, 'to false');
         isAssigningMode = false;
         console.log('Threadly: Clearing selectedMessageIds:', selectedMessageIds);
         selectedMessageIds = [];
-
-        // 2. Manually reset the UI elements without a full exit
+        
+        // 2. Reset UI elements
         document.body.classList.remove('selection-mode');
-        console.log('Threadly: Removed selection-mode class from body');
+        
+        // Reset checkboxes
+        const checkboxes = document.querySelectorAll('.threadly-message-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        // Return to collections view
+        setSavedButtonActive(true);
+        await renderCollectionsView(false);
+        morphNavbarToSavedState();
 
+        // 3. Reset select button
         const selectBulb = document.getElementById('threadly-select-bulb');
         if (selectBulb) {
             selectBulb.title = 'Enable selection mode';
             selectBulb.setAttribute('data-mode', 'select');
-            console.log('Threadly: Reset select bulb');
+            selectBulb.classList.remove('close');
+            selectBulb.classList.add('square');
         }
-
-        // Uncheck all checkboxes
-        const checkboxes = document.querySelectorAll('.threadly-message-checkbox');
-        console.log('Threadly: Found', checkboxes.length, 'checkboxes to uncheck');
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = false;
-            const container = checkbox.closest('.threadly-message-checkbox-container');
-            if(container) container.style.display = 'none';
-        });
-        
-        // 3. Morph the UI back to the DEFAULT SAVED state
-        console.log('Threadly: Setting savedButtonActive to true');
-        setSavedButtonActive(true); // Keep the saved button active
-        console.log('Threadly: Calling renderCollectionsView(false)');
-        await renderCollectionsView(false); // Re-render collections in default (non-assignment) mode
-        console.log('Threadly: Calling morphNavbarToSavedState()');
-        morphNavbarToSavedState(); // Morph navbar to "ADD NEW | BACK"
         console.log('Threadly: finalizeAssignmentAndReturnToCollections completed');
     }
 

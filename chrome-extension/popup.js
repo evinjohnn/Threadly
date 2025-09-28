@@ -9,7 +9,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     const statusDiv = document.getElementById('status');
     const form = document.getElementById('apiKeyForm');
     const ratingBtn = document.getElementById('ratingBtn');
-    const guideBtn = document.getElementById('guideBtn');
+    const communityBtn = document.getElementById('communityBtn');
+    const githubBtn = document.getElementById('githubBtn');
+    const reportBtn = document.getElementById('reportBtn');
+    const donateBtn = document.getElementById('donateBtn');
 
     // Add help text dynamically
     const helpText = document.createElement('div');
@@ -77,16 +80,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     });
 
-    // Handle guide button click
-    guideBtn.addEventListener('click', function() {
-        // Open the Chrome Web Store page for the extension guide
+    // Handle community button click
+    communityBtn.addEventListener('click', function() {
+        // Open the r/ThreadlyExtension subreddit
         chrome.tabs.create({
-            url: 'https://chromewebstore.google.com/detail/gnnpjnaahnccnccaaaegapdnplkhfckh'
+            url: 'https://www.reddit.com/r/ThreadlyExtension'
         });
     });
 
-    // Add right-click context menu for guide button to restart tooltips
-    guideBtn.addEventListener('contextmenu', function(e) {
+    // Add right-click context menu for community button to restart tooltips
+    communityBtn.addEventListener('contextmenu', function(e) {
         e.preventDefault();
         // Send message to content script to restart tooltips
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
@@ -104,6 +107,27 @@ document.addEventListener('DOMContentLoaded', async function() {
     ratingBtn.addEventListener('click', function() {
         chrome.tabs.create({
             url: 'https://chromewebstore.google.com/detail/gnnpjnaahnccnccaaaegapdnplkhfckh'
+        });
+    });
+
+    // Handle GitHub button click
+    githubBtn.addEventListener('click', function() {
+        chrome.tabs.create({
+            url: 'https://github.com/evinjohnn/threadly'
+        });
+    });
+
+    // Handle Report button click
+    reportBtn.addEventListener('click', function() {
+        chrome.tabs.create({
+            url: 'https://github.com/evinjohnn/threadly/issues'
+        });
+    });
+
+    // Handle Donate button click
+    donateBtn.addEventListener('click', function() {
+        chrome.tabs.create({
+            url: 'https://ko-fi.com/evinjohnn'
         });
     });
 });
