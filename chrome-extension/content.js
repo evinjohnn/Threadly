@@ -1557,17 +1557,30 @@
                 return;
             }
             
-            // Create a display list of all global favorites
-            const favoritesToShow = globalFavorites.map((fav, index) => ({
-                content: fav.content,
-                role: fav.role,
-                isFavorited: true,
-                originalPlatform: fav.platform,
-                chatPath: fav.chatPath,
-                timestamp: fav.timestamp,
-                element: null, // No element reference for cross-platform favorites
-                index: index
-            }));
+            // Load all messages from all platforms to match with favorites
+            const allPlatformMessages = await loadAllMessagesFromAllPlatforms();
+            
+            // Create a display list of all global favorites, matching with actual message IDs
+            const favoritesToShow = globalFavorites.map((fav, index) => {
+                // Try to find the actual message in storage to get the real ID
+                const actualMessage = allPlatformMessages.find(msg => 
+                    msg.content === fav.content && 
+                    msg.role === fav.role && 
+                    msg.isFavorited === true
+                );
+                
+                return {
+                    id: actualMessage ? actualMessage.id : `global_fav_${index}`, // Use real ID if found
+                    content: fav.content,
+                    role: fav.role,
+                    isFavorited: true,
+                    originalPlatform: fav.platform,
+                    chatPath: fav.chatPath,
+                    timestamp: fav.timestamp,
+                    element: null, // No element reference for cross-platform favorites
+                    index: index
+                };
+            });
             
             // Apply search filter if there's a query
             const query = searchInput.value.trim().toLowerCase();
@@ -1651,7 +1664,7 @@
                     </div>
                     <div class="threadly-message-right">
                         <div class="threadly-message-checkbox-container" style="display: none;">
-                            <input type="checkbox" class="threadly-message-checkbox" id="global_checkbox_${index}" data-message-id="${fav.id || `global_fav_${index}`}">
+                            <input type="checkbox" class="threadly-message-checkbox" id="global_checkbox_${index}" data-message-id="${fav.id}">
                         </div>
                         <button class="threadly-star-btn starred" title="Remove from favorites">
                             <span class="threadly-star-icon">★</span>
@@ -3285,15 +3298,29 @@
             await saveCollectionsToStorage(collections);
             
             // Remove collection ID from all messages that were assigned to it
-            const messages = await loadMessagesFromStorage();
-            messages.forEach(message => {
+            const allPlatformMessages = await loadAllMessagesFromAllPlatforms();
+            allPlatformMessages.forEach(message => {
                 if (message.collectionIds && message.collectionIds.includes(collectionId)) {
                     message.collectionIds = message.collectionIds.filter(id => id !== collectionId);
                 }
             });
-            
-            // Save updated messages
-            await saveMessagesToStorage(messages);
+
+            // Group the updated messages by their original storage key
+            const messagesByStorageKey = allPlatformMessages.reduce((acc, msg) => {
+                const storageKey = msg.originalStorageKey; 
+                if (!acc[storageKey]) {
+                    acc[storageKey] = [];
+                }
+                acc[storageKey].push(msg);
+                return acc;
+            }, {});
+
+            // Save each group of messages back to its correct location in storage
+            for (const storageKey in messagesByStorageKey) {
+                if (storageKey && storageKey !== 'unknown') {
+                    await chrome.storage.local.set({ [storageKey]: messagesByStorageKey[storageKey] });
+                }
+            }
             
             // Update global favorites if needed
             await updateGlobalFavorites();
@@ -3314,23 +3341,47 @@
 
     // Function to delete a message from a collection
     async function deleteMessageFromCollection(message, collectionId) {
+        console.log('Threadly: deleteMessageFromCollection called with message:', message.id, 'collectionId:', collectionId);
         try {
-            // Load messages from storage
-            const messages = await loadMessagesFromStorage();
+            // Load ALL messages from EVERY chat across ALL platforms
+            const allPlatformMessages = await loadAllMessagesFromAllPlatforms();
+            console.log('Threadly: Loaded', allPlatformMessages.length, 'messages from all platforms');
             
             // Find the message
-            const messageIndex = messages.findIndex(m => m.id === message.id);
-            if (messageIndex === -1) {
+            const targetMessage = allPlatformMessages.find(m => m.id === message.id);
+            if (!targetMessage) {
                 console.error('Threadly: Message not found:', message.id);
+                console.log('Threadly: Available message IDs:', allPlatformMessages.map(m => m.id));
                 return;
             }
             
+            console.log('Threadly: Found target message:', targetMessage.id, 'Current collectionIds:', targetMessage.collectionIds);
+            
             // Remove collection ID from the message's collectionIds array
-            if (messages[messageIndex].collectionIds && messages[messageIndex].collectionIds.includes(collectionId)) {
-                messages[messageIndex].collectionIds = messages[messageIndex].collectionIds.filter(id => id !== collectionId);
+            if (targetMessage.collectionIds && targetMessage.collectionIds.includes(collectionId)) {
+                console.log('Threadly: Removing collection', collectionId, 'from message', targetMessage.id);
+                targetMessage.collectionIds = targetMessage.collectionIds.filter(id => id !== collectionId);
+                console.log('Threadly: New collectionIds:', targetMessage.collectionIds);
                 
-                // Save updated messages
-                await saveMessagesToStorage(messages);
+                // Group the updated messages by their original storage key
+                const messagesByStorageKey = allPlatformMessages.reduce((acc, msg) => {
+                    const storageKey = msg.originalStorageKey; 
+                    if (!acc[storageKey]) {
+                        acc[storageKey] = [];
+                    }
+                    acc[storageKey].push(msg);
+                    return acc;
+                }, {});
+
+                console.log('Threadly: Grouped messages by storage key:', Object.keys(messagesByStorageKey));
+
+                // Save each group of messages back to its correct location in storage
+                for (const storageKey in messagesByStorageKey) {
+                    if (storageKey && storageKey !== 'unknown') {
+                        console.log('Threadly: Saving', messagesByStorageKey[storageKey].length, 'messages to storage key:', storageKey);
+                        await chrome.storage.local.set({ [storageKey]: messagesByStorageKey[storageKey] });
+                    }
+                }
                 
                 // Update collection message counts
                 await updateCollectionMessageCounts();
@@ -3379,11 +3430,13 @@
                     console.log('Threadly: Found selected message:', message.id, 'Platform:', message.platform, 'CollectionIds:', message.collectionIds);
                     if (message.collectionIds && message.collectionIds.includes(currentCollectionId)) {
                         // Remove the current collection ID from the message's list
+                        console.log('Threadly: Removing collection', currentCollectionId, 'from selected message:', message.id);
                         message.collectionIds = message.collectionIds.filter(id => id !== currentCollectionId);
                         messagesUpdated++;
                         console.log('Threadly: Removed collection from message:', message.id, 'New collectionIds:', message.collectionIds);
                     } else {
                         console.log('Threadly: Message', message.id, 'does not contain collection', currentCollectionId);
+                        console.log('Threadly: Message collectionIds:', message.collectionIds);
                     }
                 }
             });
@@ -3453,15 +3506,29 @@
             await saveCollectionsToStorage(remainingCollections);
             
             // Remove collection IDs from all messages that were assigned to deleted collections
-            const messages = await loadMessagesFromStorage();
-            messages.forEach(message => {
+            const allPlatformMessages = await loadAllMessagesFromAllPlatforms();
+            allPlatformMessages.forEach(message => {
                 if (message.collectionIds) {
                     message.collectionIds = message.collectionIds.filter(id => !selectedCollectionIds.includes(id));
                 }
             });
-            
-            // Save updated messages
-            await saveMessagesToStorage(messages);
+
+            // Group the updated messages by their original storage key
+            const messagesByStorageKey = allPlatformMessages.reduce((acc, msg) => {
+                const storageKey = msg.originalStorageKey; 
+                if (!acc[storageKey]) {
+                    acc[storageKey] = [];
+                }
+                acc[storageKey].push(msg);
+                return acc;
+            }, {});
+
+            // Save each group of messages back to its correct location in storage
+            for (const storageKey in messagesByStorageKey) {
+                if (storageKey && storageKey !== 'unknown') {
+                    await chrome.storage.local.set({ [storageKey]: messagesByStorageKey[storageKey] });
+                }
+            }
             
             // Update global favorites if needed
             await updateGlobalFavorites();
@@ -3572,24 +3639,40 @@
 
     async function assignToCollection(messageIds, collectionId) {
         try {
-            // Load messages from storage
-            const messages = await loadMessagesFromStorage();
-            
-            // Update messages with collection ID
-            messageIds.forEach(id => {
-                const messageIndex = messages.findIndex(m => (m.id || m.content) === id);
-                if (messageIndex !== -1) {
-                    if (!messages[messageIndex].collectionIds) {
-                        messages[messageIndex].collectionIds = [];
+            // 1. Load ALL messages from EVERY chat across ALL platforms.
+            const allPlatformMessages = await loadAllMessagesFromAllPlatforms();
+            let messagesUpdatedCount = 0;
+
+            // 2. Iterate through all messages to find and update the selected ones.
+            allPlatformMessages.forEach(message => {
+                if (messageIds.includes(message.id)) {
+                    if (!message.collectionIds) {
+                        message.collectionIds = [];
                     }
-                    if (!messages[messageIndex].collectionIds.includes(collectionId)) {
-                        messages[messageIndex].collectionIds.push(collectionId);
+                    // Add the collectionId if it's not already there.
+                    if (!message.collectionIds.includes(collectionId)) {
+                        message.collectionIds.push(collectionId);
+                        messagesUpdatedCount++;
                     }
                 }
             });
-            
-            // Save updated messages
-            await saveMessagesToStorage(messages);
+
+            // 3. Group the updated messages by their original storage key.
+            const messagesByStorageKey = allPlatformMessages.reduce((acc, msg) => {
+                const storageKey = msg.originalStorageKey; 
+                if (!acc[storageKey]) {
+                    acc[storageKey] = [];
+                }
+                acc[storageKey].push(msg);
+                return acc;
+            }, {});
+
+            // 4. Save each group of messages back to its correct location in storage.
+            for (const storageKey in messagesByStorageKey) {
+                if (storageKey && storageKey !== 'unknown') {
+                    await chrome.storage.local.set({ [storageKey]: messagesByStorageKey[storageKey] });
+                }
+            }
             
             // Update global favorites if needed
             await updateGlobalFavorites();
@@ -3599,7 +3682,7 @@
             
             // Show confirmation toast
             const collectionName = await getCollectionName(collectionId);
-            showToast(`Moved ${messageIds.length} items to '${collectionName}'`);
+            showToast(`Moved ${messagesUpdatedCount} items to '${collectionName}'`);
             
             // FORCE EXIT: Reset assignment mode and return to DEFAULT SAVED state
             console.log('Threadly: Assignment completed - forcing exit to default SAVED state');
@@ -3615,24 +3698,35 @@
         if (selectedMessageIds.length === 0) return;
         
         try {
-            // Load messages from storage
-            const messages = await loadMessagesFromStorage();
+            // Load ALL messages from EVERY chat across ALL platforms
+            const allPlatformMessages = await loadAllMessagesFromAllPlatforms();
             
             // Unstar selected messages
-            for (const messageId of selectedMessageIds) {
-                // Find the message in messages
-                const messageIndex = messages.findIndex(m => (m.id || m.content) === messageId);
-                
-                if (messageIndex !== -1) {
-                    messages[messageIndex].isFavorited = false;
-                    if (messages[messageIndex].collectionIds) {
-                        messages[messageIndex].collectionIds = [];
+            allPlatformMessages.forEach(message => {
+                if (selectedMessageIds.includes(message.id)) {
+                    message.isFavorited = false;
+                    if (message.collectionIds) {
+                        message.collectionIds = [];
                     }
                 }
+            });
+
+            // Group the updated messages by their original storage key
+            const messagesByStorageKey = allPlatformMessages.reduce((acc, msg) => {
+                const storageKey = msg.originalStorageKey; 
+                if (!acc[storageKey]) {
+                    acc[storageKey] = [];
+                }
+                acc[storageKey].push(msg);
+                return acc;
+            }, {});
+
+            // Save each group of messages back to its correct location in storage
+            for (const storageKey in messagesByStorageKey) {
+                if (storageKey && storageKey !== 'unknown') {
+                    await chrome.storage.local.set({ [storageKey]: messagesByStorageKey[storageKey] });
+                }
             }
-            
-            // Save updated messages
-            await saveMessagesToStorage(messages);
             
             // Update global favorites
             await updateGlobalFavorites();
@@ -4626,12 +4720,17 @@
                 
                 if (selectionContext === 'messages-in-collection' && selectedMessageIds.length > 0) {
                     console.log('Threadly: Calling deleteSelectedMessagesFromCollection');
+                    console.log('Threadly: About to delete messages:', selectedMessageIds);
+                    console.log('Threadly: From collection:', currentCollectionId);
                     deleteSelectedMessagesFromCollection();
                 } else if (selectionContext === 'collections' && selectedCollectionIds.length > 0) {
                     console.log('Threadly: Calling deleteSelectedCollections');
                     deleteSelectedCollections();
                 } else {
                     console.log('Threadly: Delete button clicked but no valid selection found');
+                    console.log('Threadly: selectionContext:', selectionContext);
+                    console.log('Threadly: selectedMessageIds.length:', selectedMessageIds.length);
+                    console.log('Threadly: selectedCollectionIds.length:', selectedCollectionIds.length);
                 }
             });
         }
@@ -4719,39 +4818,12 @@
                     toggleSegment.classList.add('cancel');
                 }
                 
-                // BACK button - completely rebuilt from scratch
-                console.log('Threadly: BACK clicked - rebuilding from scratch');
+                // BACK button - should work like double-clicking the saved state bulb
+                console.log('Threadly: BACK clicked - calling exitSavedState()');
                 
-                // Deactivate SAVED state
-                setSavedButtonActive(false);
-                
-                // Restore the previous state if we have it
-                if (previousStateBeforeSaved && previousFilterStateBeforeSaved) {
-                    messageFilterState = previousFilterStateBeforeSaved;
-                    console.log('Threadly: BACK - Restored filter state to:', messageFilterState);
-                }
-                
-                resetNavbarToOriginal();
-                
-                // Set filter state WITHOUT calling selectFilterState (which sets isInCollectionsView = false)
-                const panel = document.getElementById('threadly-panel');
-                if (panel) {
-                    panel.setAttribute('data-filter', messageFilterState);
-                }
-                
-                // Update toggle segment position manually
-                const toggleSegment = document.querySelector('.threadly-toggle-segment');
-                if (toggleSegment) {
-                    toggleSegment.classList.remove('user', 'assistant', 'fav', 'collection');
-                    toggleSegment.classList.add(messageFilterState === 'user' ? 'user' : messageFilterState === 'assistant' ? 'assistant' : messageFilterState === 'favorites' ? 'fav' : 'collection');
-                }
-                
-                // Filter messages without changing isInCollectionsView
-                filterMessages(searchInput.value);
-                
-                // Clear the remembered state
-                previousStateBeforeSaved = null;
-                previousFilterStateBeforeSaved = null;
+                // Call exitSavedState() which properly handles going back to previous state
+                // while keeping the saved state active (like double-clicking the bulb)
+                exitSavedState();
                 
                 console.log('Threadly: BACK - returned to previous state');
             });
@@ -5208,8 +5280,6 @@
                 // Add click handler to assign to this collection
                 collectionItem.addEventListener('click', async () => {
                     await assignMessagesToCollection(collection.id);
-                    // Call the finalization function to properly reset UI state
-                    await finalizeAssignmentAndReturnToCollections(collection.id);
                 });
 
                 collectionsList.appendChild(collectionItem);
@@ -5484,6 +5554,8 @@
         
         console.log('Threadly: Checkbox changed:', { messageId, isChecked, checkbox: checkbox.outerHTML });
         console.log('Threadly: Current selectedMessageIds before change:', [...selectedMessageIds]);
+        console.log('Threadly: Current selectionContext:', selectionContext);
+        console.log('Threadly: Current currentCollectionId:', currentCollectionId);
         
         if (messageId) {
             toggleMessageSelection(messageId, isChecked);
@@ -5728,92 +5800,96 @@
         console.log('Threadly: assignMessagesToCollection called with collectionId:', collectionId);
         console.log('Threadly: selectedMessageIds:', selectedMessageIds);
         
-        const collections = await loadCollectionsFromStorage();
-        const collection = collections.find(c => c.id === collectionId);
-        
-        if (!collection) {
-            console.error('Threadly: Collection not found:', collectionId);
-            return;
-        }
-
-        console.log('Threadly: Found collection:', collection);
-
-        // Get selected message IDs
-        const selectedIds = Array.from(selectedMessageIds);
-        console.log('Threadly: Selected IDs:', selectedIds);
-        
-        if (selectedIds.length === 0) {
+        if (selectedMessageIds.length === 0) {
             console.error('Threadly: No messages selected');
             return;
         }
 
-        // SIMPLE APPROACH: Just like starring, save the selected messages to the collection
-        // Get current messages from the UI (the ones that are actually displayed and selected)
-        console.log('Threadly: allMessages length:', allMessages.length);
-        console.log('Threadly: allMessages IDs:', allMessages.map(m => m.id));
-        console.log('Threadly: selectedIds:', selectedIds);
-        
-        const currentMessages = allMessages.filter(msg => selectedIds.includes(msg.id));
-        console.log('Threadly: Current messages to assign:', currentMessages);
+        try {
+            // 1. Load ALL messages from EVERY chat across ALL platforms.
+            // This function correctly fetches data from every 'threadly_*' key.
+            const allPlatformMessages = await loadAllMessagesFromAllPlatforms();
+            console.log('Threadly: Loaded', allPlatformMessages.length, 'total messages from all platforms');
+            let messagesUpdatedCount = 0;
 
-        if (currentMessages.length === 0) {
-            console.error('Threadly: No current messages found for selected IDs');
-            return;
-        }
+            // 2. Iterate through all messages to find and update the selected ones.
+            console.log('Threadly: Checking', allPlatformMessages.length, 'messages for assignment');
+            console.log('Threadly: Selected message IDs to find:', selectedMessageIds);
+            console.log('Threadly: Available message IDs:', allPlatformMessages.map(m => m.id));
+            
+            allPlatformMessages.forEach(message => {
+                if (selectedMessageIds.includes(message.id)) {
+                    console.log('Threadly: Found selected message:', message.id, 'Platform:', message.platform, 'Current collectionIds:', message.collectionIds);
+                    if (!message.collectionIds) {
+                        message.collectionIds = [];
+                    }
+                    // Add the collectionId if it's not already there.
+                    if (!message.collectionIds.includes(collectionId)) {
+                        message.collectionIds.push(collectionId);
+                        messagesUpdatedCount++;
+                        console.log('Threadly: Added collection to message:', message.id, 'New collectionIds:', message.collectionIds);
+                    } else {
+                        console.log('Threadly: Message', message.id, 'already contains collection', collectionId);
+                    }
+                }
+            });
 
-        // Update collection with new message IDs
-        if (!collection.messageIds) {
-            collection.messageIds = [];
-        }
-        
-        // Add new message IDs (avoid duplicates)
-        let addedCount = 0;
-        currentMessages.forEach(msg => {
-            if (!collection.messageIds.includes(msg.id)) {
-                collection.messageIds.push(msg.id);
-                addedCount++;
+            if (messagesUpdatedCount === 0) {
+                console.log('Threadly: All selected messages are already in this collection');
+                // Still exit selection mode even if no new messages were added
+                isAssigningMode = false;
+                await exitSelectionMode();
+                returnToMainMessages();
+                return;
             }
-        });
-        
-        if (addedCount === 0) {
-            console.log('Threadly: All selected messages are already in this collection');
-            // Still exit selection mode even if no new messages were added
+
+            // 3. Group the updated messages by their original storage key.
+            const messagesByStorageKey = allPlatformMessages.reduce((acc, msg) => {
+                // 'originalStorageKey' is attached by loadAllMessagesFromAllPlatforms.
+                const storageKey = msg.originalStorageKey; 
+                if (!acc[storageKey]) {
+                    acc[storageKey] = [];
+                }
+                acc[storageKey].push(msg);
+                return acc;
+            }, {});
+
+            // 4. Save each group of messages back to its correct location in storage.
+            for (const storageKey in messagesByStorageKey) {
+                if (storageKey && storageKey !== 'unknown') {
+                    await chrome.storage.local.set({ [storageKey]: messagesByStorageKey[storageKey] });
+                    console.log('Threadly: Saved', messagesByStorageKey[storageKey].length, 'messages to storage key:', storageKey);
+                }
+            }
+            
+            // 5. Update collection message counts
+            await updateCollectionMessageCounts();
+
+            // 6. Update UI and provide feedback.
+            const collectionName = await getCollectionName(collectionId);
+            showToast(`Added ${messagesUpdatedCount} message(s) to '${collectionName}'`);
+            
+            // 7. Reset UI after all processing is complete
+            console.log('Threadly: Assignment completed, resetting UI');
             isAssigningMode = false;
-            await exitSelectionMode();
-            returnToMainMessages();
-            return;
+            selectedMessageIds = [];
+            document.body.classList.remove('selection-mode');
+            
+            // Reset checkboxes
+            const checkboxes = document.querySelectorAll('.threadly-message-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Return to collections view
+            setSavedButtonActive(true);
+            await renderCollectionsView(false);
+            morphNavbarToSavedState();
+
+        } catch (error) {
+            console.error('Threadly: Error assigning messages to collection:', error);
+            showToast('Error assigning messages');
         }
-        
-        console.log('Threadly: Added', addedCount, 'new messages to collection');
-
-        // Update Chrome storage for collections
-        await saveCollectionsToStorage(collections);
-        console.log('Threadly: Updated collections in Chrome storage');
-
-        // Update the messages with collection IDs (just like starring)
-        currentMessages.forEach(msg => {
-            if (!msg.collectionIds) {
-                msg.collectionIds = [];
-            }
-            if (!msg.collectionIds.includes(collectionId)) {
-                msg.collectionIds.push(collectionId);
-            }
-        });
-
-        // Save updated messages back to storage
-        await saveMessagesToStorage(allMessages);
-        console.log('Threadly: Updated messages in Chrome storage');
-
-        // Update collection message counts
-        await updateCollectionMessageCounts();
-
-        // Show success message
-        showToast(`Messages added to "${collection.name}"`);
-
-        // Use the new function to properly handle UI transition
-        await finalizeAssignmentAndReturnToCollections(collectionId);
-        
-        console.log('Threadly: Successfully assigned messages to collection:', collection.name);
     }
 
     // NEW FUNCTION: To handle the UI transition correctly after assignment.
