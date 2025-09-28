@@ -1786,8 +1786,11 @@
         messageFilterState = state;
         
         // Update the toggle segment position
-        toggleSegment.classList.remove('user', 'assistant', 'fav', 'collection');
-        toggleSegment.classList.add(state === 'user' ? 'user' : state === 'assistant' ? 'assistant' : state === 'favorites' ? 'fav' : 'collection');
+        const currentToggleSegment = document.getElementById('threadly-toggle-segment');
+        if (currentToggleSegment) {
+            currentToggleSegment.classList.remove('user', 'assistant', 'fav', 'collection');
+            currentToggleSegment.classList.add(state === 'user' ? 'user' : state === 'assistant' ? 'assistant' : state === 'favorites' ? 'fav' : 'collection');
+        }
         
         // Update panel data-filter attribute for CSS targeting
         if (panel) {
@@ -3135,9 +3138,12 @@
             // Ensure SAVED button stays active when viewing collections
             setSavedButtonActive(true);
             
-            // Ensure SAVED state navbar is visible in collection view (not in selection mode)
+            // Hide the toggle bar when viewing collection messages (not in selection mode)
             if (!isInSelectionMode) {
-                morphNavbarToSavedState();
+                const toggleBar = document.getElementById('threadly-toggle-bar');
+                if (toggleBar) {
+                    toggleBar.style.display = 'none';
+                }
             }
             
             console.log('Threadly: Successfully rendered', collectionMessages.length, 'messages for collection:', collection.name);
@@ -3364,6 +3370,10 @@
             let messagesUpdated = 0;
 
             // Find and update each selected message
+            console.log('Threadly: Checking', allMessages.length, 'messages against', selectedMessageIds.length, 'selected IDs');
+            console.log('Threadly: Selected message IDs:', selectedMessageIds);
+            console.log('Threadly: All message IDs:', allMessages.map(m => m.id));
+            
             allMessages.forEach(message => {
                 if (selectedMessageIds.includes(message.id)) {
                     console.log('Threadly: Found selected message:', message.id, 'Platform:', message.platform, 'CollectionIds:', message.collectionIds);
@@ -4216,7 +4226,7 @@
         console.log('Threadly: Saved previous state:', previousFilterState);
         
         isInSelectionMode = true;
-        selectedMessageIds = [];
+        // Don't reset selectedMessageIds - user might have already selected messages
         selectedCollectionIds = []; // Reset collection selection
         
         // Determine selection context based on current view
@@ -4232,7 +4242,7 @@
             console.log('Threadly: Entering selection mode for collections');
         } else {
             // We're in the main messages view (not in collections)
-            selectionContext = 'messages-in-collection'; // Default to message selection
+            selectionContext = 'main-messages'; // Main messages view for assignment
             console.log('Threadly: Entering selection mode for messages in main view');
         }
         
@@ -4247,7 +4257,7 @@
         if (selectionContext === 'collections' || selectionContext === 'messages-in-collection') {
             console.log('Threadly: Calling morphNavbarToDeleteMode');
             morphNavbarToDeleteMode();
-        } else {
+        } else if (selectionContext === 'main-messages') {
             console.log('Threadly: Calling morphNavbarToSelectionMode');
             morphNavbarToSelectionMode();
         }
@@ -4336,9 +4346,19 @@
         
         // Check if we should stay in SAVED state or return to original state
         if (isInCollectionsView) {
-            // We're in collections view, stay in SAVED state
-            console.log('Threadly: Staying in SAVED state after exiting selection mode');
-            morphNavbarToSavedState();
+            // We're in collections view, check if we're viewing a specific collection
+            if (currentCollectionId) {
+                // We're viewing a specific collection, hide the toggle bar
+                console.log('Threadly: Viewing collection, hiding toggle bar after exiting selection mode');
+                const toggleBar = document.getElementById('threadly-toggle-bar');
+                if (toggleBar) {
+                    toggleBar.style.display = 'none';
+                }
+            } else {
+                // We're in the main collections view, show the SAVED state
+                console.log('Threadly: Staying in SAVED state after exiting selection mode');
+                morphNavbarToSavedState();
+            }
         } else {
             // We're in main messages view, restore the previous filter state
             console.log('Threadly: Restoring previous state:', previousFilterState);
@@ -4576,12 +4596,13 @@
             return;
         }
 
-        console.log('Threadly: Toggle bar found, adding morphed class');
+        // Make the toggle bar visible (it might be hidden when viewing collections)
+        toggleBar.style.display = 'flex';
+        
         // Add morphing class for animation
         toggleBar.classList.add('morphed');
         
         // Create DELETE | CANCEL layout (same approach as morphNavbarToSelectionMode)
-        console.log('Threadly: Creating DELETE | CANCEL contextual bar');
         toggleBar.innerHTML = `
             <div class="threadly-toggle-label delete">
                 <span class="threadly-toggle-text">DELETE</span>
@@ -4590,20 +4611,17 @@
                 <span class="threadly-toggle-text">CANCEL</span>
             </div>
         `;
-        console.log('Threadly: Contextual bar created, innerHTML length:', toggleBar.innerHTML.length);
 
         // Add event listeners for the new buttons
         const deleteBtn = toggleBar.querySelector('.delete');
         const cancelBtn = toggleBar.querySelector('.cancel');
-        
-        console.log('Threadly: Delete button found:', !!deleteBtn);
-        console.log('Threadly: Cancel button found:', !!cancelBtn);
         
         if (deleteBtn) {
             deleteBtn.addEventListener('click', () => {
                 console.log('Threadly: Delete button clicked');
                 console.log('Threadly: selectionContext:', selectionContext);
                 console.log('Threadly: selectedMessageIds:', selectedMessageIds);
+                console.log('Threadly: selectedMessageIds length:', selectedMessageIds.length);
                 console.log('Threadly: selectedCollectionIds:', selectedCollectionIds);
                 
                 if (selectionContext === 'messages-in-collection' && selectedMessageIds.length > 0) {
@@ -4619,13 +4637,9 @@
         }
         
         if (cancelBtn) {
-            console.log('Threadly: Adding cancel button event listener');
             cancelBtn.addEventListener('click', () => {
-                console.log('Threadly: Cancel button clicked, exiting selection mode');
                 exitSelectionMode();
             });
-        } else {
-            console.log('Threadly: Cancel button not found');
         }
 
         // Update button states based on selection
@@ -4643,6 +4657,9 @@
             return;
         }
 
+        // Ensure the toggle bar is visible
+        toggleBar.style.display = 'flex';
+        
         // Add morphing class for animation
         toggleBar.classList.add('morphed');
         
@@ -4906,11 +4923,13 @@
             <span class="threadly-toggle-label fav">FAV</span>
         `;
 
+        // Re-acquire the reference to the new element
+        toggleSegment = document.getElementById('threadly-toggle-segment');
+
         // Set the segment class based on current filter state
-        const segment = document.getElementById('threadly-toggle-segment');
-        if (segment) {
-            segment.classList.remove('user', 'assistant', 'fav', 'collection');
-            segment.classList.add(messageFilterState === 'user' ? 'user' : messageFilterState === 'assistant' ? 'assistant' : messageFilterState === 'favorites' ? 'fav' : 'collection');
+        if (toggleSegment) {
+            toggleSegment.classList.remove('user', 'assistant', 'fav', 'collection');
+            toggleSegment.classList.add(messageFilterState === 'user' ? 'user' : messageFilterState === 'assistant' ? 'assistant' : messageFilterState === 'favorites' ? 'fav' : 'collection');
             console.log('Threadly: Set segment class to:', messageFilterState);
         }
 
@@ -5464,6 +5483,7 @@
         const isChecked = checkbox.checked;
         
         console.log('Threadly: Checkbox changed:', { messageId, isChecked, checkbox: checkbox.outerHTML });
+        console.log('Threadly: Current selectedMessageIds before change:', [...selectedMessageIds]);
         
         if (messageId) {
             toggleMessageSelection(messageId, isChecked);
@@ -5513,11 +5533,13 @@
             if (index === -1) {
                 selectedMessageIds.push(messageId);
                 console.log('Threadly: Added message to selection:', messageId);
+                console.log('Threadly: selectedMessageIds after adding:', [...selectedMessageIds]);
             }
         } else {
             if (index !== -1) {
                 selectedMessageIds.splice(index, 1);
                 console.log('Threadly: Removed message from selection:', messageId);
+                console.log('Threadly: selectedMessageIds after removing:', [...selectedMessageIds]);
             }
         }
         
