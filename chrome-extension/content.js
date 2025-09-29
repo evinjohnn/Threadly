@@ -1853,6 +1853,27 @@
                 clearTimeout(longPressTimer);
             });
             
+            // DEBUG: Add click handler to test message selection
+            if (isInSelectionMode) {
+                item.addEventListener('click', (e) => {
+                    console.log('Threadly: DEBUG - Message item clicked in selection mode');
+                    console.log('Threadly: DEBUG - Message ID:', msg.id);
+                    console.log('Threadly: DEBUG - Current selectedMessageIds:', selectedMessageIds);
+                    
+                    // Toggle selection
+                    const isSelected = selectedMessageIds.includes(msg.id);
+                    if (isSelected) {
+                        const index = selectedMessageIds.indexOf(msg.id);
+                        selectedMessageIds.splice(index, 1);
+                        console.log('Threadly: DEBUG - Removed message from selection');
+                    } else {
+                        selectedMessageIds.push(msg.id);
+                        console.log('Threadly: DEBUG - Added message to selection');
+                    }
+                    console.log('Threadly: DEBUG - New selectedMessageIds:', selectedMessageIds);
+                });
+            }
+            
             if (msg.element && document.body.contains(msg.element)) {
                 // Only enable scroll behavior if not in selection mode
                 if (!isInSelectionMode) {
@@ -1876,6 +1897,11 @@
             fragment.appendChild(item);
         });
         messageList.appendChild(fragment);
+        
+        // Update checkbox states after rendering messages
+        if (isInSelectionMode) {
+            updateCheckboxStates();
+        }
     }
     
     function toggleMessageType() {
@@ -4783,6 +4809,11 @@
         // Update checkbox states
         updateCheckboxStates();
         
+        // Also call updateCheckboxStates after a delay to ensure DOM is ready
+        setTimeout(() => {
+            updateCheckboxStates();
+        }, 200);
+        
         // Update selection info
         updateSelectionInfo();
         console.log('Threadly: Entered selection mode');
@@ -4969,8 +5000,39 @@
         
         if (assignBtn) {
             assignBtn.addEventListener('click', () => {
+                console.log('Threadly: ASSIGN TO button clicked');
+                console.log('Threadly: selectedMessageIds.length:', selectedMessageIds.length);
+                console.log('Threadly: selectedMessageIds:', selectedMessageIds);
+                
                 if (selectedMessageIds.length > 0) {
+                    console.log('Threadly: Calling enterAssignmentMode');
                     enterAssignmentMode();
+                } else {
+                    console.log('Threadly: No messages selected, showing error');
+                    showToast('Please select at least one message first');
+                    
+                    // DEBUG: Try to manually add a message for testing
+                    console.log('Threadly: DEBUG - Trying to find messages to test with');
+                    const messageItems = document.querySelectorAll('.threadly-message-item');
+                    console.log('Threadly: DEBUG - Found', messageItems.length, 'message items');
+                    
+                    if (messageItems.length > 0) {
+                        const firstMessage = messageItems[0];
+                        const messageId = firstMessage.dataset.messageId;
+                        console.log('Threadly: DEBUG - First message ID:', messageId);
+                        
+                        if (messageId) {
+                            console.log('Threadly: DEBUG - Manually adding message to selection for testing');
+                            selectedMessageIds.push(messageId);
+                            console.log('Threadly: DEBUG - selectedMessageIds after manual add:', selectedMessageIds);
+                            
+                            // Try assignment again
+                            if (selectedMessageIds.length > 0) {
+                                console.log('Threadly: DEBUG - Retrying assignment with manually added message');
+                                enterAssignmentMode();
+                            }
+                        }
+                    }
                 }
             });
         }
@@ -5959,33 +6021,52 @@
         console.log('Threadly: updateCheckboxStates called');
         console.log('Threadly: isInSelectionMode:', isInSelectionMode);
         
-        const checkboxContainers = document.querySelectorAll('.threadly-message-checkbox-container');
-        console.log('Threadly: Found', checkboxContainers.length, 'checkbox containers');
-        
-        checkboxContainers.forEach((container, index) => {
-            if (isInSelectionMode) {
-                // In selection mode, show checkboxes for all messages
-                container.style.display = 'flex';
-                console.log(`Threadly: Showing checkbox container ${index}`);
-                
-                // Add event listener for checkbox changes
-                const checkbox = container.querySelector('.threadly-message-checkbox');
-                const messageId = checkbox.dataset.messageId;
-                
-                if (checkbox && messageId) {
-                    console.log(`Threadly: Setting up checkbox for message ${messageId}`);
-                    // Remove existing listeners to prevent duplicates
-                    checkbox.removeEventListener('change', handleCheckboxChange);
-                    checkbox.addEventListener('change', handleCheckboxChange);
-                } else {
-                    console.log(`Threadly: Checkbox or messageId not found in container ${index}`, { checkbox, messageId });
-                }
-            } else {
-                // Exit selection mode, hide all checkboxes
-                container.style.display = 'none';
-                console.log(`Threadly: Hiding checkbox container ${index}`);
+        // Use setTimeout to ensure DOM is ready
+        setTimeout(() => {
+            const checkboxContainers = document.querySelectorAll('.threadly-message-checkbox-container');
+            console.log('Threadly: Found', checkboxContainers.length, 'checkbox containers');
+            console.log('Threadly: isInSelectionMode:', isInSelectionMode);
+            
+            if (checkboxContainers.length === 0) {
+                console.log('Threadly: No checkbox containers found! This might be the issue.');
+                // Try to find all message items to see if they exist
+                const messageItems = document.querySelectorAll('.threadly-message-item');
+                console.log('Threadly: Found', messageItems.length, 'message items');
             }
-        });
+            
+            checkboxContainers.forEach((container, index) => {
+                if (isInSelectionMode) {
+                    // In selection mode, show checkboxes for all messages
+                    container.style.display = 'flex';
+                    console.log(`Threadly: Showing checkbox container ${index}`);
+                    
+                    // Add event listener for checkbox changes
+                    const checkbox = container.querySelector('.threadly-message-checkbox');
+                    const messageId = checkbox ? checkbox.dataset.messageId : null;
+                    
+                    console.log(`Threadly: Container ${index} - checkbox:`, checkbox, 'messageId:', messageId);
+                    
+                    if (checkbox && messageId) {
+                        console.log(`Threadly: Setting up checkbox for message ${messageId}`);
+                        // Remove existing listeners to prevent duplicates
+                        checkbox.removeEventListener('change', handleCheckboxChange);
+                        checkbox.addEventListener('change', handleCheckboxChange);
+                        
+                        // Also add click event listener as a fallback
+                        checkbox.removeEventListener('click', handleCheckboxClick);
+                        checkbox.addEventListener('click', handleCheckboxClick);
+                        
+                        console.log(`Threadly: Event listeners attached for message ${messageId}`);
+                    } else {
+                        console.log(`Threadly: Checkbox or messageId not found in container ${index}`, { checkbox, messageId });
+                    }
+                } else {
+                    // Exit selection mode, hide all checkboxes
+                    container.style.display = 'none';
+                    console.log(`Threadly: Hiding checkbox container ${index}`);
+                }
+            });
+        }, 100); // Small delay to ensure DOM is ready
     }
 
     // --- Selection Mode Toggle Function --- //
@@ -6022,15 +6103,38 @@
         console.log('Threadly: Current selectedMessageIds before change:', [...selectedMessageIds]);
         console.log('Threadly: Current selectionContext:', selectionContext);
         console.log('Threadly: Current currentCollectionId:', currentCollectionId);
+        console.log('Threadly: isInSelectionMode:', isInSelectionMode);
         
         if (messageId) {
+            console.log('Threadly: Calling toggleMessageSelection for messageId:', messageId, 'isChecked:', isChecked);
             toggleMessageSelection(messageId, isChecked);
+            console.log('Threadly: selectedMessageIds after toggleMessageSelection:', [...selectedMessageIds]);
+            
             // Update button states based on selection context
             if (selectionContext === 'messages-in-collection' || selectionContext === 'collections') {
                 updateDeleteModeButtonStates();
             } else {
                 updateSelectionModeButtonStates();
             }
+        } else {
+            console.log('Threadly: No messageId found for checkbox change');
+        }
+    }
+
+    function handleCheckboxClick(e) {
+        // Fallback click handler for checkboxes
+        const checkbox = e.target;
+        const messageId = checkbox.dataset.messageId;
+        
+        console.log('Threadly: Checkbox clicked (fallback):', { messageId, checked: checkbox.checked });
+        
+        if (messageId) {
+            // Use a small delay to ensure the checkbox state has updated
+            setTimeout(() => {
+                const isChecked = checkbox.checked;
+                console.log('Threadly: Fallback handler - messageId:', messageId, 'isChecked:', isChecked);
+                toggleMessageSelection(messageId, isChecked);
+            }, 10);
         }
     }
 
@@ -6265,6 +6369,7 @@
     async function assignMessagesToCollection(collectionId) {
         console.log('Threadly: assignMessagesToCollection called with collectionId:', collectionId);
         console.log('Threadly: selectedMessageIds:', selectedMessageIds);
+        console.log('Threadly: selectedMessageIds length:', selectedMessageIds.length);
         
         if (selectedMessageIds.length === 0) {
             console.error('Threadly: No messages selected');
