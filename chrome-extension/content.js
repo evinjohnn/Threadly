@@ -33,8 +33,10 @@
         },
         'ai-studio': {
             name: 'AI Studio',
-            chatContainer: 'div.chat-container, main, .conversation-container, [class*="conversation"], [class*="chat"], [class*="message"]',
-            userSelector: '[class*="user-chunk"] span, [class*="user-chunk"] p, ms-chat-turn, button[id^="scrollbar-item-"], [class*="user"] span, [class*="user"] p, [class*="prompt"] span, [class*="prompt"] p, [class*="query"] span, [class*="query"] p',
+            // This is a stable parent container for the entire chat session
+            chatContainer: 'ms-chat-session', 
+            // This new selector specifically targets only the user's submitted prompt text
+            userSelector: 'ms-chat-turn .user-prompt-container .turn-content',
         },
         copilot: {
             name: 'Copilot',
@@ -348,6 +350,14 @@
         })));
         
         if (userMessages.length === 0) {
+            // For Perplexity loading page, keep dots visible but empty
+            if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
+                console.log('Threadly: On Perplexity loading page, keeping dots visible but empty');
+                scrollIndicator.style.display = 'flex';
+                scrollIndicator.classList.add('visible');
+                return;
+            }
+            
             console.log('Threadly: No user messages, hiding dots');
             scrollIndicator.style.display = 'none';
             scrollIndicator.classList.remove('visible');
@@ -358,8 +368,11 @@
         userMessages.forEach((msg, index) => {
             const dot = document.createElement('div');
             dot.className = 'threadly-scroll-dot';
-            dot.dataset.messageIndex = messages.indexOf(msg);
+            const messageIndex = messages.indexOf(msg);
+            dot.dataset.messageIndex = messageIndex;
             dot.title = `Jump to user message ${index + 1}`;
+            
+            console.log('Threadly: Creating dot for message', index + 1, 'content:', msg.content?.substring(0, 30) + '...', 'element:', msg.element?.tagName, 'messageIndex:', messageIndex);
             
             // Apply platform-specific color
             const platformColor = getPlatformSavedIconColor();
@@ -383,7 +396,9 @@
             dot.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                scrollToMessage(msg, messages.indexOf(msg));
+                const messageIndex = messages.indexOf(msg);
+                console.log('Threadly: Navigation dot clicked, message index:', messageIndex, 'total messages:', messages.length);
+                scrollToMessage(msg, messageIndex);
             });
             
             // Also add mousedown to capture interaction early
@@ -402,48 +417,111 @@
     }
     
     function scrollToMessage(message, index) {
-        if (!message.element || !document.body.contains(message.element)) {
-            console.warn('Threadly: Message element not found for scroll');
+        console.log('Threadly: scrollToMessage called with message:', message.content?.substring(0, 50) + '...', 'index:', index);
+        
+        if (!message.element) {
+            console.warn('Threadly: Message element is null or undefined');
             return;
+        }
+        
+        if (!document.body.contains(message.element)) {
+            console.warn('Threadly: Message element not found in DOM, trying to find it again...');
+            
+            // Try to find the element again using the message content
+            const foundElement = findMessageElementByContent(message.content);
+            if (foundElement) {
+                message.element = foundElement;
+                console.log('Threadly: Found message element again:', foundElement.tagName, foundElement.className);
+            } else {
+                console.warn('Threadly: Could not find message element, skipping scroll');
+                return;
+            }
         }
         
         // For Perplexity, try to find the parent container for better scrolling
         let scrollTarget = message.element;
         if (currentPlatformId === 'perplexity') {
             // Look for a parent container that might be better for scrolling
-            const parentContainer = message.element.closest('main, [class*="conversation"], [class*="chat"]');
+            const parentContainer = message.element.closest('main, [class*="conversation"], [class*="chat"], [class*="message"], [class*="query"]');
             if (parentContainer) {
                 scrollTarget = parentContainer;
+                console.log('Threadly: Using parent container for scrolling:', parentContainer.tagName, parentContainer.className);
             }
         }
         
-        // Scroll to the message with better positioning
-        scrollTarget.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start', // Changed from 'center' to 'start' for better positioning
-            inline: 'nearest'
-        });
-        
-        // Highlight the message
-        const originalBg = message.element.style.backgroundColor;
-        const originalTransition = message.element.style.transition;
-        const originalBorder = message.element.style.border;
-        
-        message.element.style.transition = 'all 0.3s ease';
-        message.element.style.backgroundColor = getPlatformHighlightColor();
-        message.element.style.border = '2px solid ' + getPlatformHighlightColor();
-        
-        // Update active dot
-        updateActiveScrollDot(index);
-        
-        // Reset highlight after delay
+        // Add a small delay to ensure the page is ready for scrolling
         setTimeout(() => {
-            message.element.style.backgroundColor = originalBg;
-            message.element.style.transition = originalTransition;
-            message.element.style.border = originalBorder;
-        }, 2000); // Increased duration for better visibility
+            try {
+                // Try scrollIntoView first
+                scrollTarget.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start',
+                    inline: 'nearest'
+                });
+                
+                console.log('Threadly: Successfully scrolled to message element');
+                
+                // Fallback: If scrollIntoView doesn't work, try manual scrolling
+                setTimeout(() => {
+                    const rect = scrollTarget.getBoundingClientRect();
+                    const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+                    
+                    if (!isVisible) {
+                        console.log('Threadly: Element not visible after scrollIntoView, trying manual scroll');
+                        const scrollTop = window.pageYOffset + rect.top - 100; // 100px offset from top
+                        window.scrollTo({
+                            top: scrollTop,
+                            behavior: 'smooth'
+                        });
+                    }
+                }, 500);
+                
+                // Highlight the message
+                const originalBg = message.element.style.backgroundColor;
+                const originalTransition = message.element.style.transition;
+                const originalBorder = message.element.style.border;
+                
+                message.element.style.transition = 'all 0.3s ease';
+                message.element.style.backgroundColor = getPlatformHighlightColor();
+                message.element.style.border = '2px solid ' + getPlatformHighlightColor();
+                
+                // Update active dot
+                updateActiveScrollDot(index);
+                
+                // Reset highlight after delay
+                setTimeout(() => {
+                    message.element.style.backgroundColor = originalBg;
+                    message.element.style.transition = originalTransition;
+                    message.element.style.border = originalBorder;
+                }, 2000);
+                
+                console.log('Threadly: Scrolled to message', index + 1, 'at element:', message.element.tagName, message.element.className);
+            } catch (error) {
+                console.error('Threadly: Error scrolling to message:', error);
+            }
+        }, 100);
+    }
+    
+    // Helper function to find message element by content
+    function findMessageElementByContent(content) {
+        if (!content) return null;
         
-        console.log('Threadly: Scrolled to message', index + 1, 'at element:', message.element.tagName, message.element.className);
+        const config = PLATFORM_CONFIG[currentPlatformId];
+        if (!config.userSelector) return null;
+        
+        const selectors = config.userSelector.split(',').map(s => s.trim());
+        
+        for (const selector of selectors) {
+            const elements = document.querySelectorAll(selector);
+            for (const element of elements) {
+                const elementText = element.textContent?.trim() || '';
+                if (elementText.includes(content.substring(0, 50))) {
+                    return element;
+                }
+            }
+        }
+        
+        return null;
     }
     
     function updateActiveScrollDot(activeIndex) {
@@ -1223,12 +1301,15 @@
                                 return; // Skip this element
                             }
                             
-                            // Skip experimental thoughts (these are the thinking process, not actual responses)
-                            if (text.includes('Model Thoughts') || text.includes('experimental') || 
-                                text.includes('Auto Understanding') || text.includes('Auto Exploring') ||
-                                text.includes('Auto Clarifying') || text.includes('Auto Formulating') || 
-                                text.includes('Auto Evaluating') || text.includes('Auto Crafting') || 
-                                text.includes('Auto Analyzing')) {
+                            // Skip experimental thoughts and processing messages
+                            const blocklist = [
+                                'Model Thoughts', 'experimental', 'Auto Understanding', 'Auto Exploring',
+                                'Auto Clarifying', 'Auto Formulating', 'Auto Evaluating', 'Auto Crafting',
+                                'Auto Analyzing', 'Generating response', 'Searching', 'Processing',
+                                'processing', 'thinking'
+                            ];
+
+                            if (blocklist.some(keyword => text.includes(keyword))) {
                                 return; // Skip this element
                             }
                             
@@ -1296,7 +1377,7 @@
                             content: text,
                             element: userEl
                         });
-                        console.log('Threadly: Extracted user message:', text.substring(0, 50) + '...');
+                        console.log('Threadly: Extracted user message:', text.substring(0, 50) + '...', 'element:', userEl.tagName, userEl.className);
                     }
                 });
                 
@@ -1318,7 +1399,9 @@
         } else if (currentPlatformId === 'gemini') {
             aiSelectors = '.assistant-message, [data-role="assistant"], .ai-response, div[class*="assistant"] p, .gemini-response, div[class*="gemini"], div[class*="response"], .response-text, div[class*="answer"], .ai-answer';
         } else if (currentPlatformId === 'ai-studio') {
-            aiSelectors = 'ms-chat-turn .model-prompt-container .turn-content, ms-chat-turn .model-prompt-container, ms-chat-turn .turn-content, ms-chat-turn';
+            // This selector is now highly specific. It targets only the final text response 
+            // (<ms-text-chunk>) and completely ignores the "thoughts" block (<ms-thought-chunk>).
+            aiSelectors = 'ms-chat-turn .model-prompt-container ms-text-chunk';
         } else if (currentPlatformId === 'copilot') {
             aiSelectors = '.assistant-message, [data-role="assistant"], .ai-response, .copilot-response, div[class*="assistant"], div[class*="response"], .response-text, div[class*="answer"]';
         } else if (currentPlatformId === 'perplexity') {
@@ -1351,12 +1434,15 @@
                             return; // Skip this element
                         }
                         
-                        // Skip experimental thoughts (these are the thinking process, not actual responses)
-                        if (text.includes('Model Thoughts') || text.includes('experimental') || 
-                            text.includes('Auto Understanding') || text.includes('Auto Exploring') ||
-                            text.includes('Auto Clarifying') || text.includes('Auto Formulating') || 
-                            text.includes('Auto Evaluating') || text.includes('Auto Crafting') || 
-                            text.includes('Auto Analyzing')) {
+                        // Skip experimental thoughts and processing messages
+                        const blocklist = [
+                            'Model Thoughts', 'experimental', 'Auto Understanding', 'Auto Exploring',
+                            'Auto Clarifying', 'Auto Formulating', 'Auto Evaluating', 'Auto Crafting',
+                            'Auto Analyzing', 'Generating response', 'Searching', 'Processing',
+                            'processing', 'thinking'
+                        ];
+
+                        if (blocklist.some(keyword => text.includes(keyword))) {
                             return; // Skip this element
                         }
                         
@@ -1441,12 +1527,15 @@
                     const text = turn.textContent?.trim() || '';
                     
                     if (text.length > 50) {
-                        // Filter out experimental thoughts (these are the thinking process, not actual responses)
-                        if (!text.includes('Model Thoughts') && !text.includes('experimental') && 
-                            !text.includes('Auto Understanding') && !text.includes('Auto Exploring') &&
-                            !text.includes('Auto Clarifying') && !text.includes('Auto Formulating') &&
-                            !text.includes('Auto Evaluating') && !text.includes('Auto Crafting') &&
-                            !text.includes('Auto Analyzing') &&
+                        // Filter out experimental thoughts and processing messages
+                        const blocklist = [
+                            'Model Thoughts', 'experimental', 'Auto Understanding', 'Auto Exploring',
+                            'Auto Clarifying', 'Auto Formulating', 'Auto Evaluating', 'Auto Crafting',
+                            'Auto Analyzing', 'Generating response', 'Searching', 'Processing',
+                            'processing', 'thinking'
+                        ];
+
+                        if (!blocklist.some(keyword => text.includes(keyword)) &&
                             !(text.length < 100 && (text.includes('edit') || text.includes('more_vert')))) {
                             
                             // Determine if it's a user or AI message based on content
@@ -1682,7 +1771,13 @@
         
         if (!messageList) return;
         
-        updateScrollIndicator(messagesToRender);
+        // For Perplexity loading page, ensure dots are visible even with no messages
+        if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
+            console.log('Threadly: On Perplexity loading page in renderMessages, ensuring navigation dots are visible');
+            updateScrollIndicator([]);
+        } else {
+            updateScrollIndicator(messagesToRender);
+        }
         messageList.innerHTML = '';
         
         if (messagesToRender.length === 0) {
@@ -1880,6 +1975,15 @@
     
     async function filterMessages(query, forceExitCollections = true) {
         console.log('Threadly: filterMessages called with query:', query, 'forceExitCollections:', forceExitCollections, 'isInCollectionsView:', isInCollectionsView);
+        
+        // For Perplexity, check if we're on the loading page and show empty state
+        if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
+            console.log('Threadly: On Perplexity loading page, showing empty state');
+            if (messageList) {
+                messageList.innerHTML = '<div class="threadly-empty-state">No conversation yet. Start a chat to see your messages here!</div>';
+            }
+            return;
+        }
         
         // Check if we're in input mode (typing collection name) - if so, don't switch away from collections view
         const isInInputMode = document.querySelector('#collectionNameInput');
@@ -3233,13 +3337,7 @@
                 transition: all 0.3s ease;
             `;
             
-            backButton.addEventListener('mouseenter', () => {
-                backButton.style.background = 'transparent';
-            });
-            
-            backButton.addEventListener('mouseleave', () => {
-                backButton.style.background = 'transparent';
-            });
+            // Hover effects are now handled by CSS
             
             backButton.addEventListener('click', async (e) => {
                 e.preventDefault();
@@ -3586,6 +3684,8 @@
                 // Add event listener for the back button
                 const backButton = messageList.querySelector('.threadly-back-button');
                 if (backButton) {
+                    // Hover effects are now handled by CSS
+                    
                     backButton.addEventListener('click', async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -4205,9 +4305,33 @@
         }, TOAST_DURATION);
     }
 
+    // --- Perplexity Loading Page Detection --- //
+    function isPerplexityLoadingPage() {
+        // Check for loading page elements (voice mode, sources, model buttons)
+        const voiceModeButton = document.querySelector('button[aria-label="Voice mode"]');
+        const sourcesButton = document.querySelector('button[data-testid="sources-switcher-button"]');
+        const modelButton = document.querySelector('button[aria-label="Choose a model"]');
+        
+        // Check for chat page elements (submit button, textarea)
+        const submitButton = document.querySelector('button[data-testid="submit-button"]');
+        const textarea = document.querySelector('textarea[placeholder*="Ask anything"], textarea[aria-label*="Ask anything"], textarea[data-testid="search-input"], textarea[placeholder*="Ask"], textarea[aria-label*="Ask"], textarea[placeholder*="Search"], textarea[aria-label*="Search"], div[contenteditable="true"]');
+        
+        // We're on loading page if we have loading page elements but no chat page elements
+        const hasLoadingPageElements = voiceModeButton && sourcesButton && modelButton;
+        const hasChatPageElements = submitButton && textarea;
+        
+        return hasLoadingPageElements && !hasChatPageElements;
+    }
+
     // --- Enhanced Update Logic --- //
     async function updateAndSaveConversation() {
         console.log('Threadly: Updating conversation for', currentPlatformId);
+        
+        // For Perplexity, check if we're on the loading page and skip data extraction
+        if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
+            console.log('Threadly: On Perplexity loading page, skipping conversation extraction');
+            return;
+        }
         
         const currentMessages = extractConversation();
         
@@ -4398,15 +4522,21 @@
             const savedMessages = await loadMessagesFromStorage();
             const liveMessages = extractConversation();
             
-            // Prefer live messages if available, otherwise use saved
-            allMessages = liveMessages.length > 0 ? liveMessages : 
-                        savedMessages.map(m => ({ 
-                            content: m.content, 
-                            element: null, 
-                            role: m.role || 'user',
-                            isFavorited: m.isFavorited || false,
-                            collectionId: m.collectionId || null
-                        }));
+            // For Perplexity, check if we're on the loading page and skip message loading
+            if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
+                console.log('Threadly: On Perplexity loading page during init, skipping message loading');
+                allMessages = [];
+            } else {
+                // Prefer live messages if available, otherwise use saved
+                allMessages = liveMessages.length > 0 ? liveMessages : 
+                            savedMessages.map(m => ({ 
+                                content: m.content, 
+                                element: null, 
+                                role: m.role || 'user',
+                                isFavorited: m.isFavorited || false,
+                                collectionId: m.collectionId || null
+                            }));
+            }
 
             // Load global favorites to mark current messages
             await loadGlobalFavorites();
@@ -4427,7 +4557,13 @@
             initializePromptRefiner();
             
             // Update navigation dots with messages
-            updateScrollIndicator(allMessages);
+            // For Perplexity loading page, ensure dots are visible even with no messages
+            if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
+                console.log('Threadly: On Perplexity loading page, ensuring navigation dots are visible');
+                updateScrollIndicator([]);
+            } else {
+                updateScrollIndicator(allMessages);
+            }
             
             console.log('Threadly: Initialization complete for', currentPlatformId);
             
@@ -6410,5 +6546,265 @@
     }
 
     // ChatGPT sparkle functionality moved to dedicated chatgpt-sparkle.js file
+
+    // --- Feedback Loop System (Pillar 2) ---
+    
+    // Listen for feedback requests from sparkle files
+    window.addEventListener('threadly-triage-feedback-request', (event) => {
+        const { prompt, incorrectCategory } = event.detail;
+        createFeedbackModal(prompt, incorrectCategory);
+    });
+
+    function createFeedbackModal(prompt, incorrectCategory) {
+        // Remove any existing feedback modal
+        const existingModal = document.getElementById('threadly-feedback-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Create modal container
+        const modal = document.createElement('div');
+        modal.id = 'threadly-feedback-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        `;
+
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            position: relative;
+        `;
+
+        // Create title
+        const title = document.createElement('h3');
+        title.textContent = 'Help us improve! 🎯';
+        title.style.cssText = `
+            margin: 0 0 16px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: #1f2937;
+        `;
+
+        // Create description
+        const description = document.createElement('p');
+        description.textContent = 'We classified your prompt as "' + getCategoryDisplayName(incorrectCategory) + '". What was it really about?';
+        description.style.cssText = `
+            margin: 0 0 16px 0;
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.5;
+        `;
+
+        // Create prompt preview
+        const promptPreview = document.createElement('div');
+        promptPreview.style.cssText = `
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 0 0 20px 0;
+            font-size: 14px;
+            color: #374151;
+            max-height: 100px;
+            overflow-y: auto;
+        `;
+        promptPreview.textContent = `"${prompt}"`;
+
+        // Create category buttons
+        const categories = [
+            { key: 'grammar_spelling', name: 'Grammar & Spelling', icon: '✏️' },
+            { key: 'image_generation', name: 'Image Generation', icon: '🎨' },
+            { key: 'coding', name: 'Coding', icon: '💻' },
+            { key: 'research_analysis', name: 'Research & Analysis', icon: '🔍' },
+            { key: 'content_creation', name: 'Content Creation', icon: '📝' },
+            { key: 'general', name: 'General', icon: '💬' }
+        ];
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        `;
+
+        categories.forEach(category => {
+            const button = document.createElement('button');
+            button.textContent = `${category.icon} ${category.name}`;
+            button.style.cssText = `
+                padding: 12px 16px;
+                border: 2px solid #e5e7eb;
+                border-radius: 8px;
+                background: white;
+                color: #374151;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s;
+                text-align: left;
+            `;
+
+            button.addEventListener('mouseenter', () => {
+                button.style.borderColor = '#3b82f6';
+                button.style.backgroundColor = '#eff6ff';
+            });
+
+            button.addEventListener('mouseleave', () => {
+                button.style.borderColor = '#e5e7eb';
+                button.style.backgroundColor = 'white';
+            });
+
+            button.addEventListener('click', () => {
+                submitFeedback(prompt, incorrectCategory, category.key);
+                modal.remove();
+            });
+
+            buttonContainer.appendChild(button);
+        });
+
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'Skip';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+        `;
+
+        closeButton.addEventListener('click', () => {
+            modal.remove();
+        });
+
+        // Assemble modal
+        modalContent.appendChild(closeButton);
+        modalContent.appendChild(title);
+        modalContent.appendChild(description);
+        modalContent.appendChild(promptPreview);
+        modalContent.appendChild(buttonContainer);
+        modal.appendChild(modalContent);
+
+        // Add to page
+        document.body.appendChild(modal);
+
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+
+    function getCategoryDisplayName(categoryKey) {
+        const names = {
+            'grammar_spelling': 'Grammar & Spelling',
+            'image_generation': 'Image Generation',
+            'coding': 'Coding',
+            'research_analysis': 'Research & Analysis',
+            'content_creation': 'Content Creation',
+            'general': 'General'
+        };
+        return names[categoryKey] || categoryKey;
+    }
+
+    async function submitFeedback(prompt, incorrectCategory, correctCategory) {
+        try {
+            const feedback = {
+                prompt: prompt,
+                incorrectCategory: incorrectCategory,
+                correctCategory: correctCategory,
+                timestamp: Date.now()
+            };
+
+            // Send to background script
+            const response = await chrome.runtime.sendMessage({
+                action: 'storeFeedback',
+                feedback: feedback
+            });
+
+            if (response && response.success) {
+                console.log('Threadly: Feedback submitted successfully', feedback);
+                
+                // Show success message
+                showToast('Thanks for the feedback! 🎉', 'success');
+            } else {
+                console.error('Threadly: Failed to submit feedback');
+                showToast('Failed to submit feedback. Please try again.', 'error');
+            }
+        } catch (error) {
+            console.error('Threadly: Error submitting feedback:', error);
+            showToast('Error submitting feedback. Please try again.', 'error');
+        }
+    }
+
+    function showToast(message, type = 'info') {
+        // Remove existing toast
+        const existingToast = document.getElementById('threadly-toast');
+        if (existingToast) {
+            existingToast.remove();
+        }
+
+        const toast = document.createElement('div');
+        toast.id = 'threadly-toast';
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 10001;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease-out;
+        `;
+
+        // Add animation keyframes
+        if (!document.getElementById('threadly-toast-styles')) {
+            const style = document.createElement('style');
+            style.id = 'threadly-toast-styles';
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(toast);
+
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 3000);
+    }
 
 })();

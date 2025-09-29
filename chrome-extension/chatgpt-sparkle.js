@@ -36,6 +36,10 @@
         });
     }
 
+    // Global variables for popup management
+    let globalHidePopupTimeout = null;
+    let globalHoverTimeout = null;
+
     // Create the sparkle icon with glow effect (same as Claude version)
     function createSparkleIcon() {
         // Create the main SVG container (same size as Claude - 1.5x bigger)
@@ -97,8 +101,6 @@
         });
 
         // Add hover popup functionality
-        let hoverTimeout;
-        let hidePopupTimeout;
         let popup = null;
         const hoverState = {
             isHoveringSparkle: false,
@@ -106,16 +108,16 @@
         };
 
         const showPopup = () => {
-            clearTimeout(hidePopupTimeout);
+            clearTimeout(globalHidePopupTimeout);
             if (popup) return; // Don't create a new popup if one is already visible
-            hoverTimeout = setTimeout(() => {
+            globalHoverTimeout = setTimeout(() => {
                 popup = createModeSelectionPopup(svg, hoverState);
             }, 300);
         };
 
         const hidePopup = () => {
-            clearTimeout(hoverTimeout);
-            hidePopupTimeout = setTimeout(() => {
+            clearTimeout(globalHoverTimeout);
+            globalHidePopupTimeout = setTimeout(() => {
                 // Only hide if not hovering over either sparkle or popup
                 if (!hoverState.isHoveringSparkle && !hoverState.isHoveringPopup && popup) {
                     if (popup.classList.contains('growing')) {
@@ -155,9 +157,7 @@
                     popup.classList.remove('growing');
                     popup.classList.add('shrinking');
                     setTimeout(() => {
-                        if (popup && popup.parentNode) {
-                            popup.remove();
-                        }
+                        popup.remove();
                         popup = null;
                     }, 600);
                 } else {
@@ -468,14 +468,14 @@
         // Keep popup open when hovering over it
         popup.addEventListener('mouseenter', () => {
             hoverState.isHoveringPopup = true;
-            clearTimeout(hidePopupTimeout);
+            clearTimeout(globalHidePopupTimeout);
         });
         
         popup.addEventListener('mouseleave', () => {
             hoverState.isHoveringPopup = false;
             // Only hide if not hovering over sparkle either
             if (!hoverState.isHoveringSparkle) {
-                hidePopupTimeout = setTimeout(() => {
+                globalHidePopupTimeout = setTimeout(() => {
                     if (!hoverState.isHoveringSparkle && !hoverState.isHoveringPopup && popup) {
                         popup.classList.remove('growing');
                         popup.classList.add('shrinking');
@@ -647,17 +647,30 @@
                 // Use the existing PromptRefiner class
                 if (window.PromptRefiner) {
                     const promptRefiner = new window.PromptRefiner();
-                    await promptRefiner.initialize();
+                    
+                    // Try to initialize with fallback handling
+                    try {
+                        await promptRefiner.initialize();
+                    } catch (initError) {
+                        if (initError.message.includes('Extension context invalidated')) {
+                            console.warn('Threadly: Extension context invalidated, trying fallback initialization...');
+                            const fallbackInitialized = await promptRefiner.initializeWithFallback();
+                            if (!fallbackInitialized) {
+                                throw initError; // Re-throw if fallback also fails
+                            }
+                        } else {
+                            throw initError; // Re-throw other errors
+                        }
+                    }
                     
                     console.log('Threadly: Sending prompt for refinement...');
-                    const refinementResult = await promptRefiner.refinePrompt(currentText, 'chatgpt');
-                    
-                    // Handle new return structure
-                    const rawRefinedPrompt = refinementResult.refinedPrompt || refinementResult;
-                    const attemptId = refinementResult.attemptId;
+                    const rawRefinedPrompt = await promptRefiner.refinePrompt(currentText, 'chatgpt');
                     
                     // Clean up the refined prompt to remove XML tags and unnecessary formatting
                     const refinedPrompt = cleanRefinedPrompt(rawRefinedPrompt);
+                    
+                    // Store original text for undo detection
+                    const originalText = currentText;
                     
                     // Replace the text with refined version
                     console.log('Threadly: Replacing text with refined prompt:', refinedPrompt);
@@ -674,11 +687,6 @@
                         console.log('Threadly: Updated text content');
                     }
                     
-                    // Show feedback UI if attemptId is available
-                    if (attemptId && promptRefiner.createFeedbackUI) {
-                        promptRefiner.createFeedbackUI(attemptId, refinedPrompt);
-                    }
-                    
                     // Trigger multiple events to ensure ChatGPT detects the change
                     finalTextArea.dispatchEvent(new Event('input', { bubbles: true }));
                     finalTextArea.dispatchEvent(new Event('change', { bubbles: true }));
@@ -688,6 +696,31 @@
                     finalTextArea.focus();
                     
                     console.log('Threadly: Text replacement completed');
+                    
+                    // --- ENHANCED FEEDBACK LOOP: Undo Detection ---
+                    const undoListener = (event) => {
+                        if ((event.metaKey || event.ctrlKey) && event.key === 'z') {
+                            // Use a small timeout to check the text *after* the browser's undo action completes
+                            setTimeout(async () => {
+                                const currentText = finalTextArea.value || finalTextArea.textContent || finalTextArea.innerText;
+                                
+                                // Check if user has undone the refinement
+                                const feedbackResult = await promptRefiner.detectUndoAndCollectFeedback(currentText);
+                                
+                                if (feedbackResult) {
+                                    console.log("Threadly: Feedback collected:", feedbackResult);
+                                }
+                                
+                                // Clean up the listener
+                                finalTextArea.removeEventListener('keydown', undoListener);
+                            }, 100);
+                        }
+                    };
+
+                    finalTextArea.addEventListener('keydown', undoListener);
+
+                    // Remove the listener after a short time to prevent it from lingering
+                    setTimeout(() => finalTextArea.removeEventListener('keydown', undoListener), 10000);
                     
                     console.log('Threadly: Prompt refined successfully');
                     
@@ -707,6 +740,15 @@
                 
             } catch (error) {
                 console.error('Threadly: Error refining prompt:', error);
+                
+                // Show user-friendly error message
+                if (error.message.includes('Extension context invalidated')) {
+                    alert('Threadly: Extension context invalidated. Please refresh the page to continue using Threadly.');
+                } else if (error.message.includes('API key not found')) {
+                    alert('Threadly: Please set your Gemini API key in the extension popup first.');
+                } else {
+                    alert('Threadly: Error refining prompt. Please try again.');
+                }
                 
                 // Dispatch error event
                 window.dispatchEvent(new CustomEvent('threadly-prompt-refine-error', {

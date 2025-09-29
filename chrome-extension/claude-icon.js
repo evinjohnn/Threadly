@@ -665,11 +665,15 @@
         cleaned = cleaned.replace(/<[^>]*>/g, '');
         cleaned = cleaned.replace(/<\/?[^>]+(>|$)/g, '');
         
-        // Remove XML-like patterns
+        // Remove XML-like patterns and content indicators
         cleaned = cleaned.replace(/\[xml[^\]]*\]/gi, '');
         cleaned = cleaned.replace(/\[content[^\]]*\]/gi, '');
         cleaned = cleaned.replace(/\[refined[^\]]*\]/gi, '');
         cleaned = cleaned.replace(/\[response[^\]]*\]/gi, '');
+        cleaned = cleaned.replace(/\[instruction[^\]]*\]/gi, '');
+        cleaned = cleaned.replace(/\[context[^\]]*\]/gi, '');
+        cleaned = cleaned.replace(/\[task[^\]]*\]/gi, '');
+        cleaned = cleaned.replace(/\[example[^\]]*\]/gi, '');
         
         // Remove markdown formatting
         cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
@@ -686,10 +690,18 @@
         cleaned = cleaned.replace(/^xml\s+contents?[:\-\s]*/gi, '');
         cleaned = cleaned.replace(/^content[:\-\s]*/gi, '');
         cleaned = cleaned.replace(/^response[:\-\s]*/gi, '');
+        cleaned = cleaned.replace(/^instruction[:\-\s]*/gi, '');
+        cleaned = cleaned.replace(/^context[:\-\s]*/gi, '');
+        cleaned = cleaned.replace(/^task[:\-\s]*/gi, '');
         
         // Remove brackets and parentheses content that looks like metadata
-        cleaned = cleaned.replace(/\[[^\]]*(xml|content|response|refined)[^\]]*\]/gi, '');
-        cleaned = cleaned.replace(/\([^)]*(xml|content|response|refined)[^)]*\)/gi, '');
+        cleaned = cleaned.replace(/\[[^\]]*(xml|content|response|refined|instruction|context|task|example)[^\]]*\]/gi, '');
+        cleaned = cleaned.replace(/\([^)]*(xml|content|response|refined|instruction|context|task|example)[^)]*\)/gi, '');
+        
+        // Remove patterns like "xml text, text, xml" or similar
+        cleaned = cleaned.replace(/\b(xml\s+)?text\s*,\s*text\s*,\s*(xml\s+)?/gi, '');
+        cleaned = cleaned.replace(/\b(xml\s+)?content\s*,\s*content\s*,\s*(xml\s+)?/gi, '');
+        cleaned = cleaned.replace(/\b(xml\s+)?response\s*,\s*response\s*,\s*(xml\s+)?/gi, '');
         
         // Remove extra whitespace and normalize
         cleaned = cleaned.replace(/\s+/g, ' ').trim();
@@ -701,8 +713,7 @@
         }
         
         // Remove trailing metadata-like text
-        cleaned = cleaned.replace(/\s*\[.*xml.*\]\s*$/gi, '');
-        cleaned = cleaned.replace(/\s*\[.*content.*\]\s*$/gi, '');
+        cleaned = cleaned.replace(/\s*\[.*(xml|content|response|refined|instruction|context|task|example).*\]\s*$/gi, '');
         
         // Final cleanup
         cleaned = cleaned.replace(/\s+/g, ' ').trim();

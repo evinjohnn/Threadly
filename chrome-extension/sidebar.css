@@ -2735,12 +2735,20 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
 
 /* Soft red brighten hover effect for BACK */
 .threadly-toggle-label.back:hover {
-    color: #ef4444; /* Brighter red on hover */
-    background: rgba(252, 165, 165, 0.15); /* Soft red background */
-    border: 1px solid rgba(252, 165, 165, 0.3);
-    box-shadow: 0 2px 8px rgba(252, 165, 165, 0.2);
-    transform: scale(1.02);
-    filter: brightness(1.2);
+    color: white; /* White text on red highlight */
+    background: rgba(239, 68, 68, 0.9); /* Brighter version of text red */
+    box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6); /* More intense glow */
+    transition: none !important; /* Prevent color morphing */
+}
+
+/* Back button in contextual bar hover effect */
+.threadly-back-button:hover {
+    color: white !important; /* White text on red highlight */
+    background: rgba(239, 68, 68, 0.9) !important; /* Red background */
+    border-color: rgba(239, 68, 68, 0.9) !important; /* Red border */
+    box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 60px rgba(239, 68, 68, 0.6) !important; /* Red glow */
+    transform: scale(1.05) translateX(3px) !important; /* Bubble effect */
+    transition: all 0.3s ease !important;
 }
 
 /* Ensure stable positioning for ADD NEW and BACK labels (exclude DELETE and CANCEL for flexbox) */
