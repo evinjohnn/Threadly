@@ -384,10 +384,11 @@
         }
         
         // Remove existing popup if any
-        const existingPopup = document.querySelector('.pill-popup');
-        if (existingPopup) {
-            existingPopup.remove();
-        }
+        const existingPopups = document.querySelectorAll('.pill-popup');
+        existingPopups.forEach(popup => {
+            console.log('Threadly: Removing existing pill popup before creating new one');
+            popup.remove();
+        });
 
         // Create popup container with pill animation
         const popup = document.createElement('div');
@@ -441,16 +442,23 @@
         popup.style.transition = 'none';
         popup.style.opacity = '0';
 
+        // Initialize timeout tracking
+        if (!window.threadlyPillTimeouts) {
+            window.threadlyPillTimeouts = [];
+        }
+
         // Start the pill emergence animation
-        setTimeout(() => {
+        const emergenceTimeout = setTimeout(() => {
             popup.classList.add('growing');
             popup.style.pointerEvents = 'all';
             
             // Show content after animation starts
-            setTimeout(() => {
+            const contentTimeout = setTimeout(() => {
                 contentContainer.style.opacity = '1';
             }, 400);
+            window.threadlyPillTimeouts.push(contentTimeout);
         }, 10);
+        window.threadlyPillTimeouts.push(emergenceTimeout);
 
         // Add click handlers for each option
         popup.addEventListener('click', (e) => {
@@ -1124,12 +1132,31 @@ async function insertSparkleIcon() {
         }
     }
 
+        // Global cleanup function for pill popups
+        function cleanupPillPopups() {
+            const pillPopups = document.querySelectorAll('.pill-popup');
+            pillPopups.forEach(popup => {
+                console.log('Threadly: Cleaning up pill popup');
+                popup.remove();
+            });
+            
+            // Clear timeouts
+            if (window.threadlyPillTimeouts) {
+                window.threadlyPillTimeouts.forEach(timeout => clearTimeout(timeout));
+                window.threadlyPillTimeouts = [];
+            }
+        }
+
+        // Make cleanup function globally accessible
+        window.threadlyCleanupPillPopups = cleanupPillPopups;
+
         // Export for testing and debugging
         window.ThreadlyChatGPTSparkle = {
             insertSparkleIcon,
             createSparkleIcon,
             handleSparkleClick,
-            isChatGPTWebsite
+            isChatGPTWebsite,
+            cleanupPillPopups
         };
         
         // Also make handleSparkleClick globally accessible for testing

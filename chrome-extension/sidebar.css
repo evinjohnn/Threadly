@@ -1219,6 +1219,21 @@ body #threadly-panel[data-platform="gemini"] #threadly-message-list {
     box-shadow: 0 0 0 2px rgba(0, 191, 174, 0.2);
 }
 
+/* Ensure header and search container borders remain visible during metaball state changes */
+.threadly-metaball-wrapper.stateA ~ .threadly-header,
+.threadly-metaball-wrapper.stateA ~ .threadly-search-container {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Ensure borders are visible during toast states */
+.threadly-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.threadly-search-container {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
 /* Remove any default focus outlines */
 .threadly-search-pill:focus-within {
     outline: none;
