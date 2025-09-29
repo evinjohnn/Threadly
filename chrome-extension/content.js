@@ -33,8 +33,8 @@
         },
         'ai-studio': {
             name: 'AI Studio',
-            chatContainer: 'div.chat-container, main, .conversation-container',
-            userSelector: 'ms-cmark-node.user-chunk span, ms-cmark-node.user-chunk p span',
+            chatContainer: 'div.chat-container, main, .conversation-container, [class*="conversation"], [class*="chat"], [class*="message"]',
+            userSelector: '[class*="user-chunk"] span, [class*="user-chunk"] p, ms-chat-turn, button[id^="scrollbar-item-"], [class*="user"] span, [class*="user"] p, [class*="prompt"] span, [class*="prompt"] p, [class*="query"] span, [class*="query"] p',
         },
         copilot: {
             name: 'Copilot',
@@ -43,10 +43,10 @@
         },
         perplexity: {
             name: 'Perplexity',
-            // Updated container selectors for current Perplexity interface
-            chatContainer: 'main, #__next, .search-interface, [role="main"], .app-main',
-            // Updated user selectors for current Perplexity structure  
-            userSelector: '.user-query, [data-testid="search-query"], .search-input-value, div[class*="query"] span, .prose:has(p), input[type="text"]:not([class*="search"]):focus',
+            // Target the main conversation container
+            chatContainer: 'main .border-subtlest.ring-subtlest.divide-subtlest.bg-underlay',
+            // Target user queries - they are in h1 and div elements with group/query class
+            userSelector: 'h1[class*="group/query"], div[class*="group/query"]',
         },
         unknown: { name: 'Unknown' },
     };
@@ -55,7 +55,19 @@
     let currentPlatformId = 'unknown';
     let allMessages = [];
     let observer = null;
-    let debouncedUpdate = debounce(async () => await updateAndSaveConversation(), 750); // Increased debounce
+    // Platform-specific debounce timing for better performance
+    const getDebounceDelay = () => {
+        if (currentPlatformId === 'perplexity') {
+            return 500; // Slightly longer for Perplexity due to complex DOM
+        }
+        return 300; // Standard delay for other platforms
+    };
+    let debouncedUpdate = debounce(async () => await updateAndSaveConversation(), getDebounceDelay());
+    
+    // Function to refresh debounced update when platform changes
+    function refreshDebouncedUpdate() {
+        debouncedUpdate = debounce(async () => await updateAndSaveConversation(), getDebounceDelay());
+    }
     let retryCount = 0;
     const MAX_RETRIES = 5;
     let messageFilterState = 'user'; // 'user', 'assistant', or 'favorites'
@@ -395,18 +407,31 @@
             return;
         }
         
-        // Scroll to the message
-        message.element.scrollIntoView({ 
+        // For Perplexity, try to find the parent container for better scrolling
+        let scrollTarget = message.element;
+        if (currentPlatformId === 'perplexity') {
+            // Look for a parent container that might be better for scrolling
+            const parentContainer = message.element.closest('main, [class*="conversation"], [class*="chat"]');
+            if (parentContainer) {
+                scrollTarget = parentContainer;
+            }
+        }
+        
+        // Scroll to the message with better positioning
+        scrollTarget.scrollIntoView({ 
             behavior: 'smooth', 
-            block: 'center',
+            block: 'start', // Changed from 'center' to 'start' for better positioning
             inline: 'nearest'
         });
         
         // Highlight the message
         const originalBg = message.element.style.backgroundColor;
         const originalTransition = message.element.style.transition;
-        message.element.style.transition = 'background-color 0.3s ease';
+        const originalBorder = message.element.style.border;
+        
+        message.element.style.transition = 'all 0.3s ease';
         message.element.style.backgroundColor = getPlatformHighlightColor();
+        message.element.style.border = '2px solid ' + getPlatformHighlightColor();
         
         // Update active dot
         updateActiveScrollDot(index);
@@ -415,9 +440,10 @@
         setTimeout(() => {
             message.element.style.backgroundColor = originalBg;
             message.element.style.transition = originalTransition;
-        }, 1500);
+            message.element.style.border = originalBorder;
+        }, 2000); // Increased duration for better visibility
         
-        console.log('Threadly: Scrolled to message', index + 1);
+        console.log('Threadly: Scrolled to message', index + 1, 'at element:', message.element.tagName, message.element.className);
     }
     
     function updateActiveScrollDot(activeIndex) {
@@ -787,6 +813,12 @@
         
         // Add click listeners for each label to allow direct selection
         toggleBar.addEventListener('click', async (e) => {
+            // Don't allow state changes during assignment mode
+            if (isAssigningMode) {
+                console.log('Threadly: Blocking toggle bar click during assignment mode');
+                return;
+            }
+            
             if (e.target.classList.contains('threadly-toggle-label')) {
                 if (e.target.classList.contains('user') || e.target.classList.contains('you')) {
                     await selectFilterState('user');
@@ -1140,23 +1172,90 @@
                 userElements.forEach((userEl, index) => {
                     let text = '';
                     
-                    
-                    // Try different text extraction methods
-                    if (userEl.textContent) {
-                        text = userEl.textContent.trim();
-                    } else if (userEl.innerText) {
-                        text = userEl.innerText.trim();
-                    } else if (userEl.value) {
-                        text = userEl.value.trim();
+                    // Special handling for scrollbar buttons
+                    if (userEl.tagName === 'BUTTON' && userEl.id && userEl.id.startsWith('scrollbar-item-')) {
+                        // Extract text from aria-label for scrollbar buttons
+                        text = userEl.getAttribute('aria-label') || '';
+                    } else {
+                        // Try different text extraction methods for regular elements
+                        if (userEl.textContent) {
+                            text = userEl.textContent.trim();
+                        } else if (userEl.innerText) {
+                            text = userEl.innerText.trim();
+                        } else if (userEl.value) {
+                            text = userEl.value.trim();
+                        }
                     }
                     
                     if (text && text.length > 2) { // Minimum length check
-                        // AI Studio specific filtering: simple and direct
+                        // AI Studio specific filtering: improved for user messages
                         if (currentPlatformId === 'ai-studio') {
+                            // Special handling for scrollbar buttons
+                            if (userEl.tagName === 'BUTTON' && userEl.id && userEl.id.startsWith('scrollbar-item-')) {
+                                // Check if this looks like a user message
+                                const isUserMessage = text.includes('make me a') || 
+                                                    text.includes('hey') || 
+                                                    text.includes('hello') ||
+                                                    text.includes('hi') ||
+                                                    text.includes('can you') ||
+                                                    text.includes('please') ||
+                                                    text.includes('help me') ||
+                                                    text.includes('I need') ||
+                                                    text.includes('I want');
+                                
+                                if (!isUserMessage) {
+                                    return; // Skip this element - it's not a user message
+                                }
+                                
+                                // Clean up the aria-label content
+                                text = text.replace(/^make me a\s*/i, '');
+                                text = text.replace(/\s*\.\.\.$/, '');
+                                text = text.trim();
+                                
+                                if (text.length < 2) {
+                                    return; // Skip if too short after cleaning
+                                }
+                                
+                                // Skip the regular AI Studio filtering for scrollbar buttons
+                            } else {
                             // Skip if text is too short
-                            if (text.length < 5) {
+                            if (text.length < 10) {
                                 return; // Skip this element
                             }
+                            
+                            // Skip experimental thoughts (these are the thinking process, not actual responses)
+                            if (text.includes('Model Thoughts') || text.includes('experimental') || 
+                                text.includes('Auto Understanding') || text.includes('Auto Exploring') ||
+                                text.includes('Auto Clarifying') || text.includes('Auto Formulating') || 
+                                text.includes('Auto Evaluating') || text.includes('Auto Crafting') || 
+                                text.includes('Auto Analyzing')) {
+                                return; // Skip this element
+                            }
+                            
+                            // Skip very short messages that are just UI elements
+                            if (text.length < 100 && (text.includes('edit') || text.includes('more_vert'))) {
+                                return; // Skip this element
+                            }
+                            
+                            // For AI Studio, only extract if it contains "User" (user messages)
+                            // But skip if it's just "editmore_vert" or other UI elements
+                            if (!text.includes('User') && !text.includes('user')) {
+                                return; // Skip this element - it's not a user message
+                            }
+                            
+                            // Clean up user message content
+                            text = text.replace(/^editmore_vert/, '').replace(/^User/, '').trim();
+                            
+                            // Skip if it's just UI elements
+                            if (text.includes('editmore_vert') && text.length < 50) {
+                                return; // Skip this element
+                            }
+                            
+                            // Skip if it's an AI response (contains "Model Thoughts" or "Of course")
+                            if (text.includes('Model Thoughts') || text.includes('Of course')) {
+                                return; // Skip this element - it's an AI response
+                            }
+                            } // End of else block for non-scrollbar elements
                         }
                         
                         // Filter for Copilot: exclude thinking/thoughts text
@@ -1178,6 +1277,19 @@
                             }
                         }
                         
+                        // Filter for Perplexity: minimal filtering since selectors are now precise
+                        if (currentPlatformId === 'perplexity') {
+                            // Skip if text is too short (likely UI elements)
+                            if (text.length < 3) {
+                                return; // Skip this element
+                            }
+                            
+                            // Skip if it looks like HTML/XML markup
+                            if (text.includes('<') && text.includes('>')) {
+                                return; // Skip this element
+                            }
+                        }
+                        
                         // Extracted user message
                         extracted.push({
                             role: 'user',
@@ -1188,9 +1300,8 @@
                     }
                 });
                 
-                if (extracted.length > 0) {
-                    break; // Found messages, no need to try other selectors
-                }
+                // Continue trying other selectors to find all messages
+                // Don't break here as we want to capture all user messages
             } catch (error) {
                 console.warn('Threadly: Error with selector', selector, ':', error);
             }
@@ -1207,11 +1318,12 @@
         } else if (currentPlatformId === 'gemini') {
             aiSelectors = '.assistant-message, [data-role="assistant"], .ai-response, div[class*="assistant"] p, .gemini-response, div[class*="gemini"], div[class*="response"], .response-text, div[class*="answer"], .ai-answer';
         } else if (currentPlatformId === 'ai-studio') {
-            aiSelectors = 'ms-chat-turn .model-prompt-container .turn-content ms-prompt-chunk:not(:has(ms-thought-chunk)) span, ms-chat-turn .model-prompt-container .turn-content ms-prompt-chunk:not(:has(ms-thought-chunk)) p span';
+            aiSelectors = 'ms-chat-turn .model-prompt-container .turn-content, ms-chat-turn .model-prompt-container, ms-chat-turn .turn-content, ms-chat-turn';
         } else if (currentPlatformId === 'copilot') {
             aiSelectors = '.assistant-message, [data-role="assistant"], .ai-response, .copilot-response, div[class*="assistant"], div[class*="response"], .response-text, div[class*="answer"]';
         } else if (currentPlatformId === 'perplexity') {
-            aiSelectors = '.ai-response, [data-role="assistant"], .assistant-message, div[class*="answer"]';
+            // Target AI responses - they are in div elements with prose class
+            aiSelectors = 'div[class*="prose"]';
         } else if (currentPlatformId === 'grok') {
             aiSelectors = '.assistant-message, [data-role="assistant"], .ai-response';
         } else {
@@ -1232,15 +1344,47 @@
                 }
                 
                 if (text && text.length > 2) {
-                    // For AI Studio, simple filtering
+                    // For AI Studio, improved filtering
                     if (currentPlatformId === 'ai-studio') {
                         // Skip if text is too short
-                        if (text.length < 10) {
+                        if (text.length < 15) {
                             return; // Skip this element
                         }
                         
+                        // Skip experimental thoughts (these are the thinking process, not actual responses)
+                        if (text.includes('Model Thoughts') || text.includes('experimental') || 
+                            text.includes('Auto Understanding') || text.includes('Auto Exploring') ||
+                            text.includes('Auto Clarifying') || text.includes('Auto Formulating') || 
+                            text.includes('Auto Evaluating') || text.includes('Auto Crafting') || 
+                            text.includes('Auto Analyzing')) {
+                            return; // Skip this element
+                        }
+                        
+                        // Skip very short messages that are just UI elements
+                        if (text.length < 100 && (text.includes('edit') || text.includes('more_vert'))) {
+                            return; // Skip this element
+                        }
+                        
+                        // Skip very short fragments that are likely UI elements
+                        if (text.length < 50 && (text.includes('code') || text.includes('JavaScript') || text.includes('download'))) {
+                            return; // Skip this element
+                        }
+                        
+                        // Clean up AI message content
+                        text = text.replace(/^editmore_vert/, '').replace(/^more_vert/, '').replace(/thumb_up$/, '').replace(/thumb_down$/, '').trim();
+                        
                         // Skip if it looks like HTML/XML markup
                         if (text.includes('<') && text.includes('>')) {
+                            return; // Skip this element
+                        }
+                        
+                        // For AI Studio, skip if it contains "User" at the beginning (these are actual user messages)
+                        if (text.startsWith('User') || text.startsWith('user') || text.includes('Usermake me a')) {
+                            return; // Skip this element - it's a user message
+                        }
+                        
+                        // Skip if it's just UI elements
+                        if (text.includes('editmore_vert') && text.length < 50) {
                             return; // Skip this element
                         }
                     }
@@ -1264,6 +1408,19 @@
                         }
                     }
                     
+                    // For Perplexity, minimal filtering since selectors are now precise
+                    if (currentPlatformId === 'perplexity') {
+                        // Skip if text is too short (likely UI elements)
+                        if (text.length < 10) {
+                            return; // Skip this element
+                        }
+                        
+                        // Skip if it looks like HTML/XML markup
+                        if (text.includes('<') && text.includes('>')) {
+                            return; // Skip this element
+                        }
+                    }
+                    
                     // Extracted AI message
                     extracted.push({
                         role: 'assistant',
@@ -1274,32 +1431,207 @@
                 }
             });
             
-            // Simple fallback for AI Studio
-            if (aiElements.length === 0 && currentPlatformId === 'ai-studio') {
-                console.log('Threadly: Trying simple AI Studio fallback...');
+            // Enhanced fallback for AI Studio
+            if (currentPlatformId === 'ai-studio') {
+                console.log('Threadly: Trying AI Studio fallback...');
                 
-                // Look for any span elements that might contain AI responses
-                const allSpans = document.querySelectorAll('span');
-                allSpans.forEach(span => {
-                    const text = span.textContent?.trim() || '';
-                    if (text.length > 20 && text.length < 1000) {
-                        // Skip if it's likely a user message
-                        const isUserMessage = extracted.some(msg => 
-                            msg.content === text || msg.element === span
-                        );
+                // Look for ms-chat-turn elements that might contain complete messages
+                const chatTurns = document.querySelectorAll('ms-chat-turn');
+                chatTurns.forEach(turn => {
+                    const text = turn.textContent?.trim() || '';
+                    
+                    if (text.length > 50) {
+                        // Filter out experimental thoughts (these are the thinking process, not actual responses)
+                        if (!text.includes('Model Thoughts') && !text.includes('experimental') && 
+                            !text.includes('Auto Understanding') && !text.includes('Auto Exploring') &&
+                            !text.includes('Auto Clarifying') && !text.includes('Auto Formulating') &&
+                            !text.includes('Auto Evaluating') && !text.includes('Auto Crafting') &&
+                            !text.includes('Auto Analyzing') &&
+                            !(text.length < 100 && (text.includes('edit') || text.includes('more_vert')))) {
+                            
+                            // Determine if it's a user or AI message based on content
+                            // User messages start with "User" or contain "Usermake me a"
+                            const isUserMessage = text.startsWith('User') || text.startsWith('user') || text.includes('Usermake me a');
+                            const messageRole = isUserMessage ? 'user' : 'assistant';
+                            
+                            // Clean up the content for user messages
+                            let cleanContent = text;
+                            if (isUserMessage) {
+                                // Remove UI elements like "editmore_vert" from user messages
+                                cleanContent = text.replace(/^editmore_vert/, '').replace(/^User/, '').trim();
+                            } else {
+                                // Clean up AI messages by removing UI elements
+                                cleanContent = text.replace(/^editmore_vert/, '').replace(/^more_vert/, '').replace(/thumb_up$/, '').replace(/thumb_down$/, '').trim();
+                            }
+                            
+                            if (cleanContent.length > 0) {
+                                extracted.push({
+                                    role: messageRole,
+                                    content: cleanContent,
+                                    element: turn
+                                });
+                                console.log(`Threadly: Extracted ${messageRole} message from fallback:`, cleanContent.substring(0, 50) + '...');
+                            }
+                        }
+                    }
+                });
+                
+                // Also check scrollbar navigation elements for user messages
+                console.log('Threadly: Checking scrollbar navigation elements...');
+                const scrollbarButtons = document.querySelectorAll('button[id^="scrollbar-item-"]');
+                scrollbarButtons.forEach(button => {
+                    const ariaLabel = button.getAttribute('aria-label') || '';
+                    if (ariaLabel && ariaLabel.length > 0) {
+                        // Check if this looks like a user message
+                        const isUserMessage = ariaLabel.includes('make me a') || 
+                                            ariaLabel.includes('hey') || 
+                                            ariaLabel.includes('hello') ||
+                                            ariaLabel.includes('hi') ||
+                                            ariaLabel.includes('can you') ||
+                                            ariaLabel.includes('please') ||
+                                            ariaLabel.includes('help me') ||
+                                            ariaLabel.includes('I need') ||
+                                            ariaLabel.includes('I want');
                         
-                        if (!isUserMessage) {
+                        if (isUserMessage) {
+                            // Clean up the aria-label content
+                            let cleanContent = ariaLabel;
+                            // Remove common prefixes and suffixes
+                            cleanContent = cleanContent.replace(/^make me a\s*/i, '');
+                            cleanContent = cleanContent.replace(/\s*\.\.\.$/, '');
+                            cleanContent = cleanContent.trim();
+                            
+                            if (cleanContent.length > 0) {
+                                extracted.push({
+                                    role: 'user',
+                                    content: cleanContent,
+                                    element: button
+                                });
+                                console.log(`Threadly: Extracted user message from scrollbar:`, cleanContent);
+                            }
+                        }
+                    }
+                });
+                
+                // Comprehensive fallback: look for any text content that might be messages
+                console.log('Threadly: Trying comprehensive fallback extraction...');
+                const allElements = document.querySelectorAll('*');
+                const textElements = Array.from(allElements).filter(el => {
+                    const text = el.textContent?.trim() || '';
+                    return text.length > 5 && text.length < 1000 && 
+                           !text.includes('<') && 
+                           !text.includes('>') &&
+                           !text.includes('{') &&
+                           !text.includes('}') &&
+                           !text.includes('Model Thoughts') &&
+                           !text.includes('experimental') &&
+                           !text.includes('Auto Understanding') &&
+                           !text.includes('Auto Exploring') &&
+                           !text.includes('Auto Clarifying') &&
+                           !text.includes('Auto Formulating') &&
+                           !text.includes('Auto Evaluating') &&
+                           !text.includes('Auto Crafting') &&
+                           !text.includes('Auto Analyzing');
+                });
+                
+                textElements.forEach(el => {
+                    const text = el.textContent?.trim() || '';
+                    
+                    // Check if this looks like a user message
+                    const isUserMessage = text.toLowerCase().includes('hey') || 
+                                        text.toLowerCase().includes('hello') ||
+                                        text.toLowerCase().includes('hi') ||
+                                        text.toLowerCase().includes('make me a') ||
+                                        text.toLowerCase().includes('can you') ||
+                                        text.toLowerCase().includes('please') ||
+                                        text.toLowerCase().includes('help me') ||
+                                        text.toLowerCase().includes('i need') ||
+                                        text.toLowerCase().includes('i want') ||
+                                        text.startsWith('User') ||
+                                        text.startsWith('user');
+                    
+                    // Check if this looks like an AI message
+                    const isAIMessage = text.toLowerCase().includes('how can i help') || 
+                                      text.toLowerCase().includes('threadly codebase') ||
+                                      text.toLowerCase().includes('dive into') ||
+                                      text.toLowerCase().includes('questions about') ||
+                                      text.toLowerCase().includes('of course') ||
+                                      text.toLowerCase().includes('i can help') ||
+                                      text.toLowerCase().includes('let me help') ||
+                                      (text.length > 100 && !isUserMessage);
+                    
+                    if (isUserMessage && text.length < 200) {
+                        // Clean up user message
+                        let cleanContent = text;
+                        cleanContent = cleanContent.replace(/^User/, '').replace(/^user/, '').trim();
+                        cleanContent = cleanContent.replace(/^make me a\s*/i, '').trim();
+                        
+                        if (cleanContent.length > 0) {
+                            extracted.push({
+                                role: 'user',
+                                content: cleanContent,
+                                element: el
+                            });
+                            console.log(`Threadly: Extracted user message from comprehensive fallback:`, cleanContent);
+                        }
+                    } else if (isAIMessage && text.length > 50) {
+                        // Clean up AI message
+                        let cleanContent = text;
+                        cleanContent = cleanContent.replace(/^editmore_vert/, '').replace(/^more_vert/, '').replace(/thumb_up$/, '').replace(/thumb_down$/, '').trim();
+                        
+                        if (cleanContent.length > 0) {
                             extracted.push({
                                 role: 'assistant',
-                                content: text,
-                                element: span
+                                content: cleanContent,
+                                element: el
                             });
+                            console.log(`Threadly: Extracted AI message from comprehensive fallback:`, cleanContent.substring(0, 50) + '...');
                         }
                     }
                 });
             }
         } catch (error) {
             console.warn('Threadly: Error extracting AI responses:', error);
+        }
+        
+        // Perplexity-specific fallback if no messages found
+        if (extracted.length === 0 && currentPlatformId === 'perplexity') {
+            console.log('Threadly: Trying Perplexity fallback extraction...');
+            
+            // Try to find any text content that might be messages
+            const allElements = document.querySelectorAll('div, p, span, article, section');
+            allElements.forEach(el => {
+                const text = el.textContent?.trim() || '';
+                if (text.length > 10 && text.length < 2000) {
+                    // Skip if it's likely UI text
+                    const uiPatterns = ['ask anything', 'search', 'voice mode', 'sources', 'model', 'settings', 'menu', 'button', 'submit', 'send', 'clear', 'copy', 'share', 'bookmark', 'like', 'dislike'];
+                    const isUIPattern = uiPatterns.some(pattern => 
+                        text.toLowerCase().includes(pattern.toLowerCase())
+                    );
+                    
+                    if (!isUIPattern && !text.includes('<') && !text.includes('>')) {
+                        // Try to determine if it's a user message or AI response
+                        const isLikelyUserMessage = text.length < 200 && !text.includes('.') && !text.includes('!') && !text.includes('?');
+                        const isLikelyAIMessage = text.length > 50 && (text.includes('.') || text.includes('!') || text.includes('?'));
+                        
+                        if (isLikelyUserMessage) {
+                            extracted.push({
+                                role: 'user',
+                                content: text,
+                                element: el
+                            });
+                            console.log('Threadly: Fallback extracted user message:', text.substring(0, 50) + '...');
+                        } else if (isLikelyAIMessage) {
+                            extracted.push({
+                                role: 'assistant',
+                                content: text,
+                                element: el
+                            });
+                            console.log('Threadly: Fallback extracted AI message:', text.substring(0, 50) + '...');
+                        }
+                    }
+                }
+            });
         }
         
         // Debug: Log what elements are available for better debugging (only in development)
@@ -1319,6 +1651,21 @@
         const userCount = extracted.filter(msg => msg.role === 'user').length;
         const assistantCount = extracted.filter(msg => msg.role === 'assistant').length;
         console.log('Threadly: - User messages:', userCount, 'Assistant messages:', assistantCount);
+        
+        // Additional debugging for Perplexity (reduced logging for performance)
+        if (currentPlatformId === 'perplexity') {
+            console.log('Threadly: Perplexity extraction summary:');
+            console.log('Threadly: - User messages:', userCount, 'AI messages:', assistantCount);
+            
+            // Only log detailed info if there are issues
+            if (extracted.length === 0) {
+                console.log('Threadly: - No messages extracted, checking selectors...');
+                const userElements = document.querySelectorAll(config.userSelector);
+                const aiElements = document.querySelectorAll(aiSelectors);
+                console.log('Threadly: - User elements found:', userElements.length);
+                console.log('Threadly: - AI elements found:', aiElements.length);
+            }
+        }
         
         return extracted;
     }
@@ -1824,6 +2171,12 @@
 
     // --- Filter State Management --- //
     async function selectFilterState(state) {
+        // Don't allow state changes during assignment mode
+        if (isAssigningMode) {
+            console.log('Threadly: Blocking state change during assignment mode');
+            return;
+        }
+        
         // Exit selection mode if active when changing states
         if (isInSelectionMode) {
             console.log('Threadly: Exiting selection mode due to state change');
@@ -1868,7 +2221,10 @@
             metaballWrapper.classList.add('stateB');
         }
         
-        await filterMessages(searchInput.value);
+        // Only filter messages if not in assignment mode
+        if (!isAssigningMode) {
+            await filterMessages(searchInput.value);
+        }
         console.log('Threadly: Filter state changed to:', state);
     }
 
@@ -1990,6 +2346,8 @@
     // --- Collections View Functions --- //
     async function renderCollectionsView(isAssigning = false) {
         try {
+            console.log('Threadly: renderCollectionsView called with isAssigning:', isAssigning);
+            
             // Exit selection mode if active when entering collections view
             if (isInSelectionMode) {
                 console.log('Threadly: Exiting selection mode due to entering collections view');
@@ -4047,6 +4405,9 @@
             console.log('Threadly: Unknown platform, exiting');
             return;
         }
+        
+        // Refresh debounced update with platform-specific timing
+        refreshDebouncedUpdate();
 
         // Initialize prompt refiner for all platforms
         try {
@@ -4538,23 +4899,45 @@
             return;
         }
         
-        isAssigningMode = true;
-        console.log('Threadly: Set isAssigningMode to true');
-        
-        // Set SAVED button as active to show collections
-        setSavedButtonActive(true);
-        
-        // Morph UI to SAVED state with animation
-        morphToSavedState();
-        console.log('Threadly: Called morphToSavedState');
-        
-        // Switch to SAVED state and show collections with assignment mode
-        await renderCollectionsView(true); // true = isAssigning mode
-        console.log('Threadly: Switched to SAVED state with assignment mode');
-        
-        // Morph navbar to show ADD NEW | BACK for normal SAVED state
-        morphNavbarToSavedState();
-        console.log('Threadly: Entered assignment mode');
+        try {
+            isAssigningMode = true;
+            console.log('Threadly: Set isAssigningMode to true');
+            
+            // Store the current filter state before switching
+            const previousFilterState = messageFilterState;
+            console.log('Threadly: Storing previous filter state:', previousFilterState);
+            
+            // Set SAVED button as active to show collections
+            setSavedButtonActive(true);
+            
+            // Morph UI to SAVED state with animation
+            morphToSavedState();
+            console.log('Threadly: Called morphToSavedState');
+            
+            // Force the filter state to 'saved' to prevent reversion
+            messageFilterState = 'saved';
+            console.log('Threadly: Set messageFilterState to saved');
+            
+            // Update panel data-filter attribute for CSS targeting
+            if (panel) {
+                panel.setAttribute('data-filter', 'saved');
+                console.log('Threadly: Set panel data-filter to saved');
+            }
+            
+            // Switch to SAVED state and show collections with assignment mode
+            await renderCollectionsView(true); // true = isAssigning mode
+            console.log('Threadly: Switched to SAVED state with assignment mode');
+            
+            // Morph navbar to show ADD NEW | BACK for normal SAVED state
+            morphNavbarToSavedState();
+            console.log('Threadly: Entered assignment mode');
+            
+        } catch (error) {
+            console.error('Threadly: Error in enterAssignmentMode:', error);
+            // Reset state on error
+            isAssigningMode = false;
+            setSavedButtonActive(false);
+        }
     }
 
     // Function to morph navbar to selection mode (ASSIGN TO | UNSTAR)
@@ -4730,6 +5113,10 @@
             console.log('Threadly: Found panel, adding saved-state class');
             panel.classList.add('saved-state');
             console.log('Threadly: Panel classes after morph:', panel.className);
+            
+            // Also update the data-filter attribute to ensure consistency
+            panel.setAttribute('data-filter', 'saved');
+            console.log('Threadly: Set panel data-filter to saved');
         } else {
             console.error('Threadly: Panel not found in morphToSavedState');
         }
@@ -4853,38 +5240,42 @@
         }
 
         // Add event listeners for the new buttons
-        if (labels[0]) {
-            labels[0].addEventListener('click', () => {
-                // Move highlight bubble to ADD NEW
-                if (toggleSegment) {
-                    toggleSegment.style.left = '2px';
-                    toggleSegment.style.width = 'calc(50% - 2px)';
-                }
-                handleAddNewClick();
-            });
-        }
-        if (labels[1]) {
-            labels[1].addEventListener('click', () => {
-                // Move highlight bubble to CANCEL
-                if (toggleSegment) {
-                    toggleSegment.style.left = 'calc(50% + 2px)';
-                    toggleSegment.style.width = 'calc(50% - 2px)';
-                    toggleSegment.classList.add('cancel');
-                }
-                
-                // BACK button - check if we're in assignment mode
-                if (isAssigningMode) {
-                    console.log('Threadly: BACK clicked in assignment mode - calling cancelAssignment()');
-                    cancelAssignment();
-                } else {
-                    console.log('Threadly: BACK clicked - calling exitSavedState()');
-                    // Call exitSavedState() which properly handles going back to previous state
-                    // while keeping the saved state active (like double-clicking the bulb)
-                    exitSavedState();
-                }
-                
-                console.log('Threadly: BACK - returned to previous state');
-            });
+        if (labels && labels.length >= 2) {
+            if (labels[0]) {
+                labels[0].addEventListener('click', () => {
+                    // Move highlight bubble to ADD NEW
+                    if (toggleSegment) {
+                        toggleSegment.style.left = '2px';
+                        toggleSegment.style.width = 'calc(50% - 2px)';
+                    }
+                    handleAddNewClick();
+                });
+            }
+            if (labels[1]) {
+                labels[1].addEventListener('click', () => {
+                    // Move highlight bubble to CANCEL
+                    if (toggleSegment) {
+                        toggleSegment.style.left = 'calc(50% + 2px)';
+                        toggleSegment.style.width = 'calc(50% - 2px)';
+                        toggleSegment.classList.add('cancel');
+                    }
+                    
+                    // BACK button - check if we're in assignment mode
+                    if (isAssigningMode) {
+                        console.log('Threadly: BACK clicked in assignment mode - calling cancelAssignment()');
+                        cancelAssignment();
+                    } else {
+                        console.log('Threadly: BACK clicked - calling exitSavedState()');
+                        // Call exitSavedState() which properly handles going back to previous state
+                        // while keeping the saved state active (like double-clicking the bulb)
+                        exitSavedState();
+                    }
+                    
+                    console.log('Threadly: BACK - returned to previous state');
+                });
+            }
+        } else {
+            console.error('Threadly: Not enough labels found in morphNavbarToSavedState');
         }
 
         console.log('Threadly: Navbar morphed to saved state');
@@ -5504,24 +5895,31 @@
 
     // Function to cancel assignment
     function cancelAssignment() {
-        console.log('Threadly: cancelAssignment called');
-        
-        // Reset assignment mode
-        isAssigningMode = false;
-        
-        // Reset SAVED button state
-        setSavedButtonActive(false);
-        
-        // Reset navbar to original state
-        resetNavbarToOriginal();
-        
-        // Exit selection mode
-        exitSelectionMode();
-        
-        // Return to main messages
-        returnToMainMessages();
-        
-        console.log('Threadly: Assignment cancelled');
+        try {
+            console.log('Threadly: cancelAssignment called');
+            
+            // Reset assignment mode
+            isAssigningMode = false;
+            
+            // Reset SAVED button state
+            setSavedButtonActive(false);
+            
+            // Reset navbar to original state
+            resetNavbarToOriginal();
+            
+            // Exit selection mode
+            exitSelectionMode();
+            
+            // Return to main messages
+            returnToMainMessages();
+            
+            console.log('Threadly: Assignment cancelled');
+        } catch (error) {
+            console.error('Threadly: Error in cancelAssignment:', error);
+            // Force reset on error
+            isAssigningMode = false;
+            setSavedButtonActive(false);
+        }
     }
 
     // Function to exit assignment mode

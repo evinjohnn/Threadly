@@ -841,7 +841,7 @@
                 'button[aria-label*="Insert assets such as images, videos, files, or audio"]',
                 'button[iconname="add_circle"]',
                 'ms-add-chunk-menu button',
-                'button .material-symbols-outlined:contains("add_circle")',
+                'button .material-symbols-outlined[data-icon="add_circle"]',
                 'button[aria-label*="add"]',
                 'button[aria-label*="upload"]',
                 'button[aria-label*="attach"]',
