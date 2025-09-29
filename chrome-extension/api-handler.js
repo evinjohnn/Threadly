@@ -7,6 +7,8 @@ class PromptRefiner {
     constructor() {
         this.apiKey = null;
         this.promptsDatabase = null;
+        this.feedbackData = []; // Store feedback data locally
+        this.refinementHistory = new Map(); // Track refinement attempts for implicit feedback
         this.platformConfigs = {
             'chatgpt': {
                 name: 'ChatGPT',
@@ -65,51 +67,51 @@ class PromptRefiner {
                         /(elephant|cat|dog|person|character|scene|landscape|building|car|animal)\s+(in|with|at|wearing|holding)/i
                     ]
                 },
-                'ai_prompting': {
-                    name: 'AI Prompting Enhancement',
+                'coding': {
+                    name: 'Coding & Development',
                     weight: 0,
-                    keywords: ['code', 'research', 'analyze', 'explain', 'help', 'assist', 'guide', 'tutorial', 'app', 'application', 'program', 'software', 'c++', 'python', 'javascript', 'java', 'react', 'vue', 'angular', 'html', 'css', 'sql', 'database', 'api', 'function', 'class', 'method', 'variable', 'algorithm', 'debug', 'fix', 'implement', 'build', 'develop', 'create', 'make'],
+                    keywords: ['code', 'programming', 'app', 'application', 'program', 'software', 'c++', 'python', 'javascript', 'java', 'react', 'vue', 'angular', 'html', 'css', 'sql', 'database', 'api', 'function', 'class', 'method', 'variable', 'algorithm', 'debug', 'fix', 'implement', 'build', 'develop', 'create', 'make'],
                     patterns: [
                         /(write|create|generate|make|build|develop)\s+(code|program|script|function|app|application|software)/i,
                         /(make|create|build)\s+(me|a|an)\s+(c\+\+|python|javascript|java|react|vue|angular|html|css|sql|app|application|program|software)/i,
-                        /(research|analyze|study|investigate)/i,
-                        /(explain|teach|guide|tutorial|how to)/i,
-                        /(help me|assist me|guide me)/i,
                         /(c\+\+|python|javascript|java|react|vue|angular|html|css|sql)\s+(app|application|program|code|function|class)/i,
                         /(calculator|todo|notes|chat|game|website|dashboard|portfolio)\s+(app|application|program)/i,
                         /(debug|fix|implement|optimize)\s+(code|program|function|algorithm)/i
+                    ]
+                },
+                'research_analysis': {
+                    name: 'Research & Analysis',
+                    weight: 0,
+                    keywords: ['research', 'analyze', 'study', 'investigate', 'explain', 'teach', 'guide', 'tutorial', 'how to', 'data', 'statistics', 'findings', 'report'],
+                    patterns: [
+                        /(research|analyze|study|investigate)/i,
+                        /(explain|teach|guide|tutorial|how to)/i,
+                        /(help me|assist me|guide me)/i,
+                        /(data|statistics|findings|report|survey)/i
+                    ]
+                },
+                'content_creation': {
+                    name: 'Content Creation',
+                    weight: 0,
+                    keywords: ['write', 'create', 'content', 'blog', 'article', 'copy', 'marketing', 'social media', 'email', 'story', 'creative', 'brainstorm', 'design'],
+                    patterns: [
+                        /(write|create)\s+(article|blog|content|story|copy)/i,
+                        /(marketing|social media|email)\s+(content|campaign|strategy)/i,
+                        /(creative|brainstorm|design)\s+(idea|concept|solution)/i
+                    ]
+                },
+                'general': {
+                    name: 'General',
+                    weight: 0,
+                    keywords: ['help', 'assist', 'support', 'advice', 'guidance'],
+                    patterns: [
+                        /(help|assist|support|advice|guidance)/i
                     ]
                 }
             }
         };
     }
 
-    async initialize() {
-        try {
-            // Check if chrome.storage is available (extension context not invalidated)
-            if (!chrome || !chrome.storage || !chrome.storage.local) {
-                console.error('Threadly: Extension context invalidated. Please refresh the page.');
-                throw new Error('Extension context invalidated. Please refresh the page to continue using Threadly.');
-            }
-            
-            const result = await chrome.storage.local.get(['geminiApiKey']);
-            this.apiKey = result.geminiApiKey;
-            
-            // Load prompts database
-            await this.loadPromptsDatabase();
-            
-            return !!this.apiKey;
-        } catch (error) {
-            console.error('Failed to initialize PromptRefiner:', error);
-            
-            // If it's a context invalidation error, provide a helpful message
-            if (error.message.includes('Extension context invalidated')) {
-                throw error; // Re-throw to be handled by the calling code
-            }
-            
-            return false;
-        }
-    }
 
     async loadPromptsDatabase() {
         try {
@@ -150,27 +152,164 @@ class PromptRefiner {
         } else if (triageResult.primaryCategory === 'image_generation' && triageResult.confidence > 0.4) {
             // Image generation prompt refinement
             refinedPrompt = await this.refineImageGenerationPrompt(userPrompt, platform, triageResult);
-        } else {
-            // AI prompting enhancement (default or when confidence is mixed)
-            const systemPrompt = this.buildSystemPrompt(platform, taskCategory, triageResult);
+        } else if (triageResult.primaryCategory === 'coding' && triageResult.confidence > 0.6) {
+            // Coding-specific refinement
+            const systemPrompt = this.buildSystemPrompt(platform, 'coding', triageResult);
             refinedPrompt = await this.callGeminiAPI(systemPrompt, userPrompt);
+        } else if (triageResult.primaryCategory === 'research_analysis' && triageResult.confidence > 0.6) {
+            // Research and analysis refinement
+            const systemPrompt = this.buildSystemPrompt(platform, 'research', triageResult);
+            refinedPrompt = await this.callGeminiAPI(systemPrompt, userPrompt);
+        } else if (triageResult.primaryCategory === 'content_creation' && triageResult.confidence > 0.6) {
+            // Content creation refinement
+            const systemPrompt = this.buildSystemPrompt(platform, 'content_creation', triageResult);
+            refinedPrompt = await this.callGeminiAPI(systemPrompt, userPrompt);
+        } else {
+            // General AI prompting enhancement (default or when confidence is mixed)
+            const systemPrompt = this.buildSystemPrompt(platform, taskCategory, triageResult);
+            try {
+                refinedPrompt = await this.callGeminiAPI(systemPrompt, userPrompt);
+            } catch (error) {
+                // If API fails, provide a basic enhancement
+                console.log('Threadly: API call failed, providing basic enhancement');
+                refinedPrompt = this.provideBasicEnhancement(userPrompt, triageResult);
+            }
         }
         
-        return refinedPrompt;
+        // Step 3: Track refinement attempt for feedback collection
+        const attemptId = this.trackRefinementAttempt(userPrompt, triageResult, refinedPrompt);
+        
+        // Return both the refined prompt and attempt ID for feedback tracking
+        return {
+            refinedPrompt,
+            attemptId,
+            triageResult
+        };
     }
 
     // Triage AI: Analyze context and determine refinement type
     async analyzeContext(userPrompt) {
+        // --- STAGE 1: THE FAST PATH ---
+        const fastAnalysis = this.runFastPathAnalysis(userPrompt);
+        const HIGH_CONFIDENCE_THRESHOLD = 0.90; // 90% confidence
+        const HIGH_WEIGHT_THRESHOLD = 4; // 4+ weight points
+
+        if (fastAnalysis.confidence >= HIGH_CONFIDENCE_THRESHOLD && fastAnalysis.totalWeight > HIGH_WEIGHT_THRESHOLD) {
+            console.log('Threadly: Triage AI - Fast Path Succeeded.', {
+                category: fastAnalysis.primaryCategory,
+                confidence: fastAnalysis.confidence,
+                totalWeight: fastAnalysis.totalWeight,
+                reasoning: fastAnalysis.reasoning
+            });
+            return fastAnalysis;
+        }
+
+        // --- STAGE 2: THE AI-POWERED SMART PATH ---
+        console.log('Threadly: Triage AI - Fast Path failed, proceeding to Smart Path.');
+        try {
+            const masterPrompt = this.buildTriageMasterPrompt();
+            const aiResponseString = await this.callGeminiAPI(masterPrompt, userPrompt);
+            
+            // Clean and parse the JSON response from the AI
+            let jsonMatch = aiResponseString.match(/```json\n([\s\S]*?)\n```/);
+            if (!jsonMatch) {
+                // Try alternative JSON extraction patterns
+                jsonMatch = aiResponseString.match(/```\n([\s\S]*?)\n```/);
+                if (!jsonMatch) {
+                    // Try to find JSON without code blocks
+                    const jsonStart = aiResponseString.indexOf('{');
+                    const jsonEnd = aiResponseString.lastIndexOf('}');
+                    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+                        jsonMatch = [null, aiResponseString.substring(jsonStart, jsonEnd + 1)];
+                    } else {
+                        throw new Error('No JSON found in AI response');
+                    }
+                }
+            }
+            
+            const aiAnalysis = JSON.parse(jsonMatch[1]);
+
+            // Validate AI analysis response
+            if (!aiAnalysis.category || typeof aiAnalysis.confidence !== 'number' || 
+                !aiAnalysis.rationale || typeof aiAnalysis.prompt_quality_score !== 'number' || 
+                typeof aiAnalysis.refinement_needed !== 'boolean' || !aiAnalysis.chain_of_thought) {
+                throw new Error('Invalid AI analysis response format');
+            }
+
+            // Ensure category is valid
+            const validCategories = ['grammar_spelling', 'image_generation', 'coding', 'research_analysis', 'content_creation', 'general'];
+            if (!validCategories.includes(aiAnalysis.category)) {
+                console.warn('Threadly: Invalid category from AI, using general:', aiAnalysis.category);
+                aiAnalysis.category = 'general';
+            }
+
+            // Clamp confidence and quality scores to valid ranges
+            aiAnalysis.confidence = Math.max(0, Math.min(1, aiAnalysis.confidence));
+            aiAnalysis.prompt_quality_score = Math.max(0, Math.min(100, aiAnalysis.prompt_quality_score));
+
+            // Integrate the AI's analysis into our standard analysis object
+            const finalAnalysis = {
+                categories: fastAnalysis.categories, // Keep the fast path categories for reference
+                primaryCategory: aiAnalysis.category,
+                confidence: aiAnalysis.confidence,
+                reasoning: [aiAnalysis.rationale],
+                chainOfThought: aiAnalysis.chain_of_thought, // Store the reasoning chain
+                refinementNeed: aiAnalysis.refinement_needed ? 'high' : 'low',
+                promptQuality: aiAnalysis.prompt_quality_score,
+                similarPrompts: fastAnalysis.similarPrompts, // Keep similar prompts from fast path
+                hasSharedImages: fastAnalysis.hasSharedImages,
+                totalWeight: fastAnalysis.totalWeight, // Keep total weight for reference
+                aiAnalyst: true // Flag to indicate this came from AI analyst
+            };
+            
+            console.log('Threadly: Triage AI - Smart Path Succeeded.', {
+                category: finalAnalysis.primaryCategory,
+                confidence: finalAnalysis.confidence,
+                promptQuality: finalAnalysis.promptQuality,
+                refinementNeed: finalAnalysis.refinementNeed,
+                reasoning: finalAnalysis.reasoning
+            });
+            return finalAnalysis;
+
+        } catch (error) {
+            console.error('Threadly: Triage AI - Smart Path failed. Falling back to fast analysis.', error);
+            
+            // If it's an API overload error, we can still provide a basic analysis
+            if (error.message.includes('overloaded') || error.message.includes('503')) {
+                console.log('Threadly: API overload detected, using fast path with basic enhancement');
+                // Enhance the fast analysis with basic improvements
+                fastAnalysis.refinementNeed = 'medium'; // Assume some refinement needed
+                fastAnalysis.promptQuality = Math.max(fastAnalysis.promptQuality, 40); // Minimum quality
+            }
+            
+            // If the AI call fails for any reason, we still have the fast path result as a fallback.
+            return fastAnalysis;
+        }
+    }
+
+    // Stage 1: Fast Path Analysis - Extract existing keyword/regex logic
+    runFastPathAnalysis(userPrompt) {
         const prompt = userPrompt.toLowerCase();
         const analysis = {
             categories: {},
-            primaryCategory: 'ai_prompting',
+            primaryCategory: 'general',
             confidence: 0,
             reasoning: [],
             refinementNeed: 'low',
             promptQuality: 0,
-            similarPrompts: []
+            similarPrompts: [],
+            totalWeight: 0
         };
+
+        // --- PILLAR 1: CERTAINTY ENGINE ---
+        // Only apply strict rules to shorter prompts (under 150 characters)
+        if (userPrompt.length <= 150) {
+            const certaintyResult = this.runCertaintyEngine(userPrompt);
+            if (certaintyResult) {
+                console.log('Threadly: Certainty Engine triggered for:', certaintyResult.category);
+                return certaintyResult;
+            }
+        }
 
         // Step 1: Assess prompt quality and refinement need
         const qualityAssessment = this.assessPromptQuality(userPrompt);
@@ -236,7 +375,7 @@ class PromptRefiner {
         }
 
         // Special logic: Prioritize coding requests over image generation when there are conflicting signals
-        const hasCodingKeywords = analysis.categories.ai_prompting.weight > 0;
+        const hasCodingKeywords = analysis.categories.coding.weight > 0;
         const hasImageKeywords = analysis.categories.image_generation.weight > 0;
         
         if (hasCodingKeywords && hasImageKeywords) {
@@ -252,7 +391,7 @@ class PromptRefiner {
             
             if (isPrimarilyCoding) {
                 // Boost coding weight and reduce image weight
-                analysis.categories.ai_prompting.weight += 5;
+                analysis.categories.coding.weight += 5;
                 analysis.categories.image_generation.weight = Math.max(0, analysis.categories.image_generation.weight - 3);
                 analysis.reasoning.push('prioritized coding over image generation due to app creation request');
             }
@@ -267,16 +406,648 @@ class PromptRefiner {
             }
         }
 
-        // Calculate confidence based on weight distribution
-        const totalWeight = Object.values(analysis.categories).reduce((sum, cat) => sum + cat.weight, 0);
-        if (totalWeight > 0) {
-            analysis.confidence = maxWeight / totalWeight;
+        // Calculate total weight and confidence
+        analysis.totalWeight = Object.values(analysis.categories).reduce((sum, cat) => sum + cat.weight, 0);
+        if (analysis.totalWeight > 0) {
+            analysis.confidence = maxWeight / analysis.totalWeight;
         }
 
         // Add reasoning
         analysis.reasoning = analysis.categories[analysis.primaryCategory].matches;
 
         return analysis;
+    }
+
+    // Pillar 1: Certainty Engine - Hyper-fast path with command-based triggers
+    runCertaintyEngine(userPrompt) {
+        const prompt = userPrompt.toLowerCase();
+        
+        // Command-based triggers for high certainty classification
+        const certaintyRules = {
+            grammar_spelling: [
+                /^(fix|correct|rephrase|rewrite)\s+this:/i,
+                /^(fix|correct|rephrase|rewrite)\s+(my|the)\s+(text|message|sentence|grammar|spelling)/i,
+                /^(can you|could you)\s+(fix|correct|rephrase|rewrite)\s+(this|my|the)/i,
+                /^(grammar|spelling|typo)\s+(check|fix|correct)/i
+            ],
+            image_generation: [
+                /^(generate|create|draw)\s+(an?|me)\s+(image|picture|photo|logo|sticker)\s+of/i,
+                /^(make|design)\s+(an?|me)\s+(image|picture|photo|logo|sticker)/i,
+                /^(show me|i want|i need)\s+(a\s+)?(picture|photo|image|logo|sticker)/i,
+                /^(draw|paint|illustrate)\s+(me|an?)\s+(image|picture|photo)/i
+            ],
+            coding: [
+                /^(write|create|build|make)\s+(me\s+)?(a\s+)?(python|javascript|java|c\+\+|html|css|sql)\s+(script|code|function|app|program)/i,
+                /^(code|program|script|function|app|program)\s+(in|for)\s+(python|javascript|java|c\+\+|html|css|sql)/i,
+                /^(debug|fix|optimize)\s+(this|my|the)\s+(code|script|function|program)/i,
+                /^(implement|build)\s+(a\s+)?(calculator|todo|notes|chat|game|website|dashboard)\s+(app|application|program)/i
+            ],
+            research_analysis: [
+                /^(research|analyze|study|investigate)\s+(the|this|my)/i,
+                /^(explain|teach|guide|tutorial)\s+(me\s+)?(about|how to)/i,
+                /^(what|how|why|when|where)\s+(is|are|does|do|can|should|would)/i,
+                /^(find|search|look up)\s+(information|data|facts|statistics)/i
+            ],
+            content_creation: [
+                /^(write|create|compose)\s+(me\s+)?(a\s+)?(article|blog|story|email|letter|copy|content)/i,
+                /^(draft|prepare)\s+(a\s+)?(marketing|social media|email)\s+(content|campaign|post)/i,
+                /^(brainstorm|generate)\s+(ideas|concepts|solutions)/i
+            ]
+        };
+
+        // Check for counter-signals that should prevent certainty classification
+        const counterSignals = {
+            grammar_spelling: [
+                /create.*image/i,
+                /generate.*picture/i,
+                /write.*code/i,
+                /build.*app/i,
+                /research.*about/i
+            ],
+            image_generation: [
+                /write.*code/i,
+                /build.*app/i,
+                /research.*about/i,
+                /analyze.*data/i,
+                /fix.*grammar/i
+            ],
+            coding: [
+                /create.*image/i,
+                /generate.*picture/i,
+                /write.*article/i,
+                /research.*about/i,
+                /fix.*grammar/i
+            ],
+            research_analysis: [
+                /create.*image/i,
+                /generate.*picture/i,
+                /write.*code/i,
+                /build.*app/i,
+                /fix.*grammar/i
+            ],
+            content_creation: [
+                /create.*image/i,
+                /generate.*picture/i,
+                /write.*code/i,
+                /build.*app/i,
+                /research.*about/i
+            ]
+        };
+
+        // Test each category for certainty
+        for (const [category, patterns] of Object.entries(certaintyRules)) {
+            const matchedPattern = patterns.find(pattern => pattern.test(userPrompt));
+            
+            if (matchedPattern) {
+                // Check for counter-signals
+                const hasCounterSignal = counterSignals[category]?.some(pattern => pattern.test(userPrompt));
+                
+                if (!hasCounterSignal) {
+                    // High certainty classification
+                    const analysis = {
+                        categories: {
+                            [category]: {
+                                weight: 10, // High weight for certainty
+                                matches: [`certainty: ${matchedPattern.source}`],
+                                name: this.triageConfig.categories[category]?.name || category
+                            }
+                        },
+                        primaryCategory: category,
+                        confidence: 0.98, // Very high confidence
+                        reasoning: [`certainty engine: ${matchedPattern.source}`],
+                        refinementNeed: 'low',
+                        promptQuality: 70, // Assume decent quality for command-based prompts
+                        similarPrompts: [],
+                        hasSharedImages: this.detectSharedImages(userPrompt),
+                        totalWeight: 10,
+                        certaintyEngine: true // Flag to indicate this came from certainty engine
+                    };
+                    
+                    return analysis;
+                } else {
+                    console.log('Threadly: Certainty Engine blocked by counter-signal for category:', category);
+                }
+            }
+        }
+
+        return null; // No certainty classification possible
+    }
+
+    // Stage 2: Master Analysis Prompt for AI-Powered Smart Path
+    buildTriageMasterPrompt() {
+        const systemPrompt = `
+You are an expert AI Prompt Triage Specialist. Your role is to analyze a user's raw prompt and classify its primary intent. You must return your analysis ONLY in a structured JSON format.
+
+**Analysis Steps:**
+1. **Chain of Thought:** First, in a 'chain_of_thought' field, reason step-by-step. Analyze keywords, sentence structure, and the user's likely goal. Consider ambiguities. For example, does "write a python script to generate images" mean coding or image generation? Conclude your reasoning with your final category choice.
+2. **Categorization:** Based on your reasoning, select ONE primary category: "grammar_spelling", "image_generation", "coding", "research_analysis", "content_creation", or "general".
+3. **Confidence Score:** Provide a confidence score (0.0 to 1.0).
+4. **Rationale:** Provide a final, concise one-sentence rationale.
+5. **Prompt Quality:** Score the prompt's quality (0-100).
+6. **Refinement Needed:** State if refinement is needed (true/false).
+
+**Output Format:**
+You MUST respond with ONLY a single JSON object inside a markdown code block. Do not include any other text, greetings, or explanations.
+
+Example JSON Output Structure:
+\`\`\`json
+{
+  "chain_of_thought": "The user prompt is 'write a python script to generate images'. The keywords are 'python script' (coding) and 'generate images' (image_generation). The primary action is 'write a script', which is a coding task. The image generation is the *purpose* of the script, not the direct task for the AI. Therefore, the category is 'coding'.",
+  "category": "coding",
+  "confidence": 0.98,
+  "rationale": "The prompt asks to write code, making 'coding' the primary category.",
+  "prompt_quality_score": 80,
+  "refinement_needed": true
+}
+\`\`\`
+`;
+        return systemPrompt;
+    }
+
+    // Provide basic enhancement when API calls fail
+    provideBasicEnhancement(userPrompt, triageResult) {
+        let enhancedPrompt = userPrompt;
+        
+        // Basic enhancements based on category
+        switch (triageResult.primaryCategory) {
+            case 'grammar_spelling':
+                enhancedPrompt = `Please correct the grammar and spelling in the following text: "${userPrompt}"`;
+                break;
+            case 'image_generation':
+                enhancedPrompt = `Create a detailed, high-quality image prompt for: ${userPrompt}`;
+                break;
+            case 'coding':
+                enhancedPrompt = `Write clean, well-documented code for: ${userPrompt}`;
+                break;
+            case 'research_analysis':
+                enhancedPrompt = `Provide a comprehensive analysis and research on: ${userPrompt}`;
+                break;
+            case 'content_creation':
+                enhancedPrompt = `Create engaging, well-structured content about: ${userPrompt}`;
+                break;
+            default:
+                enhancedPrompt = `Please provide a detailed, helpful response to: ${userPrompt}`;
+        }
+        
+        return enhancedPrompt;
+    }
+
+    // Pillar 3: User-in-the-Loop Feedback System
+    // Track refinement attempts for implicit feedback
+    trackRefinementAttempt(userPrompt, triageResult, refinedPrompt) {
+        const attemptId = Date.now().toString();
+        this.refinementHistory.set(attemptId, {
+            userPrompt,
+            triageResult,
+            refinedPrompt,
+            timestamp: new Date().toISOString(),
+            reRefineCount: 0,
+            finalPrompt: null
+        });
+        return attemptId;
+    }
+
+    // Record re-refinement (implicit feedback that first refinement was poor)
+    recordReRefinement(attemptId) {
+        const attempt = this.refinementHistory.get(attemptId);
+        if (attempt) {
+            attempt.reRefineCount++;
+            console.log('Threadly: Re-refinement detected - potential poor classification');
+            
+            // If user re-refines multiple times, it's strong negative feedback
+            if (attempt.reRefineCount >= 2) {
+                this.collectImplicitFeedback(attempt, 're_refine');
+            }
+        }
+    }
+
+    // Record final prompt after user edits (implicit feedback)
+    recordFinalPrompt(attemptId, finalPrompt) {
+        const attempt = this.refinementHistory.get(attemptId);
+        if (attempt) {
+            attempt.finalPrompt = finalPrompt;
+            
+            // Calculate edit distance to detect heavy editing
+            const editDistance = this.calculateEditDistance(attempt.refinedPrompt, finalPrompt);
+            const editRatio = editDistance / Math.max(attempt.refinedPrompt.length, finalPrompt.length);
+            
+            if (editRatio > 0.3) { // More than 30% change indicates poor refinement
+                console.log('Threadly: Heavy editing detected - potential poor classification');
+                this.collectImplicitFeedback(attempt, 'heavy_edit', { editRatio });
+            }
+        }
+    }
+
+    // Collect implicit feedback data
+    collectImplicitFeedback(attempt, feedbackType, metadata = {}) {
+        const feedback = {
+            type: 'implicit',
+            feedbackType,
+            userPrompt: attempt.userPrompt,
+            initialCategory: attempt.triageResult.primaryCategory,
+            confidence: attempt.triageResult.confidence,
+            refinedPrompt: attempt.refinedPrompt,
+            finalPrompt: attempt.finalPrompt,
+            timestamp: attempt.timestamp,
+            metadata
+        };
+        
+        this.feedbackData.push(feedback);
+        console.log('Threadly: Implicit feedback collected:', feedbackType);
+        
+        // Store feedback data locally
+        this.saveFeedbackData();
+    }
+
+    // Collect explicit feedback from user
+    collectExplicitFeedback(attemptId, correctCategory) {
+        const attempt = this.refinementHistory.get(attemptId);
+        if (attempt) {
+            const feedback = {
+                type: 'explicit',
+                userPrompt: attempt.userPrompt,
+                initialCategory: attempt.triageResult.primaryCategory,
+                correctCategory,
+                confidence: attempt.triageResult.confidence,
+                refinedPrompt: attempt.refinedPrompt,
+                timestamp: attempt.timestamp
+            };
+            
+            this.feedbackData.push(feedback);
+            console.log('Threadly: Explicit feedback collected:', correctCategory);
+            
+            // Store feedback data locally
+            this.saveFeedbackData();
+        }
+    }
+
+    // Calculate edit distance between two strings
+    calculateEditDistance(str1, str2) {
+        const matrix = [];
+        const len1 = str1.length;
+        const len2 = str2.length;
+
+        for (let i = 0; i <= len2; i++) {
+            matrix[i] = [i];
+        }
+
+        for (let j = 0; j <= len1; j++) {
+            matrix[0][j] = j;
+        }
+
+        for (let i = 1; i <= len2; i++) {
+            for (let j = 1; j <= len1; j++) {
+                if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j] + 1
+                    );
+                }
+            }
+        }
+
+        return matrix[len2][len1];
+    }
+
+    // Save feedback data to local storage
+    async saveFeedbackData() {
+        try {
+            if (chrome && chrome.storage && chrome.storage.local) {
+                await chrome.storage.local.set({ 
+                    threadlyFeedbackData: this.feedbackData 
+                });
+            }
+        } catch (error) {
+            console.error('Threadly: Failed to save feedback data:', error);
+        }
+    }
+
+    // Load feedback data from local storage
+    async loadFeedbackData() {
+        try {
+            if (chrome && chrome.storage && chrome.storage.local) {
+                const result = await chrome.storage.local.get(['threadlyFeedbackData']);
+                this.feedbackData = result.threadlyFeedbackData || [];
+            }
+        } catch (error) {
+            console.error('Threadly: Failed to load feedback data:', error);
+        }
+    }
+
+    // Get feedback statistics for analysis
+    getFeedbackStats() {
+        const total = this.feedbackData.length;
+        const implicit = this.feedbackData.filter(f => f.type === 'implicit').length;
+        const explicit = this.feedbackData.filter(f => f.type === 'explicit').length;
+        
+        const misclassifications = this.feedbackData.filter(f => 
+            f.initialCategory !== f.correctCategory
+        ).length;
+        
+        return {
+            total,
+            implicit,
+            explicit,
+            misclassifications,
+            accuracy: total > 0 ? ((total - misclassifications) / total * 100).toFixed(2) : 'N/A'
+        };
+    }
+
+    // Pillar 4: Long-Term Evolution - Data Analysis and Rule Refinement
+    // Analyze feedback data to identify patterns and improve rules
+    analyzeFeedbackPatterns() {
+        const patterns = {
+            commonMisclassifications: {},
+            problematicKeywords: {},
+            confidenceIssues: [],
+            categoryConfusion: {}
+        };
+
+        // Analyze misclassifications
+        const misclassifications = this.feedbackData.filter(f => 
+            f.initialCategory !== f.correctCategory
+        );
+
+        misclassifications.forEach(feedback => {
+            const key = `${feedback.initialCategory} -> ${feedback.correctCategory}`;
+            patterns.commonMisclassifications[key] = (patterns.commonMisclassifications[key] || 0) + 1;
+        });
+
+        // Analyze problematic keywords
+        misclassifications.forEach(feedback => {
+            const words = feedback.userPrompt.toLowerCase().split(/\s+/);
+            words.forEach(word => {
+                if (word.length > 3) { // Only consider meaningful words
+                    const key = `${word} (${feedback.initialCategory} -> ${feedback.correctCategory})`;
+                    patterns.problematicKeywords[key] = (patterns.problematicKeywords[key] || 0) + 1;
+                }
+            });
+        });
+
+        // Analyze confidence issues
+        patterns.confidenceIssues = misclassifications
+            .filter(f => f.confidence > 0.8) // High confidence but wrong
+            .map(f => ({
+                prompt: f.userPrompt,
+                category: f.initialCategory,
+                confidence: f.confidence
+            }));
+
+        return patterns;
+    }
+
+    // Generate rule refinement suggestions based on feedback analysis
+    generateRuleRefinements() {
+        const patterns = this.analyzeFeedbackPatterns();
+        const suggestions = [];
+
+        // Suggest new certainty rules for common patterns
+        Object.entries(patterns.commonMisclassifications).forEach(([misclass, count]) => {
+            if (count >= 3) { // Only suggest for patterns that occur 3+ times
+                const [from, to] = misclass.split(' -> ');
+                suggestions.push({
+                    type: 'certainty_rule',
+                    description: `Add certainty rule for ${from} -> ${to} (${count} occurrences)`,
+                    priority: count
+                });
+            }
+        });
+
+        // Suggest keyword adjustments
+        Object.entries(patterns.problematicKeywords).forEach(([keyword, count]) => {
+            if (count >= 2) {
+                suggestions.push({
+                    type: 'keyword_adjustment',
+                    description: `Adjust keyword handling for "${keyword}" (${count} misclassifications)`,
+                    priority: count
+                });
+            }
+        });
+
+        // Suggest confidence threshold adjustments
+        if (patterns.confidenceIssues.length > 0) {
+            suggestions.push({
+                type: 'confidence_threshold',
+                description: `Review confidence thresholds - ${patterns.confidenceIssues.length} high-confidence misclassifications`,
+                priority: patterns.confidenceIssues.length
+            });
+        }
+
+        return suggestions.sort((a, b) => b.priority - a.priority);
+    }
+
+    // Export feedback data for external analysis
+    exportFeedbackData() {
+        return {
+            feedbackData: this.feedbackData,
+            stats: this.getFeedbackStats(),
+            patterns: this.analyzeFeedbackPatterns(),
+            suggestions: this.generateRuleRefinements(),
+            exportDate: new Date().toISOString()
+        };
+    }
+
+    // Create explicit feedback UI (to be called from content script)
+    createFeedbackUI(attemptId, refinedPrompt) {
+        // Create a subtle feedback button
+        const feedbackButton = document.createElement('div');
+        feedbackButton.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                cursor: pointer;
+                z-index: 10000;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                transition: all 0.2s ease;
+            " onmouseover="this.style.background='rgba(0, 0, 0, 0.9)'" onmouseout="this.style.background='rgba(0, 0, 0, 0.8)'">
+                Wrong category? <span style="color: #4CAF50;">Click here</span>
+            </div>
+        `;
+        
+        feedbackButton.addEventListener('click', () => {
+            this.showFeedbackModal(attemptId, refinedPrompt);
+            feedbackButton.remove();
+        });
+        
+        document.body.appendChild(feedbackButton);
+        
+        // Auto-remove after 10 seconds
+        setTimeout(() => {
+            if (feedbackButton.parentNode) {
+                feedbackButton.remove();
+            }
+        }, 10000);
+    }
+
+    // Show feedback modal for category correction
+    showFeedbackModal(attemptId, refinedPrompt) {
+        const modal = document.createElement('div');
+        modal.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10001;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            ">
+                <div style="
+                    background: white;
+                    padding: 24px;
+                    border-radius: 12px;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                    max-width: 400px;
+                    width: 90%;
+                ">
+                    <h3 style="margin: 0 0 16px 0; color: #333;">What was this about?</h3>
+                    <p style="margin: 0 0 16px 0; color: #666; font-size: 14px;">
+                        Help us improve by selecting the correct category:
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+                        <button class="feedback-option" data-category="coding" style="
+                            padding: 12px 16px;
+                            border: 1px solid #ddd;
+                            background: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            text-align: left;
+                            transition: all 0.2s ease;
+                        ">💻 Coding & Development</button>
+                        <button class="feedback-option" data-category="image_generation" style="
+                            padding: 12px 16px;
+                            border: 1px solid #ddd;
+                            background: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            text-align: left;
+                            transition: all 0.2s ease;
+                        ">🎨 Image Generation</button>
+                        <button class="feedback-option" data-category="grammar_spelling" style="
+                            padding: 12px 16px;
+                            border: 1px solid #ddd;
+                            background: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            text-align: left;
+                            transition: all 0.2s ease;
+                        ">✏️ Grammar & Writing</button>
+                        <button class="feedback-option" data-category="research_analysis" style="
+                            padding: 12px 16px;
+                            border: 1px solid #ddd;
+                            background: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            text-align: left;
+                            transition: all 0.2s ease;
+                        ">🔍 Research & Analysis</button>
+                        <button class="feedback-option" data-category="content_creation" style="
+                            padding: 12px 16px;
+                            border: 1px solid #ddd;
+                            background: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            text-align: left;
+                            transition: all 0.2s ease;
+                        ">📝 Content Creation</button>
+                        <button class="feedback-option" data-category="general" style="
+                            padding: 12px 16px;
+                            border: 1px solid #ddd;
+                            background: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            text-align: left;
+                            transition: all 0.2s ease;
+                        ">❓ General</button>
+                    </div>
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <button id="cancel-feedback" style="
+                            padding: 8px 16px;
+                            border: 1px solid #ddd;
+                            background: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add hover effects
+        modal.querySelectorAll('.feedback-option').forEach(button => {
+            button.addEventListener('mouseenter', () => {
+                button.style.background = '#f5f5f5';
+                button.style.borderColor = '#4CAF50';
+            });
+            button.addEventListener('mouseleave', () => {
+                button.style.background = 'white';
+                button.style.borderColor = '#ddd';
+            });
+            button.addEventListener('click', () => {
+                const category = button.dataset.category;
+                this.collectExplicitFeedback(attemptId, category);
+                modal.remove();
+            });
+        });
+        
+        // Cancel button
+        modal.querySelector('#cancel-feedback').addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        // Click outside to close
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal.firstElementChild) {
+                modal.remove();
+            }
+        });
+        
+        document.body.appendChild(modal);
+    }
+
+    // Initialize feedback data loading
+    async initialize() {
+        try {
+            // Check if chrome.storage is available (extension context not invalidated)
+            if (!chrome || !chrome.storage || !chrome.storage.local) {
+                console.error('Threadly: Extension context invalidated. Please refresh the page.');
+                throw new Error('Extension context invalidated. Please refresh the page to continue using Threadly.');
+            }
+            
+            const result = await chrome.storage.local.get(['geminiApiKey']);
+            this.apiKey = result.geminiApiKey;
+            
+            // Load prompts database
+            await this.loadPromptsDatabase();
+            
+            // Load feedback data
+            await this.loadFeedbackData();
+            
+            return !!this.apiKey;
+        } catch (error) {
+            console.error('Failed to initialize PromptRefiner:', error);
+            
+            // If it's a context invalidation error, provide a helpful message
+            if (error.message.includes('Extension context invalidated')) {
+                throw error; // Re-throw to be handled by the calling code
+            }
+            
+            return false;
+        }
     }
 
     // Assess prompt quality and determine refinement need

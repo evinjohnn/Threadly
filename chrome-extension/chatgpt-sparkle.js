@@ -155,7 +155,9 @@
                     popup.classList.remove('growing');
                     popup.classList.add('shrinking');
                     setTimeout(() => {
-                        popup.remove();
+                        if (popup && popup.parentNode) {
+                            popup.remove();
+                        }
                         popup = null;
                     }, 600);
                 } else {
@@ -648,7 +650,11 @@
                     await promptRefiner.initialize();
                     
                     console.log('Threadly: Sending prompt for refinement...');
-                    const rawRefinedPrompt = await promptRefiner.refinePrompt(currentText, 'chatgpt');
+                    const refinementResult = await promptRefiner.refinePrompt(currentText, 'chatgpt');
+                    
+                    // Handle new return structure
+                    const rawRefinedPrompt = refinementResult.refinedPrompt || refinementResult;
+                    const attemptId = refinementResult.attemptId;
                     
                     // Clean up the refined prompt to remove XML tags and unnecessary formatting
                     const refinedPrompt = cleanRefinedPrompt(rawRefinedPrompt);
@@ -666,6 +672,11 @@
                     } else {
                         finalTextArea.textContent = refinedPrompt;
                         console.log('Threadly: Updated text content');
+                    }
+                    
+                    // Show feedback UI if attemptId is available
+                    if (attemptId && promptRefiner.createFeedbackUI) {
+                        promptRefiner.createFeedbackUI(attemptId, refinedPrompt);
                     }
                     
                     // Trigger multiple events to ensure ChatGPT detects the change

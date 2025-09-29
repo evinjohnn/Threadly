@@ -1674,7 +1674,6 @@
     function renderMessages(messagesToRender) {
         console.log('Threadly: renderMessages called with', messagesToRender.length, 'messages, isInCollectionsView:', isInCollectionsView);
         
-        // Check if we're in input mode (typing collection name) - if so, don't render messages
         const isInInputMode = document.querySelector('#collectionNameInput');
         if (isInInputMode && isInCollectionsView) {
             console.log('Threadly: renderMessages - in input mode, keeping collections view');
@@ -1683,10 +1682,7 @@
         
         if (!messageList) return;
         
-        // Update navigation dots with the messages being rendered
         updateScrollIndicator(messagesToRender);
-        
-        // Clear existing content completely
         messageList.innerHTML = '';
         
         if (messagesToRender.length === 0) {
@@ -1701,13 +1697,12 @@
             item.dataset.role = msg.role;
             item.dataset.messageId = msg.id;
             
+            // --- Styling and attribute logic (remains the same) ---
             if (msg.isFavorited) {
                 item.classList.add('favorited');
                 item.setAttribute('data-starred', 'true');
-                // Set left border color based on the original platform where message was pinned
                 let leftBorderColor;
                 if (msg.originalPlatform && msg.originalPlatform !== currentPlatformId) {
-                    // Use the original platform's accent color
                     const originalPlatformColors = {
                         'chatgpt': 'rgba(156, 163, 175, 0.8)',
                         'gemini': 'rgba(66, 133, 244, 0.8)',
@@ -1719,31 +1714,23 @@
                     };
                     leftBorderColor = originalPlatformColors[msg.originalPlatform] || 'rgba(0, 191, 174, 0.8)';
                 } else {
-                    // Use current platform's accent color
                     leftBorderColor = getPlatformHighlightColor().replace('0.2', '0.8');
                 }
                 item.style.borderLeft = `4px solid ${leftBorderColor}`;
             } else {
                 item.setAttribute('data-starred', 'false');
-                // Set platform-specific left border color for regular messages
                 const platformAccentColor = getPlatformHighlightColor().replace('0.2', '0.8');
                 item.style.borderLeft = `4px solid ${platformAccentColor}`;
             }
             
-            // Check if message is longer than 10 words
             const wordCount = msg.content.trim().split(/\s+/).length;
             const isLongMessage = wordCount > 10;
-            
             const roleText = msg.role === 'user' ? `You (#${index + 1})` : `AI (#${index + 1})`;
-            
-            // Add platform indicator for favorited messages
             let platformIndicator = '';
             if (msg.isFavorited && msg.originalPlatform && msg.originalPlatform !== currentPlatformId) {
                 const platformName = PLATFORM_CONFIG[msg.originalPlatform]?.name || msg.originalPlatform;
                 platformIndicator = `<span class="threadly-platform-badge" data-original-platform="${msg.originalPlatform}">${platformName}</span>`;
             }
-            
-            // Get platform accent color
             const platformColor = getPlatformHighlightColor().replace('0.2', '0.8');
             
             item.innerHTML = `
@@ -1764,77 +1751,90 @@
                     </div>
                 </div>
                 <div class="threadly-message-text">${escapeHTML(msg.content)}</div>
-                <div style="
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-top: 4px;
-                    gap: 8px;
-                ">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; gap: 8px;">
                     ${isLongMessage ? `<div class="threadly-read-more" style="color: ${platformColor}; cursor: pointer; font-size: 11px; font-weight: bold;">See More</div>` : '<div></div>'}
-                    <div class="threadly-copy-btn" style="
-                        color: ${platformColor};
-                        cursor: pointer;
-                        font-size: 11px;
-                        font-weight: 900;
-                        margin-left: auto;
-                    " title="Copy message to clipboard">
+                    <div class="threadly-copy-btn" style="color: ${platformColor}; cursor: pointer; font-size: 11px; font-weight: 900; margin-left: auto;" title="Copy message to clipboard">
                         Copy
                     </div>
                 </div>
             `;
 
-            // Add star button event listener
+            // ==================================================================
+            // THE FIX STARTS HERE
+            // ==================================================================
+
+            // 1. Add a single, state-aware click listener to the entire item
+            item.addEventListener('click', (e) => {
+                // Prevent this listener from firing if a button/interactive element inside the item was clicked
+                if (e.target.closest('button, input[type="checkbox"], .threadly-read-more, .threadly-copy-btn')) {
+                    return;
+                }
+
+                if (isInSelectionMode) {
+                    // If in selection mode, toggle the checkbox state
+                    console.log('Threadly: Message item clicked in selection mode');
+                    console.log('Threadly: Message ID:', msg.id);
+                    console.log('Threadly: Current selectedMessageIds:', selectedMessageIds);
+                    
+                    const checkbox = item.querySelector('.threadly-message-checkbox');
+                    if (checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                        // Manually trigger the 'change' event to ensure our selection logic runs
+                        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        console.log('Threadly: Toggled checkbox and triggered change event');
+                    }
+                } else {
+                    // If not in selection mode, perform the original scroll action
+                    if (msg.element && document.body.contains(msg.element)) {
+                        msg.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        const originalBg = msg.element.style.backgroundColor;
+                        msg.element.style.transition = 'background-color 0.3s ease';
+                        msg.element.style.backgroundColor = getPlatformHighlightColor();
+                        setTimeout(() => {
+                            msg.element.style.backgroundColor = originalBg;
+                        }, 1500);
+                    }
+                }
+            });
+
+            // 2. Ensure clicks on interactive elements don't bubble up and trigger the item's main click listener
             const starBtn = item.querySelector('.threadly-star-btn');
             starBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 toggleFavorite(msg, index);
             });
 
-            // Check if text is actually truncated and only show "See More" when needed
-            const messageText = item.querySelector('.threadly-message-text');
-            const readMoreBtn = item.querySelector('.threadly-read-more');
-            
-            // Only proceed if readMoreBtn exists (i.e., when isLongMessage was true)
-            if (readMoreBtn) {
-                // Use setTimeout to ensure DOM is fully rendered before checking truncation
-                setTimeout(() => {
-                    // Check if the text is actually truncated (scrollHeight > clientHeight)
-                    const isActuallyTruncated = messageText.scrollHeight > messageText.clientHeight;
-                    
-                    console.log('Threadly: Message truncation check - scrollHeight:', messageText.scrollHeight, 'clientHeight:', messageText.clientHeight, 'isTruncated:', isActuallyTruncated);
-                    
-                    if (isActuallyTruncated) {
-                        // Show the "See More" button
-                        readMoreBtn.style.display = 'inline-block';
-                        
-                        console.log('Threadly: Setting up read more for truncated message:', msg.content.substring(0, 50));
-                        
-                        readMoreBtn.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            if (messageText.classList.contains('expanded')) {
-                                messageText.classList.remove('expanded');
-                                readMoreBtn.textContent = 'See More';
-                            } else {
-                                messageText.classList.add('expanded');
-                                readMoreBtn.textContent = 'See Less';
-                            }
-                        });
-                    } else {
-                        // Hide the "See More" button if text is not truncated
-                        readMoreBtn.style.display = 'none';
-                        console.log('Threadly: Text not truncated, hiding See More button for message:', msg.content.substring(0, 50));
-                    }
-                }, 10);
+            const checkbox = item.querySelector('.threadly-message-checkbox');
+            if (checkbox) {
+                checkbox.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Stop the click from bubbling to the parent `item`
+                });
             }
-
-            // Add copy button event listener
+            
             const copyBtn = item.querySelector('.threadly-copy-btn');
             if (copyBtn) {
                 copyBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     copyMessageToClipboard(msg.content);
                 });
+            }
+
+            const readMoreBtn = item.querySelector('.threadly-read-more');
+            if (readMoreBtn) {
+                 setTimeout(() => {
+                    const messageText = item.querySelector('.threadly-message-text');
+                    const isActuallyTruncated = messageText.scrollHeight > messageText.clientHeight;
+                    if (isActuallyTruncated) {
+                        readMoreBtn.style.display = 'inline-block';
+                        readMoreBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            messageText.classList.toggle('expanded');
+                            readMoreBtn.textContent = messageText.classList.contains('expanded') ? 'See Less' : 'See More';
+                        });
+                    } else {
+                        readMoreBtn.style.display = 'none';
+                    }
+                }, 10);
             }
 
             // Add long-press gesture for message actions (for YOU and AI states)
@@ -1853,52 +1853,14 @@
                 clearTimeout(longPressTimer);
             });
             
-            // DEBUG: Add click handler to test message selection
-            if (isInSelectionMode) {
-                item.addEventListener('click', (e) => {
-                    console.log('Threadly: DEBUG - Message item clicked in selection mode');
-                    console.log('Threadly: DEBUG - Message ID:', msg.id);
-                    console.log('Threadly: DEBUG - Current selectedMessageIds:', selectedMessageIds);
-                    
-                    // Toggle selection
-                    const isSelected = selectedMessageIds.includes(msg.id);
-                    if (isSelected) {
-                        const index = selectedMessageIds.indexOf(msg.id);
-                        selectedMessageIds.splice(index, 1);
-                        console.log('Threadly: DEBUG - Removed message from selection');
-                    } else {
-                        selectedMessageIds.push(msg.id);
-                        console.log('Threadly: DEBUG - Added message to selection');
-                    }
-                    console.log('Threadly: DEBUG - New selectedMessageIds:', selectedMessageIds);
-                });
-            }
-            
-            if (msg.element && document.body.contains(msg.element)) {
-                // Only enable scroll behavior if not in selection mode
-                if (!isInSelectionMode) {
-                    item.style.cursor = 'pointer';
-                    item.title = 'Click to scroll to message';
-                    item.addEventListener('click', () => {
-                        msg.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        
-                        const originalBg = msg.element.style.backgroundColor;
-                        msg.element.style.transition = 'background-color 0.3s ease';
-                        msg.element.style.backgroundColor = getPlatformHighlightColor();
-                        setTimeout(() => {
-                            msg.element.style.backgroundColor = originalBg;
-                        }, 1500);
-                    });
-                } else {
-                    // In selection mode, just show it's clickable for the checkbox
-                    item.style.cursor = 'default';
-                }
-            }
+            // ================================================================
+            // THE FIX ENDS HERE (the rest of the original function is removed)
+            // ================================================================
+
             fragment.appendChild(item);
         });
         messageList.appendChild(fragment);
         
-        // Update checkbox states after rendering messages
         if (isInSelectionMode) {
             updateCheckboxStates();
         }
@@ -2374,8 +2336,8 @@
         try {
             console.log('Threadly: renderCollectionsView called with isAssigning:', isAssigning);
             
-            // Exit selection mode if active when entering collections view
-            if (isInSelectionMode) {
+            // Exit selection mode if active when entering collections view, but NOT if we're in assignment mode
+            if (isInSelectionMode && !isAssigning) {
                 console.log('Threadly: Exiting selection mode due to entering collections view');
                 exitSelectionMode();
             }
@@ -3778,47 +3740,25 @@
     async function deleteMessageFromCollection(message, collectionId) {
         console.log('Threadly: deleteMessageFromCollection called with message:', message.id, 'collectionId:', collectionId);
         try {
-            // Load ALL messages from EVERY chat across ALL platforms
-            const allPlatformMessages = await loadAllMessagesFromAllPlatforms();
-            console.log('Threadly: Loaded', allPlatformMessages.length, 'messages from all platforms');
-            
-            // Find the message
-            const targetMessage = allPlatformMessages.find(m => m.id === message.id);
+            // THE FIX: Use the in-memory 'allMessages' array.
+            const targetMessage = allMessages.find(m => m.id === message.id);
             if (!targetMessage) {
-                console.error('Threadly: Message not found:', message.id);
-                console.log('Threadly: Available message IDs:', allPlatformMessages.map(m => m.id));
+                console.error('Threadly: Message not found in current view:', message.id);
+                console.log('Threadly: Available message IDs in allMessages:', allMessages.map(m => m.id));
                 return;
             }
-            
+
             console.log('Threadly: Found target message:', targetMessage.id, 'Current collectionIds:', targetMessage.collectionIds);
-            
-            // Remove collection ID from the message's collectionIds array
+
             if (targetMessage.collectionIds && targetMessage.collectionIds.includes(collectionId)) {
                 console.log('Threadly: Removing collection', collectionId, 'from message', targetMessage.id);
                 targetMessage.collectionIds = targetMessage.collectionIds.filter(id => id !== collectionId);
                 console.log('Threadly: New collectionIds:', targetMessage.collectionIds);
                 
-                // Group the updated messages by their original storage key
-                const messagesByStorageKey = allPlatformMessages.reduce((acc, msg) => {
-                    const storageKey = msg.originalStorageKey; 
-                    if (!acc[storageKey]) {
-                        acc[storageKey] = [];
-                    }
-                    acc[storageKey].push(msg);
-                    return acc;
-                }, {});
-
-                console.log('Threadly: Grouped messages by storage key:', Object.keys(messagesByStorageKey));
-
-                // Save each group of messages back to its correct location in storage
-                for (const storageKey in messagesByStorageKey) {
-                    if (storageKey && storageKey !== 'unknown') {
-                        console.log('Threadly: Saving', messagesByStorageKey[storageKey].length, 'messages to storage key:', storageKey);
-                        await chrome.storage.local.set({ [storageKey]: messagesByStorageKey[storageKey] });
-                    }
-                }
+                // Save the updated 'allMessages' array for the current page.
+                await saveMessagesToStorage(allMessages);
+                console.log('Threadly: Saved updated messages to storage');
                 
-                // Update collection message counts
                 await updateCollectionMessageCounts();
                 
                 console.log('Threadly: Removed message from collection:', collectionId);
@@ -4816,6 +4756,19 @@
         
         // Update selection info
         updateSelectionInfo();
+        
+        // Update the cursor style for all message items
+        const messageItems = document.querySelectorAll('.threadly-message-item');
+        messageItems.forEach(item => {
+            if (isInSelectionMode) {
+                item.style.cursor = 'pointer';
+                item.title = 'Click to select message';
+            } else {
+                item.style.cursor = 'default';
+                item.title = '';
+            }
+        });
+        
         console.log('Threadly: Entered selection mode');
     }
 
@@ -4916,6 +4869,14 @@
         
         // Update selection info
         updateSelectionInfo();
+        
+        // Reset cursor style for all message items
+        const messageItems = document.querySelectorAll('.threadly-message-item');
+        messageItems.forEach(item => {
+            item.style.cursor = 'pointer';
+            item.title = 'Click to scroll to message';
+        });
+        
         console.log('Threadly: Exited selection mode and restored to:', previousFilterState);
     }
 
@@ -5010,29 +4971,6 @@
                 } else {
                     console.log('Threadly: No messages selected, showing error');
                     showToast('Please select at least one message first');
-                    
-                    // DEBUG: Try to manually add a message for testing
-                    console.log('Threadly: DEBUG - Trying to find messages to test with');
-                    const messageItems = document.querySelectorAll('.threadly-message-item');
-                    console.log('Threadly: DEBUG - Found', messageItems.length, 'message items');
-                    
-                    if (messageItems.length > 0) {
-                        const firstMessage = messageItems[0];
-                        const messageId = firstMessage.dataset.messageId;
-                        console.log('Threadly: DEBUG - First message ID:', messageId);
-                        
-                        if (messageId) {
-                            console.log('Threadly: DEBUG - Manually adding message to selection for testing');
-                            selectedMessageIds.push(messageId);
-                            console.log('Threadly: DEBUG - selectedMessageIds after manual add:', selectedMessageIds);
-                            
-                            // Try assignment again
-                            if (selectedMessageIds.length > 0) {
-                                console.log('Threadly: DEBUG - Retrying assignment with manually added message');
-                                enterAssignmentMode();
-                            }
-                        }
-                    }
                 }
             });
         }
@@ -6372,29 +6310,23 @@
         console.log('Threadly: selectedMessageIds length:', selectedMessageIds.length);
         
         if (selectedMessageIds.length === 0) {
-            console.error('Threadly: No messages selected');
-            return;
+            console.error('Threadly: No messages selected for assignment.');
+            return 0; // Return 0 to indicate no messages were added
         }
 
         try {
-            // 1. Load ALL messages from EVERY chat across ALL platforms.
-            // This function correctly fetches data from every 'threadly_*' key.
-            const allPlatformMessages = await loadAllMessagesFromAllPlatforms();
-            console.log('Threadly: Loaded', allPlatformMessages.length, 'total messages from all platforms');
+            // THE FIX: Use the existing in-memory 'allMessages' array, which is in sync with the UI.
+            console.log('Threadly: Using in-memory allMessages array with', allMessages.length, 'messages');
+            console.log('Threadly: Available message IDs in allMessages:', allMessages.map(m => m.id));
             let messagesUpdatedCount = 0;
 
-            // 2. Iterate through all messages to find and update the selected ones.
-            console.log('Threadly: Checking', allPlatformMessages.length, 'messages for assignment');
-            console.log('Threadly: Selected message IDs to find:', selectedMessageIds);
-            console.log('Threadly: Available message IDs:', allPlatformMessages.map(m => m.id));
-            
-            allPlatformMessages.forEach(message => {
+            // This loop will now find the messages because the IDs match.
+            allMessages.forEach(message => {
                 if (selectedMessageIds.includes(message.id)) {
-                    console.log('Threadly: Found selected message:', message.id, 'Platform:', message.platform, 'Current collectionIds:', message.collectionIds);
+                    console.log('Threadly: Found selected message:', message.id, 'Current collectionIds:', message.collectionIds);
                     if (!message.collectionIds) {
                         message.collectionIds = [];
                     }
-                    // Add the collectionId if it's not already there.
                     if (!message.collectionIds.includes(collectionId)) {
                         message.collectionIds.push(collectionId);
                         messagesUpdatedCount++;
@@ -6407,37 +6339,19 @@
 
             if (messagesUpdatedCount === 0) {
                 console.log('Threadly: All selected messages are already in this collection');
-                // Still exit selection mode even if no new messages were added
-                isAssigningMode = false;
-                await exitSelectionMode();
-                returnToMainMessages();
-                return;
+                return 0;
             }
 
-            // 3. Group the updated messages by their original storage key.
-            const messagesByStorageKey = allPlatformMessages.reduce((acc, msg) => {
-                // 'originalStorageKey' is attached by loadAllMessagesFromAllPlatforms.
-                const storageKey = msg.originalStorageKey; 
-                if (!acc[storageKey]) {
-                    acc[storageKey] = [];
-                }
-                acc[storageKey].push(msg);
-                return acc;
-            }, {});
+            // Save the updated 'allMessages' array back to storage for the current page.
+            await saveMessagesToStorage(allMessages);
+            console.log('Threadly: Saved updated messages to storage');
 
-            // 4. Save each group of messages back to its correct location in storage.
-            for (const storageKey in messagesByStorageKey) {
-                if (storageKey && storageKey !== 'unknown') {
-                    await chrome.storage.local.set({ [storageKey]: messagesByStorageKey[storageKey] });
-                    console.log('Threadly: Saved', messagesByStorageKey[storageKey].length, 'messages to storage key:', storageKey);
-                }
-            }
-            
-            // 5. Update collection message counts
+            // Update other data sources as needed
+            await updateGlobalFavorites();
             await updateCollectionMessageCounts();
 
-            // Return the count of messages that were actually added
-            return messagesUpdatedCount;
+            console.log('Threadly: Successfully added', messagesUpdatedCount, 'messages to collection');
+            return messagesUpdatedCount; // Return the actual count of messages added
 
         } catch (error) {
             console.error('Threadly: Error assigning messages to collection:', error);
