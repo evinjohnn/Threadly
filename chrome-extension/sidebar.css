@@ -210,7 +210,7 @@
 
 /* Panel Header (hidden when collapsed) */
 .threadly-header {
-    display: flex;
+    display: none;
     justify-content: space-between;
     align-items: center;
     padding: 8px 18px;
@@ -234,6 +234,7 @@
 }
 
 #threadly-panel.threadly-expanded .threadly-header {
+    display: flex;
     opacity: 1;
     transform: translateY(0) scale(1);
     pointer-events: auto;
@@ -373,7 +374,7 @@
 .threadly-content {
     flex-grow: 1;
     overflow: visible; /* Changed from hidden to visible */
-    display: flex;
+    display: none;
     flex-direction: column;
     opacity: 0;
     transform: translateY(30px) scale(0.95);
@@ -391,6 +392,7 @@
 }
 
 #threadly-panel.threadly-expanded .threadly-content {
+    display: flex;
     opacity: 1;
     transform: translateY(0) scale(1);
     pointer-events: auto;
@@ -426,25 +428,9 @@
     height: 0; /* Force flexbox to calculate height properly */
 }
 
-/* Gemini-specific scrolling fixes */
-#threadly-panel[data-platform="gemini"] #threadly-message-list {
-    overflow-y: auto !important;
-    max-height: calc(100% - 120px) !important;
-    height: auto !important;
-    flex: 1 !important;
-}
-
-#threadly-panel[data-platform="gemini"] .threadly-content {
-    overflow: visible !important;
-    height: calc(100% - 50px) !important;
-}
-
-/* Force Gemini scrolling with higher specificity */
-body #threadly-panel[data-platform="gemini"] #threadly-message-list {
-    overflow-y: auto !important;
-    max-height: calc(100% - 120px) !important;
-    height: auto !important;
-    flex: 1 !important;
+/* Gemini-specific fixes - minimal scaling prevention only */
+#threadly-panel[data-platform="gemini"] {
+    z-index: 999999 !important;
 }
 
 .threadly-message-item {
@@ -3421,7 +3407,7 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
     padding: 8px;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     min-width: 300px;
-    display: flex;
+    display: none;
     align-items: center;
     gap: 12px;
     z-index: 2147483641;
@@ -3430,6 +3416,13 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
 }
 
 .threadly-bottom-navbar[style*="display: flex"] {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Show bottom navbar when expanded */
+#threadly-panel.threadly-expanded .threadly-bottom-navbar {
+    display: flex;
     opacity: 1;
     transform: translateY(0);
 }
@@ -4262,6 +4255,61 @@ body.selection-mode #threadly-panel .threadly-toggle-bar .threadly-toggle-label.
 /* Override platform-specific colors when selected for deletion */
 #threadly-panel[data-platform="chatgpt"] .threadly-collection-pill.selected-for-deletion,
 #threadly-panel[data-platform="gemini"] .threadly-collection-pill.selected-for-deletion,
+
+/* Gemini-specific fixes - prevent scaling and control sizing */
+#threadly-panel[data-platform="gemini"] {
+    z-index: 999999 !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+/* Prevent Gemini from scaling down the extension and control font sizes */
+#threadly-panel[data-platform="gemini"] * {
+    transform: none !important;
+    scale: 1 !important;
+    zoom: 1 !important;
+    font-size: inherit !important;
+    line-height: inherit !important;
+}
+
+/* Control specific element sizes on Gemini */
+#threadly-panel[data-platform="gemini"] .threadly-header {
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+#threadly-panel[data-platform="gemini"] .threadly-content {
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+#threadly-panel[data-platform="gemini"] .threadly-message-item {
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    padding: 8px !important;
+    margin-bottom: 6px !important;
+}
+
+#threadly-panel[data-platform="gemini"] .threadly-search-container {
+    font-size: 14px !important;
+}
+
+#threadly-panel[data-platform="gemini"] .threadly-bottom-navbar {
+    font-size: 12px !important;
+    padding: 6px !important;
+    min-width: 280px !important;
+}
+
+#threadly-panel[data-platform="gemini"] .navbar-button {
+    font-size: 11px !important;
+    padding: 8px 16px !important;
+}
+
+/* Allow tab content to rotate for vertical logo on Gemini */
+#threadly-panel[data-platform="gemini"] .threadly-tab-content {
+    transform: rotate(-90deg) !important;
+    font-size: 14px !important;
+}
 #threadly-panel[data-platform="claude"] .threadly-collection-pill.selected-for-deletion,
 #threadly-panel[data-platform="ai-studio"] .threadly-collection-pill.selected-for-deletion,
 #threadly-panel[data-platform="perplexity"] .threadly-collection-pill.selected-for-deletion,

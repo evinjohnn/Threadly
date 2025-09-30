@@ -3,7 +3,7 @@
   "name": "Threadly",
   "version": "3.5.9",
   "description": "Enhances major AI chat platforms with an auto-loading sidebar for advanced thread management and features.",
-  "permissions": ["storage", "activeTab", "tabs", "alarms"],
+  "permissions": ["storage", "activeTab", "tabs", "alarms", "notifications"],
   "background": {
     "service_worker": "background.js"
   },

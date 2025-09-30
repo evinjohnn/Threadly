@@ -12,6 +12,11 @@ chrome.runtime.onInstalled.addListener(() => {
         periodInMinutes: 1440 // Run once a day (24 hours)
     });
     
+    // Create the popup notification alarm (every 4 hours)
+    chrome.alarms.create('popupNotificationAlarm', { 
+        periodInMinutes: 240 // Run every 4 hours
+    });
+    
     // Also run immediately on install for initial setup
     curateGoldenSet();
 });
@@ -21,6 +26,9 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     if (alarm.name === 'curateFeedbackAlarm') {
         console.log('Threadly: Running daily Golden Set curation...');
         await curateGoldenSet();
+    } else if (alarm.name === 'popupNotificationAlarm') {
+        console.log('Threadly: Showing popup notification...');
+        await showPopupNotification();
     }
 });
 
@@ -50,6 +58,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'exportFeedbackData') {
         exportFeedbackData().then(data => {
             sendResponse({ data });
+        });
+        return true;
+    }
+    
+    if (request.action === 'showPopupNotification') {
+        showPopupNotification().then(() => {
+            sendResponse({ success: true });
         });
         return true;
     }
@@ -431,13 +446,67 @@ async function exportFeedbackData() {
     }
 }
 
+/**
+ * Show popup notification to support creators
+ */
+async function showPopupNotification() {
+    try {
+        // Get all tabs on supported websites
+        const supportedSites = [
+            "https://chat.openai.com/*",
+            "https://chatgpt.com/*",
+            "https://copilot.microsoft.com/*",
+            "https://claude.ai/*", 
+            "https://gemini.google.com/*",
+            "https://grok.com/*",
+            "https://x.ai/*",
+            "https://aistudio.google.com/*",
+            "https://perplexity.ai/*",
+            "https://www.perplexity.ai/*"
+        ];
+        
+        const tabs = await chrome.tabs.query({});
+        const supportedTabs = tabs.filter(tab => {
+            if (!tab.url) return false;
+            return supportedSites.some(site => {
+                const pattern = site.replace(/\*/g, '.*');
+                const regex = new RegExp('^' + pattern + '$');
+                return regex.test(tab.url);
+            });
+        });
+        
+        if (supportedTabs.length === 0) {
+            console.log('Threadly: No supported tabs found for popup notification');
+            return;
+        }
+        
+        // Send message to all supported tabs to show the popup
+        for (const tab of supportedTabs) {
+            try {
+                await chrome.tabs.sendMessage(tab.id, {
+                    action: 'showSupportPopup'
+                });
+            } catch (error) {
+                // Tab might not have content script loaded yet, skip silently
+                console.log('Threadly: Could not send message to tab', tab.id);
+            }
+        }
+        
+        console.log(`Threadly: Popup notification sent to ${supportedTabs.length} supported tabs`);
+        
+    } catch (error) {
+        console.error('Threadly: Failed to show popup notification:', error);
+    }
+}
+
 // Export for testing (if in Node.js environment)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         storeFeedback,
         getGoldenSet,
         curateGoldenSet,
-        getLearningAnalytics
+        getLearningAnalytics,
+        showPopupNotification
     };
 }
 
