@@ -1124,6 +1124,28 @@
             }
         });
         
+        // Add Ctrl+Z handler for refine menu
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                // Check if we're in a text area or contenteditable element
+                const target = e.target;
+                const isTextArea = target.tagName === 'TEXTAREA' || 
+                                 target.tagName === 'INPUT' || 
+                                 target.contentEditable === 'true' ||
+                                 target.getAttribute('role') === 'textbox';
+                
+                if (isTextArea) {
+                    // Check if there's text in the text area
+                    const currentText = target.value || target.textContent || target.innerText;
+                    if (currentText && currentText.trim() !== '') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showRefineMenu(target);
+                    }
+                }
+            }
+        });
+        
         document.addEventListener('click', handleClickOutside);
     }
     
@@ -6654,6 +6676,247 @@
         // Individual platform sparkle functionality is handled by dedicated files
     }
 
+    // --- Refine Menu Functions --- //
+    
+    function showRefineMenu(textArea) {
+        console.log('Threadly: Showing refine menu for text area:', textArea);
+        
+        // Remove any existing refine menu
+        const existingMenu = document.getElementById('threadly-refine-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+        
+        // Get text area position
+        const rect = textArea.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        
+        // Calculate menu position (above the text area with proper spacing)
+        const menuWidth = 200;
+        const menuHeight = 120; // Approximate height for 3 options
+        const spacing = 15; // Space between menu and text area
+        
+        let menuTop = rect.top + scrollTop - menuHeight - spacing;
+        let menuLeft = rect.left + scrollLeft;
+        
+        // Ensure menu doesn't go off screen horizontally
+        if (menuLeft + menuWidth > window.innerWidth) {
+            menuLeft = window.innerWidth - menuWidth - 10;
+        }
+        if (menuLeft < 10) {
+            menuLeft = 10;
+        }
+        
+        // If menu would go above viewport, position it below the text area
+        if (menuTop < 10) {
+            menuTop = rect.bottom + scrollTop + spacing;
+        }
+        
+        // Ensure menu doesn't go below viewport
+        if (menuTop + menuHeight > window.innerHeight + scrollTop) {
+            menuTop = window.innerHeight + scrollTop - menuHeight - 10;
+        }
+        
+        // Create refine menu
+        const menu = document.createElement('div');
+        menu.id = 'threadly-refine-menu';
+        menu.style.cssText = `
+            position: fixed;
+            top: ${menuTop}px;
+            left: ${menuLeft}px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2), 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 10001;
+            padding: 8px 0;
+            min-width: ${menuWidth}px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.2s ease-out;
+        `;
+        
+        // Trigger animation after a brief delay
+        setTimeout(() => {
+            menu.style.opacity = '1';
+            menu.style.transform = 'translateY(0)';
+        }, 10);
+        
+        // Create menu options
+        const options = [
+            { id: 'refine', label: 'Refine', icon: '✨' },
+            { id: 'correct', label: 'Correct', icon: '✏️' },
+            { id: 'image', label: 'Image', icon: '🖼️' }
+        ];
+        
+        options.forEach(option => {
+            const optionElement = document.createElement('div');
+            optionElement.style.cssText = `
+                padding: 12px 16px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                transition: all 0.2s ease;
+                border-radius: 8px;
+                margin: 2px 8px;
+                font-weight: 500;
+                color: #374151;
+            `;
+            optionElement.innerHTML = `
+                <span style="font-size: 16px;">${option.icon}</span>
+                <span>${option.label}</span>
+            `;
+            
+            // Add hover effect
+            optionElement.addEventListener('mouseenter', () => {
+                optionElement.style.backgroundColor = '#f3f4f6';
+                optionElement.style.transform = 'translateX(4px)';
+            });
+            optionElement.addEventListener('mouseleave', () => {
+                optionElement.style.backgroundColor = 'transparent';
+                optionElement.style.transform = 'translateX(0)';
+            });
+            
+            // Add click handler
+            optionElement.addEventListener('click', () => {
+                handleRefineMenuSelection(option.id, textArea);
+                menu.remove();
+            });
+            
+            menu.appendChild(optionElement);
+        });
+        
+        // Add to document
+        document.body.appendChild(menu);
+        
+        // Add keyboard navigation support
+        let selectedIndex = 0;
+        const optionElements = menu.querySelectorAll('div');
+        
+        const updateSelection = () => {
+            optionElements.forEach((el, index) => {
+                if (index === selectedIndex) {
+                    el.style.backgroundColor = '#dbeafe';
+                    el.style.fontWeight = '600';
+                    el.style.transform = 'translateX(4px)';
+                    el.style.color = '#1d4ed8';
+                } else {
+                    el.style.backgroundColor = 'transparent';
+                    el.style.fontWeight = '500';
+                    el.style.transform = 'translateX(0)';
+                    el.style.color = '#374151';
+                }
+            });
+        };
+        
+        const handleKeydown = (e) => {
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    selectedIndex = (selectedIndex + 1) % optionElements.length;
+                    updateSelection();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    selectedIndex = (selectedIndex - 1 + optionElements.length) % optionElements.length;
+                    updateSelection();
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    optionElements[selectedIndex].click();
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    menu.remove();
+                    document.removeEventListener('keydown', handleKeydown);
+                    break;
+            }
+        };
+        
+        // Add keyboard event listener
+        document.addEventListener('keydown', handleKeydown);
+        
+        // Initialize selection
+        updateSelection();
+        
+        // Add click outside handler to close menu
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+                document.removeEventListener('keydown', handleKeydown);
+            }
+        };
+        
+        // Use setTimeout to avoid immediate closure
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+        }, 100);
+    }
+    
+    async function handleRefineMenuSelection(mode, textArea) {
+        console.log('Threadly: Refine menu selection:', mode, 'for text area:', textArea);
+        
+        const currentText = textArea.value || textArea.textContent || textArea.innerText;
+        if (!currentText || currentText.trim() === '') {
+            console.log('Threadly: No text to process');
+            return;
+        }
+        
+        try {
+            if (window.PromptRefiner) {
+                const promptRefiner = new window.PromptRefiner();
+                await promptRefiner.initialize();
+                
+                let refinedPrompt;
+                const platform = detectPlatform();
+                
+                switch (mode) {
+                    case 'correct':
+                        refinedPrompt = await promptRefiner.performGrammarCorrection(currentText);
+                        break;
+                    case 'image':
+                        refinedPrompt = await promptRefiner.refineImageGenerationPrompt(currentText, platform);
+                        break;
+                    case 'refine':
+                        refinedPrompt = await promptRefiner.refinePrompt(currentText, platform);
+                        break;
+                }
+                
+                if (refinedPrompt) {
+                    // Replace text in the input
+                    if (textArea.tagName === 'TEXTAREA' || textArea.tagName === 'INPUT') {
+                        textArea.value = refinedPrompt;
+                    } else if (textArea.contentEditable === 'true') {
+                        textArea.innerHTML = `<p>${refinedPrompt}</p>`;
+                    } else {
+                        textArea.textContent = refinedPrompt;
+                    }
+                    
+                    // Trigger events to notify the platform
+                    textArea.dispatchEvent(new Event('input', { bubbles: true }));
+                    textArea.dispatchEvent(new Event('change', { bubbles: true }));
+                    textArea.dispatchEvent(new Event('keyup', { bubbles: true }));
+                    
+                    // Force focus back to the text area
+                    textArea.focus();
+                    
+                    console.log('Threadly: Text refined successfully via Ctrl+Z menu');
+                }
+            } else {
+                console.error('Threadly: PromptRefiner not available');
+            }
+        } catch (error) {
+            console.error('Threadly: Error in refine menu selection:', error);
+        }
+    }
+
     // ChatGPT sparkle functionality moved to dedicated chatgpt-sparkle.js file
 
     // --- Feedback Loop System (Pillar 2) ---
@@ -6680,58 +6943,87 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 10000;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         `;
+        
+        // Trigger animation
+        setTimeout(() => {
+            modal.style.opacity = '1';
+        }, 10);
 
         // Create modal content
         const modalContent = document.createElement('div');
         modalContent.style.cssText = `
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 32px;
             max-width: 500px;
             width: 90%;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
             position: relative;
+            transform: scale(0.9);
+            transition: all 0.3s ease;
         `;
+        
+        // Trigger scale animation
+        setTimeout(() => {
+            modalContent.style.transform = 'scale(1)';
+        }, 50);
 
         // Create title
         const title = document.createElement('h3');
         title.textContent = 'Help us improve! 🎯';
         title.style.cssText = `
-            margin: 0 0 16px 0;
-            font-size: 20px;
-            font-weight: 600;
-            color: #1f2937;
+            margin: 0 0 20px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            text-align: center;
         `;
 
         // Create description
         const description = document.createElement('p');
         description.textContent = 'We classified your prompt as "' + getCategoryDisplayName(incorrectCategory) + '". What was it really about?';
         description.style.cssText = `
-            margin: 0 0 16px 0;
-            color: #6b7280;
-            font-size: 14px;
-            line-height: 1.5;
+            margin: 0 0 24px 0;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+            line-height: 1.6;
+            text-align: center;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         `;
 
         // Create prompt preview
         const promptPreview = document.createElement('div');
         promptPreview.style.cssText = `
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 12px;
-            margin: 0 0 20px 0;
-            font-size: 14px;
-            color: #374151;
-            max-height: 100px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 0 0 24px 0;
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.95);
+            max-height: 120px;
             overflow-y: auto;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         `;
         promptPreview.textContent = `"${prompt}"`;
 
@@ -6757,31 +7049,57 @@
             const button = document.createElement('button');
             button.textContent = `${category.icon} ${category.name}`;
             button.style.cssText = `
-                padding: 12px 16px;
-                border: 2px solid #e5e7eb;
-                border-radius: 8px;
-                background: white;
-                color: #374151;
-                font-size: 14px;
-                font-weight: 500;
+                padding: 16px 20px;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 12px;
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                color: rgba(255, 255, 255, 0.95);
+                font-size: 16px;
+                font-weight: 600;
                 cursor: pointer;
-                transition: all 0.2s;
+                transition: all 0.3s ease;
                 text-align: left;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             `;
 
             button.addEventListener('mouseenter', () => {
-                button.style.borderColor = '#3b82f6';
-                button.style.backgroundColor = '#eff6ff';
+                button.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+                button.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                button.style.transform = 'translateY(-2px)';
+                button.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.2)';
             });
 
             button.addEventListener('mouseleave', () => {
-                button.style.borderColor = '#e5e7eb';
-                button.style.backgroundColor = 'white';
+                button.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                button.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                button.style.transform = 'translateY(0)';
+                button.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.1)';
             });
 
-            button.addEventListener('click', () => {
-                submitFeedback(prompt, incorrectCategory, category.key);
-                modal.remove();
+            button.addEventListener('click', async () => {
+                // Add visual feedback
+                button.style.backgroundColor = 'rgba(34, 197, 94, 0.3)';
+                button.style.borderColor = 'rgba(34, 197, 94, 0.6)';
+                button.style.color = '#ffffff';
+                button.textContent = '✓ Submitting...';
+                button.disabled = true;
+                
+                try {
+                    await submitFeedback(prompt, incorrectCategory, category.key);
+                    // Close modal after successful submission
+                    modal.remove();
+                } catch (error) {
+                    console.error('Threadly: Error submitting feedback:', error);
+                    // Reset button state on error
+                    button.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                    button.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                    button.style.color = 'rgba(255, 255, 255, 0.95)';
+                    button.textContent = `${category.icon} ${category.name}`;
+                    button.disabled = false;
+                }
             });
 
             buttonContainer.appendChild(button);
@@ -6789,19 +7107,39 @@
 
         // Create close button
         const closeButton = document.createElement('button');
-        closeButton.textContent = 'Skip';
+        closeButton.textContent = '✕';
         closeButton.style.cssText = `
             position: absolute;
-            top: 16px;
-            right: 16px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: #9ca3af;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
             cursor: pointer;
-            padding: 4px;
-            line-height: 1;
+            padding: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
         `;
+        
+        closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+            closeButton.style.color = 'rgba(255, 255, 255, 1)';
+            closeButton.style.transform = 'scale(1.1)';
+        });
+        
+        closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            closeButton.style.color = 'rgba(255, 255, 255, 0.8)';
+            closeButton.style.transform = 'scale(1)';
+        });
 
         closeButton.addEventListener('click', () => {
             modal.remove();
@@ -6847,73 +7185,33 @@
                 timestamp: Date.now()
             };
 
+            console.log('Threadly: Submitting feedback:', feedback);
+
             // Send to background script
             const response = await chrome.runtime.sendMessage({
                 action: 'storeFeedback',
                 feedback: feedback
             });
 
+            console.log('Threadly: Background script response:', response);
+
             if (response && response.success) {
                 console.log('Threadly: Feedback submitted successfully', feedback);
                 
                 // Show success message
-                showToast('Thanks for the feedback! 🎉', 'success');
+                showToast('Thanks for the feedback! 🎉');
+                return true;
             } else {
-                console.error('Threadly: Failed to submit feedback');
-                showToast('Failed to submit feedback. Please try again.', 'error');
+                console.error('Threadly: Failed to submit feedback - no success response');
+                showToast('Failed to submit feedback. Please try again.');
+                throw new Error('No success response from background script');
             }
         } catch (error) {
             console.error('Threadly: Error submitting feedback:', error);
-            showToast('Error submitting feedback. Please try again.', 'error');
+            showToast('Error submitting feedback. Please try again.');
+            throw error; // Re-throw to allow calling code to handle it
         }
     }
 
-    function showToast(message, type = 'info') {
-        // Remove existing toast
-        const existingToast = document.getElementById('threadly-toast');
-        if (existingToast) {
-            existingToast.remove();
-        }
-
-        const toast = document.createElement('div');
-        toast.id = 'threadly-toast';
-        toast.textContent = message;
-        toast.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 10001;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            animation: slideIn 0.3s ease-out;
-        `;
-
-        // Add animation keyframes
-        if (!document.getElementById('threadly-toast-styles')) {
-            const style = document.createElement('style');
-            style.id = 'threadly-toast-styles';
-            style.textContent = `
-                @keyframes slideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
-        document.body.appendChild(toast);
-
-        // Auto-remove after 3 seconds
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.remove();
-            }
-        }, 3000);
-    }
 
 })();
