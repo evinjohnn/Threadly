@@ -815,29 +815,7 @@
         // Gemini uses contenteditable div instead of textarea
         const textArea = document.querySelector('textarea[placeholder*="Start typing a prompt"], textarea[aria-label*="Start typing a prompt"], textarea[aria-label*="Type something"], textarea[placeholder*="Type something"], textarea, [contenteditable="true"][role="textbox"], .ql-editor[contenteditable="true"], rich-textarea [contenteditable="true"]');
         
-        // Debug: log textarea details
-        if (textArea) {
-            console.log('Threadly: Found textarea:', {
-                value: textArea.value,
-                textContent: textArea.textContent,
-                innerText: textArea.innerText,
-                placeholder: textArea.placeholder,
-                ariaLabel: textArea.getAttribute('aria-label')
-            });
-        } else {
-            console.log('Threadly: No textarea found with Gemini selectors');
-            // Fallback to any textarea
-            const fallbackTextarea = document.querySelector('textarea');
-            if (fallbackTextarea) {
-                console.log('Threadly: Found fallback textarea:', {
-                    value: fallbackTextarea.value,
-                    textContent: fallbackTextarea.textContent,
-                    innerText: fallbackTextarea.innerText,
-                    placeholder: fallbackTextarea.placeholder,
-                    ariaLabel: fallbackTextarea.getAttribute('aria-label')
-                });
-            }
-        }
+        // Textarea detection and fallback logic
         // Use the main textarea or fallback
         const finalTextArea = textArea || document.querySelector('textarea, [contenteditable="true"][role="textbox"], .ql-editor[contenteditable="true"], rich-textarea [contenteditable="true"]');
         

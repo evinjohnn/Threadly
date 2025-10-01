@@ -7,8 +7,6 @@
     'use strict';
 
     console.log('Threadly: Perplexity sparkle script loaded');
-    console.log('Threadly: Current URL:', window.location.href);
-    console.log('Threadly: Current hostname:', window.location.hostname);
 
     // Wait for DOM element to be ready
     function waitForElement(selector, timeout = 10000) {
@@ -497,11 +495,79 @@
                         break;
                 }
 
-                // Replace text in the input
+                // Replace text in the input using aggressive approach
                 if (refinedPrompt) {
-                    if (textArea.tagName === 'TEXTAREA') {
+                    console.log('Threadly: Replacing text with aggressive clearing approach');
+                    
+                    // Check if this is a Lexical editor (Perplexity uses Lexical)
+                    const isLexicalEditor = textArea.closest('div[contenteditable="true"][role="textbox"]') || 
+                                          textArea.getAttribute('data-lexical-editor') === 'true' ||
+                                          textArea.closest('[data-lexical-editor="true"]');
+                    
+                    if (isLexicalEditor) {
+                        console.log('Threadly: Detected Lexical editor in mode selection, using aggressive clearing');
+                        
+                        // Find the true Lexical root node
+                        let editorRoot = textArea.closest('div[contenteditable="true"][role="textbox"]') || 
+                                       textArea.closest('[data-lexical-editor="true"]') ||
+                                       textArea;
+                        
+                        if (editorRoot) {
+                            // Focus editor
+                            editorRoot.focus();
+                            
+                            // AGGRESSIVE CLEARING
+                            editorRoot.textContent = '';
+                            editorRoot.innerText = '';
+                            editorRoot.innerHTML = '';
+                            
+                            // Clear React/Lexical internal state
+                            if (editorRoot._valueTracker) {
+                                editorRoot._valueTracker.setValue('');
+                            }
+                            if (editorRoot.__lexicalTextContent !== undefined) {
+                                editorRoot.__lexicalTextContent = '';
+                            }
+                            
+                            // execCommand clearing
+                            document.execCommand('selectAll', false, null);
+                            document.execCommand('delete', false, null);
+                            
+                            // Remove all child nodes
+                            while (editorRoot.firstChild) {
+                                editorRoot.removeChild(editorRoot.firstChild);
+                            }
+                            
+                            // Wait and set new text
+                            setTimeout(() => {
+                                document.execCommand('insertText', false, refinedPrompt);
+                                editorRoot.textContent = refinedPrompt;
+                                editorRoot.innerText = refinedPrompt;
+                                
+                                // Update React/Lexical internal state
+                                if (editorRoot._valueTracker) {
+                                    editorRoot._valueTracker.setValue(refinedPrompt);
+                                }
+                                if (editorRoot.__lexicalTextContent !== undefined) {
+                                    editorRoot.__lexicalTextContent = refinedPrompt;
+                                }
+                                
+                                // Fire events
+                                const events = ['input', 'change', 'keyup', 'keydown', 'compositionend', 'textInput'];
+                                events.forEach(type => {
+                                    editorRoot.dispatchEvent(new Event(type, { bubbles: true, cancelable: true }));
+                                });
+                            }, 50);
+                        }
+                    } else if (textArea.tagName === 'TEXTAREA') {
+                        // Clear first, then set new value
+                        textArea.value = '';
                         textArea.value = refinedPrompt;
                     } else {
+                        // Clear first, then set new content
+                        textArea.textContent = '';
+                        textArea.innerText = '';
+                        textArea.innerHTML = '';
                         textArea.textContent = refinedPrompt;
                     }
                     
@@ -560,270 +626,82 @@
     async function handleSparkleClick() {
         console.log('Threadly: Sparkle clicked - prompt refine activated!');
         
-        // Get current input text from Perplexity's specific input elements
         let textArea = null;
         let currentText = '';
         
-        // Find the specific text element that contains the visible text
-        const textElement = document.querySelector('span[data-lexical-text="true"]');
-        if (textElement) {
-            textArea = textElement;
-            currentText = textElement.textContent || textElement.innerText || '';
-            console.log('Threadly: Found Lexical text element:', textElement.tagName, textElement.className);
-            console.log('Threadly: Current prompt:', currentText);
-        } else {
-            // Fallback to the original selectors with updated modern selectors
-            const selectors = [
-                'div[contenteditable="true"][id="ask-input"]',
-                'div[contenteditable="true"][data-lexical-editor="true"]',
-                'div[contenteditable="true"][role="textbox"]',
-                'div[contenteditable="true"]',
-                'textarea[placeholder*="Ask anything"]',
-                'textarea[aria-label*="Ask anything"]', 
-                'textarea[data-testid="search-input"]',
-                'textarea[placeholder*="Ask"]',
-                'textarea[aria-label*="Ask"]',
-                'textarea[placeholder*="Search"]',
-                'textarea[aria-label*="Search"]',
-                'textarea'
-            ];
-            
-            for (const selector of selectors) {
-                textArea = document.querySelector(selector);
-                if (textArea) {
-                    console.log('Threadly: Found textarea with selector:', selector);
-                    currentText = textArea.value || textArea.textContent || textArea.innerText || '';
-                    if (currentText.trim()) {
-                        console.log('Threadly: Current prompt:', currentText);
-                        break;
-                    }
-                }
+        const selectors = [
+            'div[contenteditable="true"][role="textbox"]',
+            'textarea[placeholder*="Ask anything"]',
+            'textarea'
+        ];
+        
+        for (const selector of selectors) {
+            textArea = document.querySelector(selector);
+            if (textArea) {
+                currentText = textArea.value || textArea.textContent || textArea.innerText || '';
+                if (currentText.trim()) break;
             }
         }
         
         if (textArea && currentText.trim()) {
-            
-            // Visual feedback - start animation sequence
             const sparkleIcon = document.querySelector('[data-threadly-sparkle="true"]');
             if (sparkleIcon) {
                 startClickAnimationSequence(sparkleIcon);
             }
             
             try {
-                // Use the existing PromptRefiner class
                 if (window.PromptRefiner) {
                     const promptRefiner = new window.PromptRefiner();
                     await promptRefiner.initialize();
                     
                     console.log('Threadly: Sending prompt for refinement...');
                     const rawRefinedPrompt = await promptRefiner.refinePrompt(currentText, 'perplexity');
-                    
-                    // Clean up the refined prompt to remove XML tags and unnecessary formatting
                     const refinedPrompt = cleanRefinedPrompt(rawRefinedPrompt);
                     
-                    // Replace the text with refined version
-                    console.log('Threadly: Replacing text with refined prompt:', refinedPrompt);
+                    console.log('Threadly: Replacing text by simulating user typing:', refinedPrompt);
+
+                    const editorRoot = textArea.closest('div[contenteditable="true"][role="textbox"]') || textArea;
                     
-                    // Check if this is a Lexical editor (Perplexity uses Lexical)
-                    const isLexicalEditor = textArea.closest('div[contenteditable="true"][role="textbox"]') || 
-                                          textArea.getAttribute('data-lexical-editor') === 'true' ||
-                                          textArea.closest('[data-lexical-editor="true"]');
+                    // =================================================================================
+                    // THE DEFINITIVE FIX: SIMULATE A REAL USER TYPING
+                    // =================================================================================
+
+                    // 1. Focus the editor to prepare it for input.
+                    editorRoot.focus();
                     
-                    if (isLexicalEditor) {
-                        console.log('Threadly: Detected Lexical editor, using execCommand approach');
-                        
-                        // Find the true Lexical root node
-                        let editorRoot = textArea.closest('div[contenteditable="true"][role="textbox"]') || 
-                                       textArea.closest('[data-lexical-editor="true"]') ||
-                                       textArea;
-                        
-                        if (!editorRoot) {
-                            console.error('Threadly: Could not find Lexical editor root');
-                        } else {
-                            console.log('Threadly: Found Lexical editor root:', editorRoot.tagName, editorRoot.className);
-                            
-                            // Focus editor
-                            editorRoot.focus();
-                            
-                            // Clear existing content using execCommand
-                            document.execCommand('selectAll', false, null);
-                            document.execCommand('delete', false, null);
-                            
-                            // Insert refined text using Lexical-compatible execCommand
-                            document.execCommand('insertText', false, refinedPrompt);
-                            
-                            console.log('Threadly: Inserted text via execCommand');
-                            
-                            // Fire events to be extra safe
-                            const events = ['input', 'change', 'keyup', 'keydown', 'compositionend', 'textInput'];
-                            events.forEach(type => {
-                                editorRoot.dispatchEvent(new Event(type, { bubbles: true, cancelable: true }));
-                            });
-                        }
-                    } else if (textArea.tagName === 'TEXTAREA' || textArea.tagName === 'INPUT') {
-                        // Handle regular textarea/input elements
-                        textArea.value = refinedPrompt;
-                        console.log('Threadly: Updated textarea/input value');
-                        
-                        // Trigger events for regular inputs
-                        const events = ['input', 'change', 'keyup', 'keydown', 'paste', 'blur', 'focus'];
-                        events.forEach(eventType => {
-                            textArea.dispatchEvent(new Event(eventType, { bubbles: true, cancelable: true }));
-                        });
-                    } else {
-                        // Fallback for other contenteditable elements
-                        console.log('Threadly: Using fallback approach for contenteditable');
-                        textArea.innerHTML = `<p>${refinedPrompt}</p>`;
-                        
-                        // Trigger events
-                        const events = ['input', 'change', 'keyup', 'keydown', 'paste', 'blur', 'focus'];
-                        events.forEach(eventType => {
-                            textArea.dispatchEvent(new Event(eventType, { bubbles: true, cancelable: true }));
-                        });
-                    }
-                    
-                    // Also try triggering React events if Perplexity uses React
-                    if (textArea._valueTracker) {
-                        textArea._valueTracker.setValue('');
-                    }
-                    
-                    // Force focus back to the text area
-                    textArea.focus();
-                    
-                    // Additional attempt: try to find and update any hidden input fields
-                    const hiddenInputs = document.querySelectorAll('input[type="hidden"], input[style*="display: none"]');
-                    hiddenInputs.forEach(input => {
-                        if (input.name && input.name.includes('query')) {
-                            input.value = refinedPrompt;
-                            console.log('Threadly: Updated hidden input:', input.name);
-                        }
+                    // 2. Select all the existing text.
+                    document.execCommand('selectAll', false, null);
+
+                    // 3. Dispatch a 'beforeinput' event for deletion. This is crucial for frameworks like React.
+                    const beforeInputDeleteEvent = new InputEvent('beforeinput', {
+                        inputType: 'deleteContentBackward',
+                        bubbles: true,
+                        cancelable: true
                     });
+                    editorRoot.dispatchEvent(beforeInputDeleteEvent);
                     
-                    // Try to find the actual input field that Perplexity is using
-                    const allInputs = document.querySelectorAll('input, textarea, [contenteditable]');
-                    allInputs.forEach(input => {
-                        if (input !== textArea && (input.value === currentText || input.textContent === currentText)) {
-                            console.log('Threadly: Found matching input field:', input.tagName, input.type);
-                            if (input.tagName === 'TEXTAREA' || input.type === 'text') {
-                                input.value = refinedPrompt;
-                            } else if (input.contentEditable === 'true') {
-                                // Use execCommand for contenteditable elements
-                                input.focus();
-                                document.execCommand('selectAll', false, null);
-                                document.execCommand('delete', false, null);
-                                document.execCommand('insertText', false, refinedPrompt);
-                            } else {
-                                input.textContent = refinedPrompt;
-                                input.innerText = refinedPrompt;
-                            }
-                            // Trigger events on this input too
-                            events.forEach(eventType => {
-                                input.dispatchEvent(new Event(eventType, { bubbles: true, cancelable: true }));
-                            });
-                        }
+                    // 4. Clear the selected text by simulating a backspace key press.
+                    document.execCommand('delete', false, null);
+
+                    // 5. Dispatch a final 'input' event for the deletion to notify the framework.
+                    editorRoot.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+
+                    // 6. Now, simulate typing the new text.
+                    const beforeInputInsertEvent = new InputEvent('beforeinput', {
+                        inputType: 'insertText',
+                        data: refinedPrompt,
+                        bubbles: true,
+                        cancelable: true
                     });
+                    editorRoot.dispatchEvent(beforeInputInsertEvent);
                     
-                    // Final attempt: Try to find any element that contains the current text and replace it
-                    const allElements = document.querySelectorAll('*');
-                    allElements.forEach(element => {
-                        if (element.textContent === currentText && element !== textArea) {
-                            console.log('Threadly: Found element with matching text:', element.tagName, element.className);
-                            element.textContent = refinedPrompt;
-                            element.innerText = refinedPrompt;
-                        }
-                    });
+                    document.execCommand('insertText', false, refinedPrompt);
                     
-                    // Additional attempt: Look for any element that might be the actual input field
-                    const possibleInputs = document.querySelectorAll('[contenteditable], input, textarea, [role="textbox"]');
-                    possibleInputs.forEach(input => {
-                        if (input.textContent === currentText || input.value === currentText) {
-                            console.log('Threadly: Found potential input with current text:', input.tagName, input.className);
-                            if (input.tagName === 'TEXTAREA' || input.type === 'text') {
-                                input.value = refinedPrompt;
-                            } else if (input.contentEditable === 'true') {
-                                // Use execCommand for contenteditable elements
-                                input.focus();
-                                document.execCommand('selectAll', false, null);
-                                document.execCommand('delete', false, null);
-                                document.execCommand('insertText', false, refinedPrompt);
-                            } else {
-                                input.textContent = refinedPrompt;
-                                input.innerText = refinedPrompt;
-                            }
-                        }
-                    });
-                    
-                    // Wait a bit and try again to handle dynamic updates
-                    setTimeout(() => {
-                        const currentValue = textArea.value || textArea.textContent || textArea.innerText || '';
-                        if (currentValue !== refinedPrompt) {
-                            console.log('Threadly: Retrying text replacement...');
-                            
-                            // Try a more direct approach for Lexical editor
-                            if (textArea.getAttribute('data-lexical-editor') === 'true') {
-                                console.log('Threadly: Retrying with character-by-character simulation');
-                                
-                                // Focus and clear
-                                textArea.focus();
-                                textArea.innerHTML = '<p><br></p>';
-                                
-                                // Simulate typing character by character (faster for retry)
-                                const characters = refinedPrompt.split('');
-                                let currentText = '';
-                                
-                                characters.forEach((char, index) => {
-                                    setTimeout(() => {
-                                        currentText += char;
-                                        textArea.textContent = currentText;
-                                        textArea.innerText = currentText;
-                                        
-                                        if (textArea.__lexicalTextContent !== undefined) {
-                                            textArea.__lexicalTextContent = currentText;
-                                        }
-                                        
-                                        const inputEvent = new InputEvent('input', {
-                                            data: char,
-                                            inputType: 'insertText',
-                                            bubbles: true,
-                                            cancelable: true
-                                        });
-                                        textArea.dispatchEvent(inputEvent);
-                                        
-                                        if (index === characters.length - 1) {
-                                            console.log('Threadly: Retry simulation completed');
-                                        }
-                                    }, index * 5); // Faster for retry (5ms delay)
-                                });
-                            } else if (textArea.tagName === 'TEXTAREA') {
-                                textArea.value = refinedPrompt;
-                            } else if (textArea.contentEditable === 'true') {
-                                // Use execCommand for contenteditable elements
-                                textArea.focus();
-                                document.execCommand('selectAll', false, null);
-                                document.execCommand('delete', false, null);
-                                document.execCommand('insertText', false, refinedPrompt);
-                            } else {
-                                textArea.textContent = refinedPrompt;
-                                textArea.innerText = refinedPrompt;
-                            }
-                            
-                            events.forEach(eventType => {
-                                textArea.dispatchEvent(new Event(eventType, { bubbles: true, cancelable: true }));
-                            });
-                        }
-                    }, 100);
-                    
-                    console.log('Threadly: Text replacement completed');
+                    // 7. Dispatch the final 'input' event to confirm the new text.
+                    editorRoot.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+
+                    console.log('Threadly: Text replacement by simulation completed.');
                     console.log('Threadly: Prompt refined successfully');
-                    
-                    // Dispatch success event
-                    window.dispatchEvent(new CustomEvent('threadly-prompt-refined', {
-                        detail: { 
-                            platform: 'perplexity', 
-                            originalText: currentText,
-                            refinedText: refinedPrompt
-                        }
-                    }));
                     
                 } else {
                     console.error('Threadly: PromptRefiner class not available');
@@ -832,18 +710,11 @@
                 
             } catch (error) {
                 console.error('Threadly: Error refining prompt:', error);
-                
-                // Dispatch error event
                 window.dispatchEvent(new CustomEvent('threadly-prompt-refine-error', {
-                    detail: { 
-                        platform: 'perplexity', 
-                        error: error.message,
-                        originalText: currentText
-                    }
+                    detail: { platform: 'perplexity', error: error.message, originalText: currentText }
                 }));
-                
             } finally {
-                // Stop animation and end at fade out state
+                const sparkleIcon = document.querySelector('[data-threadly-sparkle="true"]');
                 if (sparkleIcon) {
                     stopClickAnimationSequence(sparkleIcon);
                 }
@@ -852,12 +723,8 @@
             console.log('Threadly: No text input found');
         }
         
-        // Dispatch click event for other parts of the extension
         window.dispatchEvent(new CustomEvent('threadly-sparkle-clicked', {
-            detail: { 
-                platform: 'perplexity', 
-                action: 'prompt-refine'
-            }
+            detail: { platform: 'perplexity', action: 'prompt-refine' }
         }));
     }
     

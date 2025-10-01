@@ -34,9 +34,9 @@
         'ai-studio': {
             name: 'AI Studio',
             // Target the main chat container
-            chatContainer: 'ms-chat-turn', 
-            // Target user messages - they have user-prompt-container and user-chunk class
-            userSelector: '.user-prompt-container ms-cmark-node.user-chunk span.ng-star-inserted',
+            chatContainer: 'ms-chat-turn',
+            // Target user messages using the improved selectors
+            userSelector: 'div[data-turn-role="User"] ms-cmark-node.user-chunk, .user-prompt-container ms-cmark-node.user-chunk span.ng-star-inserted',
         },
         copilot: {
             name: 'Copilot',
@@ -264,8 +264,6 @@
         const hostname = window.location.hostname;
         const pathname = window.location.pathname;
         
-        console.log('Threadly: Detecting platform for', hostname, pathname);
-        
         const platformMap = {
             'chat.openai.com': 'chatgpt',
             'chatgpt.com': 'chatgpt',
@@ -286,7 +284,6 @@
             }
         }
         
-        console.log('Threadly: Unknown platform');
         return 'unknown';
     }
 
@@ -340,19 +337,14 @@
         const userMessages = messages.filter(msg => msg.role === 'user');
         console.log('Threadly: Found', userMessages.length, 'user messages out of', messages.length, 'total messages');
         
-        // Debug: Log all message roles to help diagnose issues
+        // Extract unique roles for analysis
         const allRoles = messages.map(msg => msg.role).filter(role => role);
         const uniqueRoles = [...new Set(allRoles)];
-        console.log('Threadly: All message roles found:', uniqueRoles);
-        console.log('Threadly: Role distribution:', uniqueRoles.map(role => ({
-            role,
-            count: messages.filter(msg => msg.role === role).length
-        })));
         
         if (userMessages.length === 0) {
-            // For Perplexity loading page, keep dots visible but empty
-            if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
-                console.log('Threadly: On Perplexity loading page, keeping dots visible but empty');
+            // For Perplexity loading page or homepage, keep dots visible but empty
+            if (currentPlatformId === 'perplexity' && (isPerplexityLoadingPage() || isPerplexityHomepage(location.href))) {
+                console.log('Threadly: On Perplexity loading page or homepage, keeping dots visible but empty');
                 scrollIndicator.style.display = 'flex';
                 scrollIndicator.classList.add('visible');
                 return;
@@ -1124,26 +1116,196 @@
             }
         });
         
-        // Add Ctrl+Z handler for refine menu
-        document.addEventListener('keydown', (e) => {
+        // Initialize enhanced learning system
+        const enhancedContextCapture = new EnhancedContextCapture();
+        const implicitFeedbackTracker = new ImplicitFeedbackTracker();
+        const adaptiveFeedbackController = new AdaptiveFeedbackController();
+        const userProfile = new UserProfile();
+        const abTestingFramework = new ABTestingFramework();
+        
+        // Load user profile
+        userProfile.loadProfile();
+        
+        // Debug mode - set to true to see detailed logs
+        const DEBUG_MODE = true;
+        
+        if (DEBUG_MODE) {
+            console.log('Threadly: Enhanced learning system initialized');
+            
+            // Add debug info to window for easy access
+            window.threadlyDebug = {
+                showFeedbackPopup: (text) => showCategoryFeedbackPopup(text, document.activeElement),
+                testCtrlZ: () => {
+                    console.log('Threadly: Testing Ctrl+Z detection...');
+                    const event = new KeyboardEvent('keydown', {
+                        key: 'z',
+                        ctrlKey: true,
+                        bubbles: true
+                    });
+                    document.dispatchEvent(event);
+                },
+                getActiveElement: () => {
+                    const el = document.activeElement;
+                    console.log('Active element:', el);
+                    console.log('Tag name:', el?.tagName);
+                    console.log('Content editable:', el?.contentEditable);
+                    console.log('Is content editable:', el?.isContentEditable);
+                    return el;
+                }
+            };
+        }
+
+        // Enhanced Ctrl+Z handler for all websites
+        function setupCtrlZHandler() {
+            // Remove any existing handler
+            document.removeEventListener('keydown', handleCtrlZ);
+            
+            // Add new handler with capture phase to ensure it runs early
+            document.addEventListener('keydown', handleCtrlZ, true);
+            
+            // Also add to window for better coverage
+            window.addEventListener('keydown', handleCtrlZ, true);
+        }
+
+        async function handleCtrlZ(e) {
+            // Check for Ctrl+Z or Cmd+Z
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                // Check if we're in a text area or contenteditable element
-                const target = e.target;
-                const isTextArea = target.tagName === 'TEXTAREA' || 
-                                 target.tagName === 'INPUT' || 
-                                 target.contentEditable === 'true' ||
-                                 target.getAttribute('role') === 'textbox';
+                console.log('Threadly: Ctrl+Z detected');
                 
-                if (isTextArea) {
-                    // Check if there's text in the text area
-                    const currentText = target.value || target.textContent || target.innerText;
-                    if (currentText && currentText.trim() !== '') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        showRefineMenu(target);
-                    }
+                // Check if we're focused on a text input
+                const activeElement = document.activeElement;
+                const isTextInput = activeElement && (
+                    activeElement.tagName === 'TEXTAREA' || 
+                    activeElement.tagName === 'INPUT' || 
+                    activeElement.contentEditable === 'true' ||
+                    activeElement.isContentEditable ||
+                    activeElement.getAttribute('contenteditable') === 'true'
+                );
+                
+                console.log('Threadly: Active element:', activeElement);
+                console.log('Threadly: Is text input:', isTextInput);
+                
+                if (isTextInput) {
+                    // Prevent default undo temporarily to capture text before undo
+                    const originalText = activeElement.value || activeElement.textContent || activeElement.innerText || '';
+                    console.log('Threadly: Original text before undo:', originalText);
+                    
+                    // Wait for undo to complete, then capture enhanced context
+                    setTimeout(async () => {
+                        const currentText = activeElement.value || activeElement.textContent || activeElement.innerText || '';
+                        console.log('Threadly: Text after undo:', currentText);
+                        
+                        if (currentText && currentText.trim() !== '' && currentText !== originalText) {
+                            console.log('Threadly: Text changed, showing feedback popup');
+                            
+                            try {
+                                // Capture enhanced context
+                                const context = await enhancedContextCapture.captureContext(currentText, activeElement);
+                                
+                                // Add recent undo flag
+                                context.recentUndo = true;
+                                
+                                // Check if we should show feedback based on confidence
+                                const feedbackDecision = await adaptiveFeedbackController.shouldShowFeedback(currentText, context);
+                                
+                                if (feedbackDecision.shouldShow) {
+                                    console.log('Threadly: Showing feedback popup. Reason:', feedbackDecision.reason);
+                                    console.log('Threadly: Confidence:', feedbackDecision.confidence);
+                                    
+                                    // Show enhanced feedback popup with confidence display
+                                    showEnhancedCategoryFeedbackPopup(currentText, activeElement, context, feedbackDecision);
+                                } else {
+                                    console.log('Threadly: Skipping feedback popup. Reason:', feedbackDecision.reason);
+                                    console.log('Threadly: Confidence:', feedbackDecision.confidence);
+                                }
+                            } catch (error) {
+                                console.error('Threadly: Error in feedback handling:', error);
+                                // Fallback to simple popup
+                                showCategoryFeedbackPopup(currentText, activeElement);
+                            }
+                        } else {
+                            console.log('Threadly: No text change detected or empty text');
+                        }
+                    }, 150); // Increased delay to ensure undo completes
+                } else {
+                    console.log('Threadly: Not in text input, skipping feedback');
                 }
             }
+        }
+
+        // Setup the handler
+        setupCtrlZHandler();
+        
+        // Additional fallback: Listen for input events to detect when user is typing
+        let lastTypedText = '';
+        let lastTypedElement = null;
+        
+        document.addEventListener('input', (e) => {
+            if (e.target && (
+                e.target.tagName === 'TEXTAREA' || 
+                e.target.tagName === 'INPUT' || 
+                e.target.contentEditable === 'true' ||
+                e.target.isContentEditable ||
+                e.target.getAttribute('contenteditable') === 'true'
+            )) {
+                lastTypedText = e.target.value || e.target.textContent || e.target.innerText || '';
+                lastTypedElement = e.target;
+                console.log('Threadly: Text input detected, storing:', lastTypedText.substring(0, 50));
+            }
+        });
+        
+        // Fallback Ctrl+Z handler that uses stored text
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                // If the main handler didn't work, try fallback
+                setTimeout(() => {
+                    const activeElement = document.activeElement;
+                    const currentText = activeElement.value || activeElement.textContent || activeElement.innerText || '';
+                    
+                    // Check if we have a stored text that's different from current
+                    if (lastTypedElement === activeElement && 
+                        lastTypedText && 
+                        lastTypedText !== currentText && 
+                        currentText.trim() !== '') {
+                        
+                        console.log('Threadly: Fallback handler triggered');
+                        console.log('Threadly: Stored text:', lastTypedText.substring(0, 50));
+                        console.log('Threadly: Current text:', currentText.substring(0, 50));
+                        
+                        // Show simple feedback popup as fallback
+                        showCategoryFeedbackPopup(currentText, activeElement);
+                    }
+                }, 200);
+            }
+        });
+        
+        // Re-setup handler when new content is loaded (for SPAs)
+        const observer = new MutationObserver((mutations) => {
+            let shouldReSetup = false;
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    // Check if new text inputs were added
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            const textInputs = node.querySelectorAll ? node.querySelectorAll('input, textarea, [contenteditable]') : [];
+                            if (textInputs.length > 0) {
+                                shouldReSetup = true;
+                            }
+                        }
+                    });
+                }
+            });
+            
+            if (shouldReSetup) {
+                console.log('Threadly: New text inputs detected, re-setting up Ctrl+Z handler');
+                setupCtrlZHandler();
+            }
+        });
+
+        // Start observing
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
         });
         
         document.addEventListener('click', handleClickOutside);
@@ -1415,7 +1577,7 @@
                                 'Auto Analyzing', 'Generating response', 'Searching', 'Processing',
                                 'processing', 'thinking'
                             ];
-
+                            
                             if (blocklist.some(keyword => text.includes(keyword))) {
                                 return; // Skip this element
                             }
@@ -1436,9 +1598,9 @@
                             
                             // Skip if it's just UI elements
                             if (text.includes('editmore_vert') && text.length < 50) {
-                                return; // Skip this element
-                            }
-                            
+                                    return; // Skip this element
+                                }
+                                
                             // Skip if it's an AI response (contains "Model Thoughts" or "Of course")
                             if (text.includes('Model Thoughts') || text.includes('Of course')) {
                                 return; // Skip this element - it's an AI response
@@ -1554,29 +1716,29 @@
                             'Auto Analyzing', 'Generating response', 'Searching', 'Processing',
                             'processing', 'thinking'
                         ];
-
+                        
                         if (blocklist.some(keyword => text.includes(keyword))) {
                             return; // Skip this element
                         }
                         
                         // Skip very short messages that are just UI elements
                         if (text.length < 100 && (text.includes('edit') || text.includes('more_vert'))) {
-                            return; // Skip this element
-                        }
-                        
+                                return; // Skip this element
+                            }
+                            
                         // Skip very short fragments that are likely UI elements
                         if (text.length < 50 && (text.includes('code') || text.includes('JavaScript') || text.includes('download'))) {
-                            return; // Skip this element
-                        }
-                        
+                                return; // Skip this element
+                            }
+                            
                         // Clean up AI message content
                         text = text.replace(/^editmore_vert/, '').replace(/^more_vert/, '').replace(/thumb_up$/, '').replace(/thumb_down$/, '').trim();
-                        
+                            
                         // Skip if it looks like HTML/XML markup
                         if (text.includes('<') && text.includes('>')) {
-                            return; // Skip this element
-                        }
-                        
+                                return; // Skip this element
+                            }
+                            
                         // For AI Studio, skip if it contains "User" at the beginning (these are actual user messages)
                         if (text.startsWith('User') || text.startsWith('user') || text.includes('Usermake me a')) {
                             return; // Skip this element - it's a user message
@@ -1635,51 +1797,76 @@
                 }
             });
             
-            // Enhanced fallback for AI Studio
+            // Enhanced fallback for AI Studio using improved extraction logic
             if (currentPlatformId === 'ai-studio') {
-                console.log('Threadly: Trying AI Studio fallback...');
+                console.log('Threadly: Trying AI Studio fallback with improved extraction...');
                 
-                // Look for ms-chat-turn elements that might contain complete messages
+                // Use the more accurate extraction logic for AI Studio
                 const chatTurns = document.querySelectorAll('ms-chat-turn');
-                chatTurns.forEach(turn => {
-                    const text = turn.textContent?.trim() || '';
-                    
-                    if (text.length > 50) {
-                        // Filter out experimental thoughts and processing messages
-                        const blocklist = [
-                            'Model Thoughts', 'experimental', 'Auto Understanding', 'Auto Exploring',
-                            'Auto Clarifying', 'Auto Formulating', 'Auto Evaluating', 'Auto Crafting',
-                            'Auto Analyzing', 'Generating response', 'Searching', 'Processing',
-                            'processing', 'thinking'
-                        ];
+                
+                if (chatTurns.length === 0) {
+                    console.log('Threadly: No ms-chat-turn elements found for AI Studio');
+                    return;
+                }
 
-                        if (!blocklist.some(keyword => text.includes(keyword)) &&
-                            !(text.length < 100 && (text.includes('edit') || text.includes('more_vert')))) {
-                            
-                            // Determine if it's a user or AI message based on content
-                            // User messages start with "User" or contain "Usermake me a"
-                            const isUserMessage = text.startsWith('User') || text.startsWith('user') || text.includes('Usermake me a');
-                            const messageRole = isUserMessage ? 'user' : 'assistant';
-                            
-                            // Clean up the content for user messages
-                            let cleanContent = text;
-                            if (isUserMessage) {
-                                // Remove UI elements like "editmore_vert" from user messages
-                                cleanContent = text.replace(/^editmore_vert/, '').replace(/^User/, '').trim();
-                            } else {
-                                // Clean up AI messages by removing UI elements
-                                cleanContent = text.replace(/^editmore_vert/, '').replace(/^more_vert/, '').replace(/thumb_up$/, '').replace(/thumb_down$/, '').trim();
-                            }
-                            
-                            if (cleanContent.length > 0) {
-                                extracted.push({
-                                    role: messageRole,
-                                    content: cleanContent,
-                                    element: turn
-                                });
-                                console.log(`Threadly: Extracted ${messageRole} message from fallback:`, cleanContent.substring(0, 50) + '...');
+                console.log(`Threadly: Found ${chatTurns.length} message turns for AI Studio`);
+
+                chatTurns.forEach((turnEl, index) => {
+                    let role = null;
+                    let text = '';
+
+                    // 1. Check for a User turn by finding the specific container
+                    const userContainer = turnEl.querySelector('div[data-turn-role="User"]');
+                    if (userContainer) {
+                        role = 'user';
+                        // The user's text is within the <ms-cmark-node> with the 'user-chunk' class
+                        const userChunk = userContainer.querySelector('ms-cmark-node.user-chunk');
+                        if (userChunk) {
+                            text = userChunk.innerText.trim();
+                        }
+            } else {
+                        // 2. If not a user turn, check for a Model (AI) turn
+                        const modelContainer = turnEl.querySelector('div[data-turn-role="Model"]');
+                        if (modelContainer) {
+                            role = 'assistant';
+                            // The AI's final response is in a <ms-text-chunk> that is a *direct child*
+                            // of <ms-prompt-chunk>. This is the key to ignoring the "Model Thoughts" section
+                            const promptChunk = modelContainer.querySelector('ms-prompt-chunk');
+                            if (promptChunk) {
+                                // Using ':scope >' ensures we only get the direct child
+                                const textChunk = promptChunk.querySelector(':scope > ms-text-chunk');
+                                if (textChunk) {
+                                    const cmarkNode = textChunk.querySelector('ms-cmark-node');
+                                    if (cmarkNode) {
+                                        text = cmarkNode.innerText.trim();
+                                    }
+                                }
                             }
                         }
+                    }
+
+                    if (role && text && text.length > 0) {
+                        // Clean up the text content
+                        let cleanContent = text;
+                        
+                        // Remove UI elements and clean up the content
+                        cleanContent = cleanContent.replace(/^editmore_vert/, '').replace(/^more_vert/, '').replace(/thumb_up$/, '').replace(/thumb_down$/, '').trim();
+                        
+                        // Skip if text is too short after cleaning
+                        if (cleanContent.length < 2) {
+                                return;
+                            }
+                            
+                        if (cleanContent.length > 0) {
+                            extracted.push({
+                                role: role,
+                                content: cleanContent,
+                                element: turnEl
+                            });
+                            console.log(`Threadly: Extracted ${role} message from AI Studio:`, cleanContent.substring(0, 50) + '...');
+                        }
+                    } else {
+                        console.warn(`Threadly: Could not extract text from AI Studio turn ${index + 1}`);
                     }
                 });
                 
@@ -1774,11 +1961,11 @@
                         cleanContent = cleanContent.replace(/^make me a\s*/i, '').trim();
                         
                         if (cleanContent.length > 0) {
-                            extracted.push({
-                                role: 'user',
+                                extracted.push({
+                                    role: 'user',
                                 content: cleanContent,
-                                element: el
-                            });
+                                    element: el
+                                });
                             console.log(`Threadly: Extracted user message from comprehensive fallback:`, cleanContent);
                         }
                     } else if (isAIMessage && text.length > 50) {
@@ -1787,17 +1974,17 @@
                         cleanContent = cleanContent.replace(/^editmore_vert/, '').replace(/^more_vert/, '').replace(/thumb_up$/, '').replace(/thumb_down$/, '').trim();
                         
                         if (cleanContent.length > 0) {
-                            extracted.push({
-                                role: 'assistant',
+                                extracted.push({
+                                    role: 'assistant',
                                 content: cleanContent,
-                                element: el
-                            });
+                                    element: el
+                                });
                             console.log(`Threadly: Extracted AI message from comprehensive fallback:`, cleanContent.substring(0, 50) + '...');
+                            }
                         }
+                    });
                     }
-                });
-            }
-        } catch (error) {
+                } catch (error) {
             console.warn('Threadly: Error extracting AI responses:', error);
         }
         
@@ -1841,18 +2028,7 @@
             });
         }
         
-        // Debug: Log what elements are available for better debugging (only in development)
-        if (extracted.length === 0 && window.location.hostname === 'localhost') {
-            const debugElements = document.querySelectorAll('div, p, span');
-            
-            // Log first few elements for debugging
-            Array.from(debugElements).slice(0, 5).forEach((el, i) => {
-                const text = el.textContent?.trim() || '';
-                if (text.length > 5) {
-                    console.log(`Threadly: Debug - Element ${i}:`, text.substring(0, 50) + '...');
-                }
-            });
-        }
+        // Debug elements removed for cleaner console
         
         console.log('Threadly: extractConversation returning', extracted.length, 'messages');
         const userCount = extracted.filter(msg => msg.role === 'user').length;
@@ -1902,9 +2078,12 @@
         
         if (!messageList) return;
         
-        // For Perplexity loading page, ensure dots are visible even with no messages
-        if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
-            console.log('Threadly: On Perplexity loading page in renderMessages, ensuring navigation dots are visible');
+        // For Perplexity loading page or homepage, ensure dots are visible even with no messages
+        if (currentPlatformId === 'perplexity' && (isPerplexityLoadingPage() || isPerplexityHomepage(location.href))) {
+            console.log('Threadly: On Perplexity loading page or homepage in renderMessages, ensuring navigation dots are visible');
+            updateScrollIndicator([]);
+        } else if (currentPlatformId === 'chatgpt' && isChatGPTDefaultPage()) {
+            console.log('Threadly: On ChatGPT default page in renderMessages, ensuring navigation dots are visible but empty');
             updateScrollIndicator([]);
         } else {
             updateScrollIndicator(messagesToRender);
@@ -2107,9 +2286,9 @@
     async function filterMessages(query, forceExitCollections = true) {
         console.log('Threadly: filterMessages called with query:', query, 'forceExitCollections:', forceExitCollections, 'isInCollectionsView:', isInCollectionsView);
         
-        // For Perplexity, check if we're on the loading page and show empty state
-        if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
-            console.log('Threadly: On Perplexity loading page, showing empty state');
+        // For Perplexity, check if we're on the loading page or homepage and show empty state
+        if (currentPlatformId === 'perplexity' && (isPerplexityLoadingPage() || isPerplexityHomepage(location.href))) {
+            console.log('Threadly: On Perplexity loading page or homepage, showing empty state');
             if (messageList) {
                 messageList.innerHTML = '<div class="threadly-empty-state">No conversation yet. Start a chat to see your messages here!</div>';
             }
@@ -3393,14 +3572,7 @@
                     )?.platform;
                 }
                 
-                // Debug first few messages
-                if (idx < 3) {
-                    console.log('Threadly: Message', idx, 'platform info:', {
-                        platform: message.platform,
-                        originalPlatform: message.originalPlatform,
-                        content: message.content.substring(0, 30)
-                    });
-                }
+                // Debug logging removed for cleaner console
             });
             
             const collectionMessages = allPlatformMessages.filter(message => {
@@ -4401,8 +4573,8 @@
         searchInput.style.cursor = 'default';
 
         // Give it a subtle "success" tint
-        searchPill.style.background = 'rgba(16, 185, 129, 0.2)';
-        searchPill.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+            searchPill.style.background = 'rgba(16, 185, 129, 0.2)';
+            searchPill.style.borderColor = 'rgba(16, 185, 129, 0.4)';
 
         // --- 4. Trigger the expansion animation ---
         // Set the dynamic width
@@ -4415,23 +4587,23 @@
         // --- 5. Set a timer to restore the search bar ---
         const TOAST_DURATION = 3000; // 3 seconds
         setTimeout(() => {
-            // Restore the input's original state
+        // Restore the input's original state
             searchInput.value = originalValue;
             searchInput.placeholder = originalPlaceholder;
-            searchInput.readOnly = false;
-            searchInput.style.textAlign = '';
-            searchInput.style.cursor = '';
+        searchInput.readOnly = false;
+        searchInput.style.textAlign = '';
+        searchInput.style.cursor = '';
 
-            // Remove the toast-specific styling
-            searchPill.style.background = '';
-            searchPill.style.borderColor = '';
-            
-            // Remove the inline width so it can animate back to its original size
-            searchPill.style.width = '';
+        // Remove the toast-specific styling
+        searchPill.style.background = '';
+        searchPill.style.borderColor = '';
+        
+        // Remove the inline width so it can animate back to its original size
+        searchPill.style.width = '';
 
-            // Trigger the collapse animation by switching back to stateB
-            wrapper.classList.remove('stateA');
-            wrapper.classList.add('stateB');
+        // Trigger the collapse animation by switching back to stateB
+        wrapper.classList.remove('stateA');
+        wrapper.classList.add('stateB');
 
         }, TOAST_DURATION);
     }
@@ -4458,10 +4630,16 @@
     async function updateAndSaveConversation() {
         console.log('Threadly: Updating conversation for', currentPlatformId);
         
-        // For Perplexity, check if we're on the loading page and skip data extraction
-        if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
-            console.log('Threadly: On Perplexity loading page, skipping conversation extraction');
+        // For Perplexity, check if we're on the loading page or homepage and skip data extraction
+        if (currentPlatformId === 'perplexity' && (isPerplexityLoadingPage() || isPerplexityHomepage(location.href))) {
+            console.log('Threadly: On Perplexity loading page or homepage, skipping conversation extraction');
             return;
+        }
+        
+        // For ChatGPT, check if we're on the default page and skip data extraction to avoid scraping old chats
+        if (currentPlatformId === 'chatgpt' && isChatGPTDefaultPage()) {
+            console.log('Threadly: On ChatGPT default page, skipping conversation extraction to avoid scraping old chats');
+                return;
         }
         
         const currentMessages = extractConversation();
@@ -4653,9 +4831,12 @@
             const savedMessages = await loadMessagesFromStorage();
             const liveMessages = extractConversation();
             
-            // For Perplexity, check if we're on the loading page and skip message loading
-            if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
-                console.log('Threadly: On Perplexity loading page during init, skipping message loading');
+            // For Perplexity, check if we're on the loading page or homepage and skip message loading
+            if (currentPlatformId === 'perplexity' && (isPerplexityLoadingPage() || isPerplexityHomepage(location.href))) {
+                console.log('Threadly: On Perplexity loading page or homepage during init, skipping message loading');
+                allMessages = [];
+            } else if (currentPlatformId === 'chatgpt' && isChatGPTDefaultPage()) {
+                console.log('Threadly: On ChatGPT default page during init, skipping message loading to avoid scraping old chats');
                 allMessages = [];
             } else {
                 // Prefer live messages if available, otherwise use saved
@@ -4688,15 +4869,21 @@
             initializePromptRefiner();
             
             // Update navigation dots with messages
-            // For Perplexity loading page, ensure dots are visible even with no messages
-            if (currentPlatformId === 'perplexity' && isPerplexityLoadingPage()) {
-                console.log('Threadly: On Perplexity loading page, ensuring navigation dots are visible');
+            // For Perplexity loading page or homepage, ensure dots are visible even with no messages
+            if (currentPlatformId === 'perplexity' && (isPerplexityLoadingPage() || isPerplexityHomepage(location.href))) {
+                console.log('Threadly: On Perplexity loading page or homepage, ensuring navigation dots are visible');
+                updateScrollIndicator([]);
+            } else if (currentPlatformId === 'chatgpt' && isChatGPTDefaultPage()) {
+                console.log('Threadly: On ChatGPT default page, ensuring navigation dots are visible but empty');
                 updateScrollIndicator([]);
             } else {
                 updateScrollIndicator(allMessages);
             }
             
             console.log('Threadly: Initialization complete for', currentPlatformId);
+            
+            // Initialize support popup system
+            initializeSupportPopup();
             
         } catch (error) {
             console.error('Threadly: Initialization error:', error);
@@ -4928,6 +5115,18 @@
         }
     }
 
+    // Helper function to check if we're on Perplexity homepage
+    function isPerplexityHomepage(url) {
+        if (!url) return false;
+        try {
+            const urlObj = new URL(url);
+            return urlObj.hostname.includes('perplexity.ai') && 
+                   (urlObj.pathname === '/' || urlObj.pathname === '' || urlObj.pathname === '/search');
+        } catch (e) {
+            return false;
+        }
+    }
+
     // --- Enhanced Ready State Handling --- //
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
@@ -4944,6 +5143,7 @@
     new MutationObserver(() => {
         const url = location.href;
         if (url !== lastUrl) {
+            const previousUrl = lastUrl;
             lastUrl = url;
             
             // Debounce re-initialization to avoid excessive calls
@@ -4953,8 +5153,8 @@
             
             reinitTimeout = setTimeout(() => {
                 // Only re-initialize if we're still on a supported platform
-                const platform = detectPlatform();
-                if (platform !== 'unknown') {
+                const currentPlatform = detectPlatform();
+                if (currentPlatform !== 'unknown') {
                     init();
                 }
             }, 3000); // Increased delay to reduce frequency
@@ -6676,246 +6876,6 @@
         // Individual platform sparkle functionality is handled by dedicated files
     }
 
-    // --- Refine Menu Functions --- //
-    
-    function showRefineMenu(textArea) {
-        console.log('Threadly: Showing refine menu for text area:', textArea);
-        
-        // Remove any existing refine menu
-        const existingMenu = document.getElementById('threadly-refine-menu');
-        if (existingMenu) {
-            existingMenu.remove();
-        }
-        
-        // Get text area position
-        const rect = textArea.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-        
-        // Calculate menu position (above the text area with proper spacing)
-        const menuWidth = 200;
-        const menuHeight = 120; // Approximate height for 3 options
-        const spacing = 15; // Space between menu and text area
-        
-        let menuTop = rect.top + scrollTop - menuHeight - spacing;
-        let menuLeft = rect.left + scrollLeft;
-        
-        // Ensure menu doesn't go off screen horizontally
-        if (menuLeft + menuWidth > window.innerWidth) {
-            menuLeft = window.innerWidth - menuWidth - 10;
-        }
-        if (menuLeft < 10) {
-            menuLeft = 10;
-        }
-        
-        // If menu would go above viewport, position it below the text area
-        if (menuTop < 10) {
-            menuTop = rect.bottom + scrollTop + spacing;
-        }
-        
-        // Ensure menu doesn't go below viewport
-        if (menuTop + menuHeight > window.innerHeight + scrollTop) {
-            menuTop = window.innerHeight + scrollTop - menuHeight - 10;
-        }
-        
-        // Create refine menu
-        const menu = document.createElement('div');
-        menu.id = 'threadly-refine-menu';
-        menu.style.cssText = `
-            position: fixed;
-            top: ${menuTop}px;
-            left: ${menuLeft}px;
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2), 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 10001;
-            padding: 8px 0;
-            min-width: ${menuWidth}px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: 14px;
-            opacity: 0;
-            transform: translateY(-10px);
-            transition: all 0.2s ease-out;
-        `;
-        
-        // Trigger animation after a brief delay
-        setTimeout(() => {
-            menu.style.opacity = '1';
-            menu.style.transform = 'translateY(0)';
-        }, 10);
-        
-        // Create menu options
-        const options = [
-            { id: 'refine', label: 'Refine', icon: '✨' },
-            { id: 'correct', label: 'Correct', icon: '✏️' },
-            { id: 'image', label: 'Image', icon: '🖼️' }
-        ];
-        
-        options.forEach(option => {
-            const optionElement = document.createElement('div');
-            optionElement.style.cssText = `
-                padding: 12px 16px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                transition: all 0.2s ease;
-                border-radius: 8px;
-                margin: 2px 8px;
-                font-weight: 500;
-                color: #374151;
-            `;
-            optionElement.innerHTML = `
-                <span style="font-size: 16px;">${option.icon}</span>
-                <span>${option.label}</span>
-            `;
-            
-            // Add hover effect
-            optionElement.addEventListener('mouseenter', () => {
-                optionElement.style.backgroundColor = '#f3f4f6';
-                optionElement.style.transform = 'translateX(4px)';
-            });
-            optionElement.addEventListener('mouseleave', () => {
-                optionElement.style.backgroundColor = 'transparent';
-                optionElement.style.transform = 'translateX(0)';
-            });
-            
-            // Add click handler
-            optionElement.addEventListener('click', () => {
-                handleRefineMenuSelection(option.id, textArea);
-                menu.remove();
-            });
-            
-            menu.appendChild(optionElement);
-        });
-        
-        // Add to document
-        document.body.appendChild(menu);
-        
-        // Add keyboard navigation support
-        let selectedIndex = 0;
-        const optionElements = menu.querySelectorAll('div');
-        
-        const updateSelection = () => {
-            optionElements.forEach((el, index) => {
-                if (index === selectedIndex) {
-                    el.style.backgroundColor = '#dbeafe';
-                    el.style.fontWeight = '600';
-                    el.style.transform = 'translateX(4px)';
-                    el.style.color = '#1d4ed8';
-                } else {
-                    el.style.backgroundColor = 'transparent';
-                    el.style.fontWeight = '500';
-                    el.style.transform = 'translateX(0)';
-                    el.style.color = '#374151';
-                }
-            });
-        };
-        
-        const handleKeydown = (e) => {
-            switch (e.key) {
-                case 'ArrowDown':
-                    e.preventDefault();
-                    selectedIndex = (selectedIndex + 1) % optionElements.length;
-                    updateSelection();
-                    break;
-                case 'ArrowUp':
-                    e.preventDefault();
-                    selectedIndex = (selectedIndex - 1 + optionElements.length) % optionElements.length;
-                    updateSelection();
-                    break;
-                case 'Enter':
-                    e.preventDefault();
-                    optionElements[selectedIndex].click();
-                    break;
-                case 'Escape':
-                    e.preventDefault();
-                    menu.remove();
-                    document.removeEventListener('keydown', handleKeydown);
-                    break;
-            }
-        };
-        
-        // Add keyboard event listener
-        document.addEventListener('keydown', handleKeydown);
-        
-        // Initialize selection
-        updateSelection();
-        
-        // Add click outside handler to close menu
-        const closeMenu = (e) => {
-            if (!menu.contains(e.target)) {
-                menu.remove();
-                document.removeEventListener('click', closeMenu);
-                document.removeEventListener('keydown', handleKeydown);
-            }
-        };
-        
-        // Use setTimeout to avoid immediate closure
-        setTimeout(() => {
-            document.addEventListener('click', closeMenu);
-        }, 100);
-    }
-    
-    async function handleRefineMenuSelection(mode, textArea) {
-        console.log('Threadly: Refine menu selection:', mode, 'for text area:', textArea);
-        
-        const currentText = textArea.value || textArea.textContent || textArea.innerText;
-        if (!currentText || currentText.trim() === '') {
-            console.log('Threadly: No text to process');
-            return;
-        }
-        
-        try {
-            if (window.PromptRefiner) {
-                const promptRefiner = new window.PromptRefiner();
-                await promptRefiner.initialize();
-                
-                let refinedPrompt;
-                const platform = detectPlatform();
-                
-                switch (mode) {
-                    case 'correct':
-                        refinedPrompt = await promptRefiner.performGrammarCorrection(currentText);
-                        break;
-                    case 'image':
-                        refinedPrompt = await promptRefiner.refineImageGenerationPrompt(currentText, platform);
-                        break;
-                    case 'refine':
-                        refinedPrompt = await promptRefiner.refinePrompt(currentText, platform);
-                        break;
-                }
-                
-                if (refinedPrompt) {
-                    // Replace text in the input
-                    if (textArea.tagName === 'TEXTAREA' || textArea.tagName === 'INPUT') {
-                        textArea.value = refinedPrompt;
-                    } else if (textArea.contentEditable === 'true') {
-                        textArea.innerHTML = `<p>${refinedPrompt}</p>`;
-                    } else {
-                        textArea.textContent = refinedPrompt;
-                    }
-                    
-                    // Trigger events to notify the platform
-                    textArea.dispatchEvent(new Event('input', { bubbles: true }));
-                    textArea.dispatchEvent(new Event('change', { bubbles: true }));
-                    textArea.dispatchEvent(new Event('keyup', { bubbles: true }));
-                    
-                    // Force focus back to the text area
-                    textArea.focus();
-                    
-                    console.log('Threadly: Text refined successfully via Ctrl+Z menu');
-                }
-            } else {
-                console.error('Threadly: PromptRefiner not available');
-            }
-        } catch (error) {
-            console.error('Threadly: Error in refine menu selection:', error);
-        }
-    }
 
     // ChatGPT sparkle functionality moved to dedicated chatgpt-sparkle.js file
 
@@ -6987,7 +6947,7 @@
 
         // Create title
         const title = document.createElement('h3');
-        title.textContent = 'Help us improve! 🎯';
+        title.textContent = 'Help Threadly Learn';
         title.style.cssText = `
             margin: 0 0 20px 0;
             font-size: 24px;
@@ -6999,12 +6959,27 @@
 
         // Create description
         const description = document.createElement('p');
-        description.textContent = 'We classified your prompt as "' + getCategoryDisplayName(incorrectCategory) + '". What was it really about?';
+        description.textContent = 'You undid the refinement. What category did you expect?';
         description.style.cssText = `
             margin: 0 0 24px 0;
             color: rgba(255, 255, 255, 0.9);
             font-size: 16px;
             line-height: 1.6;
+            text-align: center;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        `;
+
+        // Create predicted category display
+        const predictedCategory = document.createElement('div');
+        predictedCategory.innerHTML = `<strong>Threadly predicted:</strong> ${getCategoryDisplayName(incorrectCategory)}`;
+        predictedCategory.style.cssText = `
+            margin: 0 0 24px 0;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            padding: 12px;
+            background: rgba(255, 193, 7, 0.1);
+            border-radius: 6px;
+            border-left: 3px solid #fbbf24;
             text-align: center;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         `;
@@ -7029,12 +7004,12 @@
 
         // Create category buttons
         const categories = [
-            { key: 'grammar_spelling', name: 'Grammar & Spelling', icon: '✏️' },
-            { key: 'image_generation', name: 'Image Generation', icon: '🎨' },
-            { key: 'coding', name: 'Coding', icon: '💻' },
-            { key: 'research_analysis', name: 'Research & Analysis', icon: '🔍' },
-            { key: 'content_creation', name: 'Content Creation', icon: '📝' },
-            { key: 'general', name: 'General', icon: '💬' }
+            { key: 'grammar_spelling', name: 'Grammar & Spelling' },
+            { key: 'image_generation', name: 'Image Generation' },
+            { key: 'coding', name: 'Coding' },
+            { key: 'research_analysis', name: 'Research & Analysis' },
+            { key: 'content_creation', name: 'Content Creation' },
+            { key: 'general', name: 'General' }
         ];
 
         const buttonContainer = document.createElement('div');
@@ -7047,7 +7022,7 @@
 
         categories.forEach(category => {
             const button = document.createElement('button');
-            button.textContent = `${category.icon} ${category.name}`;
+            button.textContent = category.name;
             button.style.cssText = `
                 padding: 16px 20px;
                 border: 1px solid rgba(255, 255, 255, 0.3);
@@ -7090,14 +7065,14 @@
                 try {
                     await submitFeedback(prompt, incorrectCategory, category.key);
                     // Close modal after successful submission
-                    modal.remove();
+                modal.remove();
                 } catch (error) {
                     console.error('Threadly: Error submitting feedback:', error);
                     // Reset button state on error
                     button.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
                     button.style.borderColor = 'rgba(255, 255, 255, 0.3)';
                     button.style.color = 'rgba(255, 255, 255, 0.95)';
-                    button.textContent = `${category.icon} ${category.name}`;
+                    button.textContent = category.name;
                     button.disabled = false;
                 }
             });
@@ -7149,6 +7124,7 @@
         modalContent.appendChild(closeButton);
         modalContent.appendChild(title);
         modalContent.appendChild(description);
+        modalContent.appendChild(predictedCategory);
         modalContent.appendChild(promptPreview);
         modalContent.appendChild(buttonContainer);
         modal.appendChild(modalContent);
@@ -7162,6 +7138,1871 @@
                 modal.remove();
             }
         });
+    }
+
+    // --- Enhanced Learning System --- //
+    
+    // Enhanced Context Capture System
+    class EnhancedContextCapture {
+        constructor() {
+            this.platformDetector = new PlatformDetector();
+            this.typingAnalyzer = new TypingAnalyzer();
+            this.contextData = new Map();
+            this.typingSessions = new Map();
+        }
+
+        async captureContext(prompt, textElement) {
+            const context = {
+                timestamp: Date.now(),
+                prompt: prompt,
+                platform: this.platformDetector.detectPlatform(),
+                elementContext: this.getElementContext(textElement),
+                typingPatterns: this.typingAnalyzer.getPatterns(textElement),
+                previousHistory: await this.getPreviousHistory(textElement),
+                timeBasedPatterns: this.getTimeBasedPatterns(),
+                confidence: await this.calculateInitialConfidence(prompt)
+            };
+
+            // Store context for this session
+            const sessionId = this.generateSessionId(textElement);
+            this.contextData.set(sessionId, context);
+            
+            return context;
+        }
+
+        getElementContext(element) {
+            return {
+                tagName: element.tagName,
+                id: element.id,
+                className: element.className,
+                parentId: element.parentElement?.id,
+                parentClass: element.parentElement?.className,
+                placeholder: element.placeholder,
+                maxLength: element.maxLength,
+                formId: element.form?.id,
+                ariaLabel: element.getAttribute('aria-label'),
+                role: element.getAttribute('role')
+            };
+        }
+
+        async getPreviousHistory(element) {
+            try {
+                const history = await chrome.storage.local.get(['typingHistory']);
+                const userHistory = history.typingHistory || [];
+                
+                // Get recent history for this element
+                return userHistory
+                    .filter(entry => entry.elementId === element.id)
+                    .slice(-10); // Last 10 entries
+            } catch (error) {
+                console.error('Threadly: Error getting history:', error);
+                return [];
+            }
+        }
+
+        getTimeBasedPatterns() {
+            const now = new Date();
+            return {
+                hour: now.getHours(),
+                dayOfWeek: now.getDay(),
+                isWeekend: now.getDay() === 0 || now.getDay() === 6,
+                timeOfDay: this.getTimeOfDay(now.getHours()),
+                month: now.getMonth(),
+                season: this.getSeason(now.getMonth())
+            };
+        }
+
+        getTimeOfDay(hour) {
+            if (hour >= 6 && hour < 12) return 'morning';
+            if (hour >= 12 && hour < 17) return 'afternoon';
+            if (hour >= 17 && hour < 22) return 'evening';
+            return 'night';
+        }
+
+        getSeason(month) {
+            if (month >= 2 && month <= 4) return 'spring';
+            if (month >= 5 && month <= 7) return 'summer';
+            if (month >= 8 && month <= 10) return 'autumn';
+            return 'winter';
+        }
+
+        async calculateInitialConfidence(prompt) {
+            // Basic confidence based on prompt characteristics
+            const length = prompt.length;
+            const hasQuestionWords = /^(what|how|why|when|where|who|can|could|would|should)/i.test(prompt);
+            const hasTechnicalTerms = /(function|class|def|import|const|let|var|algorithm|api|database)/i.test(prompt);
+            
+            let confidence = 0.5; // Base confidence
+            
+            if (length > 50) confidence += 0.1;
+            if (hasQuestionWords) confidence += 0.1;
+            if (hasTechnicalTerms) confidence += 0.2;
+            
+            return Math.min(confidence, 1.0);
+        }
+
+        generateSessionId(element) {
+            return `${element.id || 'unknown'}_${Date.now()}`;
+        }
+
+        async storeContext(sessionId, context) {
+            try {
+                await chrome.storage.local.set({
+                    [`context_${sessionId}`]: context
+                });
+            } catch (error) {
+                console.error('Threadly: Error storing context:', error);
+            }
+        }
+    }
+
+    // Platform Detection Utility
+    class PlatformDetector {
+        detectPlatform() {
+            const hostname = window.location.hostname;
+            const pathname = window.location.pathname;
+            
+            // ChatGPT detection
+            if (hostname.includes('chatgpt.com') || hostname.includes('openai.com')) {
+                return {
+                    name: 'chatgpt',
+                    version: this.detectChatGPTVersion(),
+                    features: ['conversation', 'code_interpreter', 'file_upload']
+                };
+            }
+            
+            // Claude detection
+            if (hostname.includes('claude.ai') || hostname.includes('anthropic.com')) {
+                return {
+                    name: 'claude',
+                    version: this.detectClaudeVersion(),
+                    features: ['conversation', 'file_upload', 'web_search']
+                };
+            }
+            
+            // Gemini detection
+            if (hostname.includes('gemini.google.com') || hostname.includes('aistudio.google.com')) {
+                return {
+                    name: 'gemini',
+                    version: this.detectGeminiVersion(),
+                    features: ['conversation', 'image_generation', 'code_execution']
+                };
+            }
+            
+            // Perplexity detection
+            if (hostname.includes('perplexity.ai')) {
+                return {
+                    name: 'perplexity',
+                    version: 'unknown',
+                    features: ['search', 'sources', 'real_time']
+                };
+            }
+            
+            // Generic AI platform
+            return {
+                name: 'unknown',
+                version: 'unknown',
+                features: []
+            };
+        }
+
+        detectChatGPTVersion() {
+            // Check for ChatGPT-4, ChatGPT-3.5, etc.
+            const versionElements = document.querySelectorAll('[data-testid*="model"], .model-selector, .gpt-version');
+            for (const el of versionElements) {
+                const text = el.textContent.toLowerCase();
+                if (text.includes('gpt-4')) return 'gpt-4';
+                if (text.includes('gpt-3.5')) return 'gpt-3.5';
+            }
+            return 'unknown';
+        }
+
+        detectClaudeVersion() {
+            // Check for Claude-3, Claude-2, etc.
+            const versionElements = document.querySelectorAll('[data-testid*="claude"], .claude-version');
+            for (const el of versionElements) {
+                const text = el.textContent.toLowerCase();
+                if (text.includes('claude-3')) return 'claude-3';
+                if (text.includes('claude-2')) return 'claude-2';
+            }
+            return 'unknown';
+        }
+
+        detectGeminiVersion() {
+            // Check for Gemini Pro, Gemini Ultra, etc.
+            const versionElements = document.querySelectorAll('.gemini-version, [data-model*="gemini"]');
+            for (const el of versionElements) {
+                const text = el.textContent.toLowerCase();
+                if (text.includes('ultra')) return 'gemini-ultra';
+                if (text.includes('pro')) return 'gemini-pro';
+            }
+            return 'unknown';
+        }
+    }
+
+    // Typing Pattern Analyzer
+    class TypingAnalyzer {
+        constructor() {
+            this.typingSessions = new Map();
+            this.startTracking();
+        }
+
+        startTracking() {
+            // Track typing patterns on all text inputs
+            document.addEventListener('input', (e) => {
+                if (this.isTextInput(e.target)) {
+                    this.trackTyping(e.target);
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (this.isTextInput(e.target)) {
+                    this.trackKeystroke(e.target, e);
+                }
+            });
+        }
+
+        isTextInput(element) {
+            return element && (
+                element.tagName === 'TEXTAREA' ||
+                element.tagName === 'INPUT' ||
+                element.contentEditable === 'true'
+            );
+        }
+
+        trackTyping(element) {
+            const sessionId = this.getSessionId(element);
+            if (!this.typingSessions.has(sessionId)) {
+                this.typingSessions.set(sessionId, {
+                    startTime: Date.now(),
+                    keystrokes: [],
+                    pauses: [],
+                    backspaces: 0,
+                    totalChars: 0
+                });
+            }
+
+            const session = this.typingSessions.get(sessionId);
+            session.totalChars = element.value?.length || element.textContent?.length || 0;
+        }
+
+        trackKeystroke(element, event) {
+            const sessionId = this.getSessionId(element);
+            const session = this.typingSessions.get(sessionId);
+            
+            if (session) {
+                const now = Date.now();
+                const lastKeystroke = session.keystrokes[session.keystrokes.length - 1];
+                
+                if (lastKeystroke) {
+                    const pause = now - lastKeystroke.timestamp;
+                    if (pause > 1000) { // Pause longer than 1 second
+                        session.pauses.push(pause);
+                    }
+                }
+
+                session.keystrokes.push({
+                    key: event.key,
+                    timestamp: now,
+                    isBackspace: event.key === 'Backspace'
+                });
+
+                if (event.key === 'Backspace') {
+                    session.backspaces++;
+                }
+            }
+        }
+
+        getPatterns(element) {
+            const sessionId = this.getSessionId(element);
+            const session = this.typingSessions.get(sessionId);
+            
+            if (!session) return null;
+
+            const duration = Date.now() - session.startTime;
+            const typingSpeed = (session.totalChars / (duration / 1000)) * 60; // chars per minute
+            const averagePause = session.pauses.length > 0 ? 
+                session.pauses.reduce((a, b) => a + b, 0) / session.pauses.length : 0;
+            const backspaceRate = session.backspaces / Math.max(session.keystrokes.length, 1);
+
+            return {
+                typingSpeed,
+                averagePause,
+                backspaceRate,
+                totalKeystrokes: session.keystrokes.length,
+                hesitationScore: this.calculateHesitationScore(session),
+                confidence: this.calculateTypingConfidence(session)
+            };
+        }
+
+        calculateHesitationScore(session) {
+            // Higher score = more hesitation
+            const longPauses = session.pauses.filter(p => p > 3000).length;
+            const backspaceRate = session.backspaces / Math.max(session.keystrokes.length, 1);
+            return Math.min((longPauses * 0.3) + (backspaceRate * 0.7), 1.0);
+        }
+
+        calculateTypingConfidence(session) {
+            // Higher confidence = smoother typing
+            const backspaceRate = session.backspaces / Math.max(session.keystrokes.length, 1);
+            const pauseVariability = this.calculatePauseVariability(session.pauses);
+            return Math.max(0, 1 - (backspaceRate * 0.6) - (pauseVariability * 0.4));
+        }
+
+        calculatePauseVariability(pauses) {
+            if (pauses.length < 2) return 0;
+            const mean = pauses.reduce((a, b) => a + b, 0) / pauses.length;
+            const variance = pauses.reduce((acc, pause) => acc + Math.pow(pause - mean, 2), 0) / pauses.length;
+            return Math.sqrt(variance) / mean; // Coefficient of variation
+        }
+
+        getSessionId(element) {
+            return `${element.id || element.className || 'unknown'}_${element.tagName}`;
+        }
+    }
+
+    // Implicit Feedback Tracking System
+    class ImplicitFeedbackTracker {
+        constructor() {
+            this.activeTrackers = new Map();
+            this.editDistanceCalculator = new EditDistanceCalculator();
+            this.editClassifier = new EditClassifier();
+            this.submissionDetector = new SubmissionDetector();
+        }
+
+        startTracking(element, originalText, refinedText) {
+            const trackerId = this.generateTrackerId(element);
+            
+            // Stop any existing tracker for this element
+            this.stopTracking(element);
+
+            const tracker = {
+                element,
+                originalText,
+                refinedText,
+                startTime: Date.now(),
+                lastText: refinedText,
+                edits: [],
+                observer: null,
+                submissionDetected: false
+            };
+
+            // Set up MutationObserver to track changes
+            tracker.observer = new MutationObserver((mutations) => {
+                this.handleTextChange(tracker);
+            });
+
+            // Start observing
+            tracker.observer.observe(element, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+
+            // Also track input events for immediate feedback
+            const inputHandler = () => this.handleTextChange(tracker);
+            element.addEventListener('input', inputHandler);
+            element.addEventListener('paste', inputHandler);
+
+            // Set up submission detection
+            this.submissionDetector.setupSubmissionDetection(element, () => {
+                this.handleSubmission(tracker);
+            });
+
+            // Auto-stop after 5 minutes
+            setTimeout(() => {
+                this.stopTracking(element);
+            }, 5 * 60 * 1000);
+
+            this.activeTrackers.set(trackerId, tracker);
+            return trackerId;
+        }
+
+        stopTracking(element) {
+            const trackerId = this.generateTrackerId(element);
+            const tracker = this.activeTrackers.get(trackerId);
+            
+            if (tracker) {
+                if (tracker.observer) {
+                    tracker.observer.disconnect();
+                }
+                this.activeTrackers.delete(trackerId);
+            }
+        }
+
+        handleTextChange(tracker) {
+            const currentText = tracker.element.value || 
+                               tracker.element.textContent || 
+                               tracker.element.innerText || '';
+
+            if (currentText !== tracker.lastText) {
+                const edit = this.analyzeEdit(tracker.lastText, currentText);
+                tracker.edits.push(edit);
+                tracker.lastText = currentText;
+
+                // Classify the edit
+                const editClassification = this.editClassifier.classify(edit);
+                edit.classification = editClassification;
+
+                console.log('Threadly: Implicit edit detected:', editClassification);
+            }
+        }
+
+        handleSubmission(tracker) {
+            tracker.submissionDetected = true;
+            const finalAnalysis = this.analyzeFinalEdit(tracker);
+            
+            // Store implicit feedback
+            this.storeImplicitFeedback(tracker, finalAnalysis);
+            
+            // Stop tracking
+            this.stopTracking(tracker.element);
+        }
+
+        analyzeEdit(oldText, newText) {
+            const distance = this.editDistanceCalculator.calculate(oldText, newText);
+            const changes = this.identifyChanges(oldText, newText);
+            
+            return {
+                timestamp: Date.now(),
+                oldText,
+                newText,
+                distance,
+                changes,
+                lengthChange: newText.length - oldText.length,
+                isAddition: newText.length > oldText.length,
+                isDeletion: newText.length < oldText.length,
+                isModification: newText.length === oldText.length && oldText !== newText
+            };
+        }
+
+        analyzeFinalEdit(tracker) {
+            const finalText = tracker.element.value || 
+                             tracker.element.textContent || 
+                             tracker.element.innerText || '';
+
+            const totalDistance = this.editDistanceCalculator.calculate(tracker.refinedText, finalText);
+            const acceptanceRate = this.calculateAcceptanceRate(tracker);
+            const editPatterns = this.analyzeEditPatterns(tracker.edits);
+
+            return {
+                originalText: tracker.originalText,
+                refinedText: tracker.refinedText,
+                finalText,
+                totalDistance,
+                acceptanceRate,
+                editPatterns,
+                totalEdits: tracker.edits.length,
+                timeToSubmission: Date.now() - tracker.startTime,
+                submissionDetected: tracker.submissionDetected
+            };
+        }
+
+        calculateAcceptanceRate(tracker) {
+            if (tracker.edits.length === 0) return 1.0; // No edits = full acceptance
+            
+            const totalChanges = tracker.edits.reduce((sum, edit) => sum + edit.distance, 0);
+            const originalLength = tracker.refinedText.length;
+            
+            return Math.max(0, 1 - (totalChanges / originalLength));
+        }
+
+        analyzeEditPatterns(edits) {
+            const patterns = {
+                formalityChanges: 0,
+                lengthChanges: 0,
+                technicalAdjustments: 0,
+                structureChanges: 0,
+                punctuationChanges: 0
+            };
+
+            edits.forEach(edit => {
+                if (edit.classification) {
+                    patterns[edit.classification] = (patterns[edit.classification] || 0) + 1;
+                }
+            });
+
+            return patterns;
+        }
+
+        identifyChanges(oldText, newText) {
+            const changes = [];
+            const maxLength = Math.max(oldText.length, newText.length);
+            
+            for (let i = 0; i < maxLength; i++) {
+                if (oldText[i] !== newText[i]) {
+                    changes.push({
+                        position: i,
+                        oldChar: oldText[i] || '',
+                        newChar: newText[i] || '',
+                        type: oldText[i] ? (newText[i] ? 'modification' : 'deletion') : 'addition'
+                    });
+                }
+            }
+            
+            return changes;
+        }
+
+        async storeImplicitFeedback(tracker, analysis) {
+            try {
+                const feedbackData = {
+                    type: 'implicit_feedback',
+                    timestamp: Date.now(),
+                    analysis,
+                    platform: window.location.hostname,
+                    elementContext: {
+                        tagName: tracker.element.tagName,
+                        id: tracker.element.id,
+                        className: tracker.element.className
+                    }
+                };
+
+                await chrome.runtime.sendMessage({
+                action: 'storeFeedback',
+                    feedback: feedbackData
+                });
+
+                console.log('Threadly: Implicit feedback stored:', analysis);
+            } catch (error) {
+                console.error('Threadly: Error storing implicit feedback:', error);
+            }
+        }
+
+        generateTrackerId(element) {
+            return `${element.id || element.className || 'unknown'}_${Date.now()}`;
+        }
+    }
+
+    // Edit Distance Calculator (Levenshtein Distance)
+    class EditDistanceCalculator {
+        calculate(str1, str2) {
+            const matrix = [];
+            const len1 = str1.length;
+            const len2 = str2.length;
+
+            // Initialize matrix
+            for (let i = 0; i <= len1; i++) {
+                matrix[i] = [i];
+            }
+            for (let j = 0; j <= len2; j++) {
+                matrix[0][j] = j;
+            }
+
+            // Fill matrix
+            for (let i = 1; i <= len1; i++) {
+                for (let j = 1; j <= len2; j++) {
+                    if (str1[i - 1] === str2[j - 1]) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j] + 1,     // deletion
+                            matrix[i][j - 1] + 1,     // insertion
+                            matrix[i - 1][j - 1] + 1  // substitution
+                        );
+                    }
+                }
+            }
+
+            return matrix[len1][len2];
+        }
+    }
+
+    // Edit Classifier
+    class EditClassifier {
+        classify(edit) {
+            const { oldText, newText, changes } = edit;
+            
+            // Check for formality changes
+            if (this.isFormalityChange(oldText, newText)) {
+                return 'formalityChanges';
+            }
+            
+            // Check for length changes
+            if (Math.abs(newText.length - oldText.length) > 10) {
+                return 'lengthChanges';
+            }
+            
+            // Check for technical adjustments
+            if (this.isTechnicalAdjustment(oldText, newText)) {
+                return 'technicalAdjustments';
+            }
+            
+            // Check for structure changes
+            if (this.isStructureChange(oldText, newText)) {
+                return 'structureChanges';
+            }
+            
+            // Check for punctuation changes
+            if (this.isPunctuationChange(oldText, newText)) {
+                return 'punctuationChanges';
+            }
+            
+            return 'other';
+        }
+
+        isFormalityChange(oldText, newText) {
+            const formalWords = ['please', 'could you', 'would you', 'thank you', 'appreciate'];
+            const casualWords = ['hey', 'hi', 'thanks', 'thx', 'pls'];
+            
+            const oldFormal = formalWords.some(word => oldText.toLowerCase().includes(word));
+            const newFormal = formalWords.some(word => newText.toLowerCase().includes(word));
+            const oldCasual = casualWords.some(word => oldText.toLowerCase().includes(word));
+            const newCasual = casualWords.some(word => newText.toLowerCase().includes(word));
+            
+            return (oldFormal && newCasual) || (oldCasual && newFormal);
+        }
+
+        isTechnicalAdjustment(oldText, newText) {
+            const technicalTerms = ['function', 'class', 'method', 'algorithm', 'api', 'database', 'server'];
+            const oldTechnical = technicalTerms.some(term => oldText.toLowerCase().includes(term));
+            const newTechnical = technicalTerms.some(term => newText.toLowerCase().includes(term));
+            
+            return oldTechnical !== newTechnical;
+        }
+
+        isStructureChange(oldText, newText) {
+            const oldSentences = oldText.split(/[.!?]+/).length;
+            const newSentences = newText.split(/[.!?]+/).length;
+            
+            return Math.abs(oldSentences - newSentences) > 1;
+        }
+
+        isPunctuationChange(oldText, newText) {
+            const oldPunctuation = (oldText.match(/[.!?,;:]/g) || []).length;
+            const newPunctuation = (newText.match(/[.!?,;:]/g) || []).length;
+            
+            return Math.abs(oldPunctuation - newPunctuation) > 2;
+        }
+    }
+
+    // Submission Detector
+    class SubmissionDetector {
+        setupSubmissionDetection(element, callback) {
+            // Common submission patterns
+            const submissionSelectors = [
+                'button[type="submit"]',
+                'input[type="submit"]',
+                'button:contains("Send")',
+                'button:contains("Submit")',
+                'button:contains("Ask")',
+                'button:contains("Go")',
+                '[data-testid*="send"]',
+                '[data-testid*="submit"]'
+            ];
+
+            // Find submission buttons
+            const submissionButtons = [];
+            submissionSelectors.forEach(selector => {
+                try {
+                    const buttons = document.querySelectorAll(selector);
+                    submissionButtons.push(...Array.from(buttons));
+                } catch (e) {
+                    // Ignore invalid selectors
+                }
+            });
+
+            // Add click listeners
+            submissionButtons.forEach(button => {
+                button.addEventListener('click', callback);
+            });
+
+            // Also listen for Enter key in textarea
+            if (element.tagName === 'TEXTAREA') {
+                const keyHandler = (e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        callback();
+                    }
+                };
+                element.addEventListener('keydown', keyHandler);
+            }
+        }
+    }
+
+    // Confidence Scoring & Adaptive Feedback System
+    class ConfidenceScorer {
+        constructor() {
+            this.historicalData = new Map();
+            this.patternRecognition = new PatternRecognitionEngine();
+        }
+
+        async calculateConfidence(prompt, context) {
+            const promptHash = this.hashPrompt(prompt);
+            const historicalAccuracy = await this.getHistoricalAccuracy(promptHash);
+            const patternConfidence = this.patternRecognition.analyzePatterns(prompt);
+            const keywordConfidence = this.calculateKeywordConfidence(prompt);
+            const contextConfidence = this.calculateContextConfidence(context);
+            const ambiguityScore = this.calculateAmbiguityScore(prompt);
+
+            // Weighted combination
+            const confidence = (
+                historicalAccuracy * 0.3 +
+                patternConfidence.overallConfidence * 0.25 +
+                keywordConfidence * 0.2 +
+                contextConfidence * 0.15 +
+                (1 - ambiguityScore) * 0.1
+            );
+
+            return Math.max(0, Math.min(1, confidence));
+        }
+
+        async getHistoricalAccuracy(promptHash) {
+            try {
+                const data = await chrome.storage.local.get([`predictions_${promptHash}`]);
+                const predictions = data[`predictions_${promptHash}`] || [];
+                
+                if (predictions.length === 0) return 0.5; // Default for new prompts
+                
+                const correctPredictions = predictions.filter(p => p.correct).length;
+                return correctPredictions / predictions.length;
+        } catch (error) {
+                console.error('Threadly: Error getting historical accuracy:', error);
+                return 0.5;
+            }
+        }
+
+        calculateKeywordConfidence(prompt) {
+            const keywords = this.extractKeywords(prompt);
+            const categoryKeywords = {
+                coding: ['function', 'class', 'def', 'import', 'const', 'let', 'var', 'algorithm', 'api', 'database', 'server', 'code', 'programming', 'python', 'javascript', 'java', 'c++', 'html', 'css'],
+                image_generation: ['image', 'picture', 'photo', 'draw', 'create', 'generate', 'visual', 'art', 'design', 'logo', 'banner', 'illustration', 'sketch'],
+                grammar_spelling: ['grammar', 'spelling', 'correct', 'fix', 'error', 'mistake', 'typo', 'punctuation', 'sentence', 'word'],
+                research_analysis: ['research', 'analyze', 'study', 'investigate', 'examine', 'evaluate', 'compare', 'contrast', 'data', 'statistics', 'report'],
+                content_creation: ['write', 'article', 'blog', 'story', 'essay', 'content', 'copy', 'text', 'description', 'summary'],
+                general: ['help', 'question', 'ask', 'explain', 'tell', 'what', 'how', 'why', 'when', 'where']
+            };
+
+            let maxConfidence = 0;
+            for (const [category, words] of Object.entries(categoryKeywords)) {
+                const matches = keywords.filter(keyword => 
+                    words.some(word => word.toLowerCase().includes(keyword.toLowerCase()) || 
+                                     keyword.toLowerCase().includes(word.toLowerCase()))
+                ).length;
+                const confidence = matches / Math.max(keywords.length, 1);
+                maxConfidence = Math.max(maxConfidence, confidence);
+            }
+
+            return maxConfidence;
+        }
+
+        calculateContextConfidence(context) {
+            let confidence = 0.5; // Base confidence
+
+            // Platform-specific confidence
+            if (context.platform) {
+                const platformConfidence = {
+                    'chatgpt': 0.8,
+                    'claude': 0.8,
+                    'gemini': 0.7,
+                    'perplexity': 0.6
+                };
+                confidence += (platformConfidence[context.platform.name] || 0.5) * 0.2;
+            }
+
+            // Typing confidence
+            if (context.typingPatterns) {
+                confidence += context.typingPatterns.confidence * 0.2;
+            }
+
+            // Time-based confidence
+            if (context.timeBasedPatterns) {
+                const timeConfidence = this.getTimeBasedConfidence(context.timeBasedPatterns);
+                confidence += timeConfidence * 0.1;
+            }
+
+            return Math.min(confidence, 1.0);
+        }
+
+        getTimeBasedConfidence(timePatterns) {
+            // Higher confidence during typical work hours
+            const hour = timePatterns.hour;
+            if (hour >= 9 && hour <= 17) return 0.8;
+            if (hour >= 18 && hour <= 22) return 0.6;
+            return 0.4;
+        }
+
+        calculateAmbiguityScore(prompt) {
+            // Check for ambiguous words that could fit multiple categories
+            const ambiguousWords = ['help', 'create', 'make', 'build', 'write', 'generate'];
+            const ambiguousCount = ambiguousWords.filter(word => 
+                prompt.toLowerCase().includes(word)
+            ).length;
+
+            return Math.min(ambiguousCount * 0.2, 0.8);
+        }
+
+        extractKeywords(prompt) {
+            return prompt.toLowerCase()
+                .replace(/[^\w\s]/g, ' ')
+                .split(/\s+/)
+                .filter(word => word.length > 2)
+                .filter(word => !this.isStopWord(word));
+        }
+
+        isStopWord(word) {
+            const stopWords = ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those'];
+            return stopWords.includes(word);
+        }
+
+        hashPrompt(prompt) {
+            // Simple hash function for prompt identification
+            let hash = 0;
+            for (let i = 0; i < prompt.length; i++) {
+                const char = prompt.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            return Math.abs(hash).toString(36);
+        }
+    }
+
+    // Pattern Recognition Engine
+    class PatternRecognitionEngine {
+        analyzePatterns(prompt) {
+            const patterns = {
+                codeIndicators: this.detectCodeIndicators(prompt),
+                questionPatterns: this.detectQuestionPatterns(prompt),
+                technicalIndicators: this.detectTechnicalIndicators(prompt),
+                urgencySentiment: this.detectUrgencySentiment(prompt),
+                taskTypeSignals: this.detectTaskTypeSignals(prompt)
+            };
+
+            const suggestedCategories = this.suggestCategories(patterns);
+            const overallConfidence = this.calculateOverallConfidence(patterns, suggestedCategories);
+
+            return {
+                patterns,
+                suggestedCategories,
+                overallConfidence
+            };
+        }
+
+        detectCodeIndicators(prompt) {
+            const codeKeywords = ['function', 'class', 'def', 'import', 'const', 'let', 'var', 'return', 'if', 'else', 'for', 'while', 'try', 'catch', 'async', 'await'];
+            const codeSyntax = [/\{[^}]*\}/, /\[[^\]]*\]/, /\([^)]*\)/, /=>/, /->/, /<[^>]*>/, /\/\*[\s\S]*?\*\//, /\/\/.*$/];
+            const languages = ['python', 'javascript', 'java', 'c++', 'c#', 'php', 'ruby', 'go', 'rust', 'swift', 'kotlin', 'typescript', 'html', 'css', 'sql'];
+
+            const keywordMatches = codeKeywords.filter(keyword => 
+                prompt.toLowerCase().includes(keyword)
+            ).length;
+
+            const syntaxMatches = codeSyntax.filter(pattern => 
+                pattern.test(prompt)
+            ).length;
+
+            const languageMatches = languages.filter(lang => 
+                prompt.toLowerCase().includes(lang)
+            ).length;
+
+            const score = (keywordMatches * 0.4 + syntaxMatches * 0.4 + languageMatches * 0.2) / Math.max(codeKeywords.length, 1);
+            
+            return {
+                score: Math.min(score, 1),
+                patterns: {
+                    keywords: keywordMatches,
+                    syntax: syntaxMatches,
+                    languages: languageMatches
+                }
+            };
+        }
+
+        detectQuestionPatterns(prompt) {
+            const questionWords = ['what', 'how', 'why', 'when', 'where', 'who', 'which', 'can', 'could', 'would', 'should', 'may', 'might'];
+            const questionStructures = [/^can you/i, /^could you/i, /^would you/i, /^help me/i, /^i need to/i, /^how do i/i, /^what is/i, /^how to/i];
+            
+            const questionWordMatches = questionWords.filter(word => 
+                prompt.toLowerCase().includes(word)
+            ).length;
+
+            const structureMatches = questionStructures.filter(pattern => 
+                pattern.test(prompt)
+            ).length;
+
+            const score = (questionWordMatches * 0.6 + structureMatches * 0.4) / Math.max(questionWords.length, 1);
+            
+            return {
+                score: Math.min(score, 1),
+                patterns: {
+                    questionWords: questionWordMatches,
+                    structures: structureMatches
+                }
+            };
+        }
+
+        detectTechnicalIndicators(prompt) {
+            const technicalTerms = ['algorithm', 'api', 'database', 'server', 'client', 'protocol', 'framework', 'library', 'architecture', 'system', 'platform', 'integration', 'deployment', 'configuration', 'optimization'];
+            const jargonDensity = this.calculateJargonDensity(prompt, technicalTerms);
+            const formalityScore = this.calculateFormalityScore(prompt);
+            
+            return {
+                jargonDensity,
+                formalityScore,
+                technicalTerms: technicalTerms.filter(term => 
+                    prompt.toLowerCase().includes(term)
+                ).length
+            };
+        }
+
+        detectUrgencySentiment(prompt) {
+            const urgencyWords = ['urgent', 'asap', 'quickly', 'now', 'immediately', 'fast', 'rush', 'emergency', 'critical', 'important'];
+            const sentimentWords = {
+                positive: ['great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'perfect', 'love', 'like', 'good', 'best'],
+                negative: ['bad', 'terrible', 'awful', 'hate', 'dislike', 'worst', 'horrible', 'annoying', 'frustrating', 'problem']
+            };
+
+            const urgencyScore = urgencyWords.filter(word => 
+                prompt.toLowerCase().includes(word)
+            ).length / Math.max(urgencyWords.length, 1);
+
+            const positiveWords = sentimentWords.positive.filter(word => 
+                prompt.toLowerCase().includes(word)
+            ).length;
+
+            const negativeWords = sentimentWords.negative.filter(word => 
+                prompt.toLowerCase().includes(word)
+            ).length;
+
+            const sentimentScore = (positiveWords - negativeWords) / Math.max(positiveWords + negativeWords, 1);
+
+            return {
+                urgencyScore: Math.min(urgencyScore, 1),
+                sentimentScore: Math.max(-1, Math.min(1, sentimentScore))
+            };
+        }
+
+        detectTaskTypeSignals(prompt) {
+            const taskSignals = {
+                creative: ['story', 'poem', 'narrative', 'fiction', 'creative', 'imagine', 'design', 'art', 'draw', 'paint'],
+                analysis: ['analyze', 'compare', 'evaluate', 'assess', 'examine', 'study', 'research', 'investigate', 'review'],
+                generation: ['create', 'generate', 'make', 'build', 'write', 'produce', 'develop', 'construct', 'form'],
+                explanation: ['explain', 'describe', 'tell', 'show', 'demonstrate', 'illustrate', 'clarify', 'define', 'teach']
+            };
+
+            const scores = {};
+            for (const [type, words] of Object.entries(taskSignals)) {
+                const matches = words.filter(word => 
+                    prompt.toLowerCase().includes(word)
+                ).length;
+                scores[type] = matches / Math.max(words.length, 1);
+            }
+
+            return scores;
+        }
+
+        suggestCategories(patterns) {
+            const suggestions = [];
+
+            // Code indicators suggest coding
+            if (patterns.codeIndicators.score > 0.3) {
+                suggestions.push({
+                    category: 'coding',
+                    confidence: patterns.codeIndicators.score * 0.9
+                });
+            }
+
+            // Image-related words suggest image generation
+            if (patterns.taskTypeSignals.generation > 0.2 && 
+                (prompt.toLowerCase().includes('image') || prompt.toLowerCase().includes('picture'))) {
+                suggestions.push({
+                    category: 'image_generation',
+                    confidence: patterns.taskTypeSignals.generation * 0.8
+                });
+            }
+
+            // Grammar/spelling indicators
+            if (prompt.toLowerCase().includes('grammar') || 
+                prompt.toLowerCase().includes('spelling') ||
+                prompt.toLowerCase().includes('correct')) {
+                suggestions.push({
+                    category: 'grammar_spelling',
+                    confidence: 0.8
+                });
+            }
+
+            // Research/analysis indicators
+            if (patterns.taskTypeSignals.analysis > 0.3) {
+                suggestions.push({
+                    category: 'research_analysis',
+                    confidence: patterns.taskTypeSignals.analysis * 0.8
+                });
+            }
+
+            // Content creation indicators
+            if (patterns.taskTypeSignals.generation > 0.2 && 
+                !prompt.toLowerCase().includes('image')) {
+                suggestions.push({
+                    category: 'content_creation',
+                    confidence: patterns.taskTypeSignals.generation * 0.6
+                });
+            }
+
+            // Default to general if no strong indicators
+            if (suggestions.length === 0) {
+                suggestions.push({
+                    category: 'general',
+                    confidence: 0.5
+                });
+            }
+
+            return suggestions.sort((a, b) => b.confidence - a.confidence);
+        }
+
+        calculateOverallConfidence(patterns, suggestions) {
+            if (suggestions.length === 0) return 0.3;
+
+            const topSuggestion = suggestions[0];
+            const confidenceFactors = [
+                topSuggestion.confidence,
+                patterns.codeIndicators.score,
+                patterns.questionPatterns.score,
+                patterns.technicalIndicators.jargonDensity,
+                1 - Math.abs(patterns.urgencySentiment.sentimentScore) // Neutral sentiment is more confident
+            ];
+
+            return confidenceFactors.reduce((sum, factor) => sum + factor, 0) / confidenceFactors.length;
+        }
+
+        calculateJargonDensity(prompt, technicalTerms) {
+            const words = prompt.toLowerCase().split(/\s+/);
+            const technicalWordCount = words.filter(word => 
+                technicalTerms.some(term => term.toLowerCase().includes(word) || word.includes(term.toLowerCase()))
+            ).length;
+            
+            return technicalWordCount / Math.max(words.length, 1);
+        }
+
+        calculateFormalityScore(prompt) {
+            const formalWords = ['please', 'could you', 'would you', 'thank you', 'appreciate', 'sir', 'madam'];
+            const casualWords = ['hey', 'hi', 'thanks', 'thx', 'pls', 'yeah', 'yep', 'nope'];
+            
+            const formalCount = formalWords.filter(word => 
+                prompt.toLowerCase().includes(word)
+            ).length;
+            
+            const casualCount = casualWords.filter(word => 
+                prompt.toLowerCase().includes(word)
+            ).length;
+            
+            const total = formalCount + casualCount;
+            return total === 0 ? 0.5 : formalCount / total;
+        }
+    }
+
+    // Adaptive Feedback Controller
+    class AdaptiveFeedbackController {
+        constructor() {
+            this.confidenceScorer = new ConfidenceScorer();
+            this.feedbackThresholds = {
+                high: 0.8,
+                medium: 0.5,
+                low: 0.0
+            };
+            this.feedbackRates = {
+                high: 0.05,    // 5% random sampling
+                medium: 0.30,  // 30% of the time
+                low: 1.0       // Always ask
+            };
+        }
+
+        async shouldShowFeedback(prompt, context) {
+            const confidence = await this.confidenceScorer.calculateConfidence(prompt, context);
+            const feedbackLevel = this.getFeedbackLevel(confidence);
+            const shouldShow = this.calculateShouldShow(feedbackLevel, context);
+            
+            return {
+                shouldShow,
+                confidence,
+                feedbackLevel,
+                reason: this.getFeedbackReason(confidence, context)
+            };
+        }
+
+        getFeedbackLevel(confidence) {
+            if (confidence >= this.feedbackThresholds.high) return 'high';
+            if (confidence >= this.feedbackThresholds.medium) return 'medium';
+            return 'low';
+        }
+
+        calculateShouldShow(feedbackLevel, context) {
+            const baseRate = this.feedbackRates[feedbackLevel];
+            
+            // Adjust based on context
+            let adjustedRate = baseRate;
+            
+            // Increase rate for recent undos
+            if (context.recentUndo) {
+                adjustedRate = Math.min(adjustedRate * 1.5, 1.0);
+            }
+            
+            // Increase rate for first-time patterns
+            if (context.isFirstTimePattern) {
+                adjustedRate = Math.min(adjustedRate * 2.0, 1.0);
+            }
+            
+            // Decrease rate for high-confidence platforms
+            if (context.platform && ['chatgpt', 'claude'].includes(context.platform.name)) {
+                adjustedRate *= 0.8;
+            }
+            
+            return Math.random() < adjustedRate;
+        }
+
+        getFeedbackReason(confidence, context) {
+            if (confidence < this.feedbackThresholds.medium) {
+                return 'Low confidence in categorization';
+            }
+            if (context.recentUndo) {
+                return 'Recent undo detected - learning opportunity';
+            }
+            if (context.isFirstTimePattern) {
+                return 'New pattern detected - need feedback';
+            }
+            return 'Random sampling for quality assurance';
+        }
+    }
+
+    // User Personalization System
+    class UserProfile {
+        constructor() {
+            this.userId = this.generateUserId();
+            this.profile = this.getDefaultProfile();
+            this.categoryStats = new Map();
+            this.learningHistory = [];
+        }
+
+        generateUserId() {
+            // Generate a unique user ID based on browser fingerprint
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillText('Threadly User ID', 2, 2);
+            
+            const fingerprint = canvas.toDataURL() + 
+                              navigator.userAgent + 
+                              screen.width + 
+                              screen.height + 
+                              new Date().getTimezoneOffset();
+            
+            let hash = 0;
+            for (let i = 0; i < fingerprint.length; i++) {
+                const char = fingerprint.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return `user_${Math.abs(hash).toString(36)}`;
+        }
+
+        getDefaultProfile() {
+            return {
+                formality: 0.5,        // 0 = casual, 1 = formal
+                verbosity: 0.5,        // 0 = concise, 1 = detailed
+                technicalLevel: 0.5,   // 0 = beginner, 1 = expert
+                preferences: {
+                    useEmoji: false,
+                    preferredGreeting: 'neutral',
+                    sentenceStyle: 'mixed',
+                    punctuationStyle: 'standard'
+                },
+                learningRate: 0.05,    // How fast to adjust preferences
+                lastUpdated: Date.now()
+            };
+        }
+
+        async loadProfile() {
+            try {
+                const data = await chrome.storage.local.get([`profile_${this.userId}`]);
+                if (data[`profile_${this.userId}`]) {
+                    this.profile = { ...this.getDefaultProfile(), ...data[`profile_${this.userId}`] };
+                }
+                
+                const categoryData = await chrome.storage.local.get([`categoryStats_${this.userId}`]);
+                if (categoryData[`categoryStats_${this.userId}`]) {
+                    this.categoryStats = new Map(categoryData[`categoryStats_${this.userId}`]);
+                }
+            } catch (error) {
+                console.error('Threadly: Error loading user profile:', error);
+            }
+        }
+
+        async saveProfile() {
+            try {
+                await chrome.storage.local.set({
+                    [`profile_${this.userId}`]: this.profile,
+                    [`categoryStats_${this.userId}`]: Array.from(this.categoryStats.entries())
+                });
+            } catch (error) {
+                console.error('Threadly: Error saving user profile:', error);
+            }
+        }
+
+        updateFromFeedback(feedback) {
+            const { category, feedback: userFeedback, context } = feedback;
+            
+            // Update category statistics
+            this.updateCategoryStats(category, context);
+            
+            // Learn from implicit feedback
+            if (feedback.type === 'implicit_feedback') {
+                this.learnFromImplicitFeedback(feedback.analysis);
+            }
+            
+            // Learn from explicit feedback
+            if (userFeedback) {
+                this.learnFromExplicitFeedback(userFeedback);
+            }
+            
+            // Save updated profile
+            this.saveProfile();
+        }
+
+        updateCategoryStats(category, context) {
+            const now = Date.now();
+            const stats = this.categoryStats.get(category) || {
+                count: 0,
+                lastUsed: now,
+                avgConfidence: 0.5,
+                totalConfidence: 0,
+                contexts: []
+            };
+            
+            stats.count++;
+            stats.lastUsed = now;
+            stats.contexts.push({
+                timestamp: now,
+                platform: context?.platform?.name,
+                timeOfDay: context?.timeBasedPatterns?.timeOfDay
+            });
+            
+            // Keep only last 50 contexts
+            if (stats.contexts.length > 50) {
+                stats.contexts = stats.contexts.slice(-50);
+            }
+            
+            this.categoryStats.set(category, stats);
+        }
+
+        learnFromImplicitFeedback(analysis) {
+            const { editPatterns, acceptanceRate } = analysis;
+            
+            // Learn formality preferences
+            if (editPatterns.formalityChanges > 0) {
+                const adjustment = acceptanceRate > 0.7 ? 0.02 : -0.02;
+                this.adjustPreference('formality', adjustment);
+            }
+            
+            // Learn verbosity preferences
+            if (editPatterns.lengthChanges > 0) {
+                const adjustment = acceptanceRate > 0.7 ? 0.02 : -0.02;
+                this.adjustPreference('verbosity', adjustment);
+            }
+            
+            // Learn technical level preferences
+            if (editPatterns.technicalAdjustments > 0) {
+                const adjustment = acceptanceRate > 0.7 ? 0.02 : -0.02;
+                this.adjustPreference('technicalLevel', adjustment);
+            }
+        }
+
+        learnFromExplicitFeedback(feedback) {
+            const text = feedback.toLowerCase();
+            
+            // Learn formality preferences
+            if (text.includes('formal') || text.includes('polite')) {
+                this.adjustPreference('formality', 0.05);
+            } else if (text.includes('casual') || text.includes('informal')) {
+                this.adjustPreference('formality', -0.05);
+            }
+            
+            // Learn verbosity preferences
+            if (text.includes('detailed') || text.includes('verbose') || text.includes('longer')) {
+                this.adjustPreference('verbosity', 0.05);
+            } else if (text.includes('concise') || text.includes('short') || text.includes('brief')) {
+                this.adjustPreference('verbosity', -0.05);
+            }
+            
+            // Learn technical level preferences
+            if (text.includes('technical') || text.includes('advanced') || text.includes('expert')) {
+                this.adjustPreference('technicalLevel', 0.05);
+            } else if (text.includes('simple') || text.includes('basic') || text.includes('beginner')) {
+                this.adjustPreference('technicalLevel', -0.05);
+            }
+        }
+
+        adjustPreference(preference, adjustment) {
+            const oldValue = this.profile[preference];
+            const newValue = Math.max(0, Math.min(1, oldValue + adjustment));
+            this.profile[preference] = newValue;
+            
+            // Record learning history
+            this.learningHistory.push({
+                preference,
+                oldValue,
+                newValue,
+                adjustment,
+                timestamp: Date.now(),
+                reason: 'user_feedback'
+            });
+            
+            // Keep only last 100 learning events
+            if (this.learningHistory.length > 100) {
+                this.learningHistory = this.learningHistory.slice(-100);
+            }
+        }
+
+        adaptRefinement(refinement, category) {
+            let adaptedRefinement = refinement;
+            
+            // Apply formality adjustments
+            if (this.profile.formality < 0.3) {
+                adaptedRefinement = this.makeMoreCasual(adaptedRefinement);
+            } else if (this.profile.formality > 0.7) {
+                adaptedRefinement = this.makeMoreFormal(adaptedRefinement);
+            }
+            
+            // Apply verbosity adjustments
+            if (this.profile.verbosity < 0.3) {
+                adaptedRefinement = this.makeMoreConcise(adaptedRefinement);
+            } else if (this.profile.verbosity > 0.7) {
+                adaptedRefinement = this.makeMoreDetailed(adaptedRefinement);
+            }
+            
+            // Apply technical level adjustments
+            if (this.profile.technicalLevel < 0.3) {
+                adaptedRefinement = this.makeMoreBeginnerFriendly(adaptedRefinement);
+            } else if (this.profile.technicalLevel > 0.7) {
+                adaptedRefinement = this.makeMoreTechnical(adaptedRefinement);
+            }
+            
+            return adaptedRefinement;
+        }
+
+        makeMoreCasual(text) {
+            return text
+                .replace(/Could you please/g, 'Can you')
+                .replace(/Would you kindly/g, 'Can you')
+                .replace(/I would appreciate it if/g, 'I need')
+                .replace(/Thank you for your assistance/g, 'Thanks')
+                .replace(/Please/g, '');
+        }
+
+        makeMoreFormal(text) {
+            return text
+                .replace(/Can you/g, 'Could you please')
+                .replace(/I need/g, 'I would appreciate it if you could')
+                .replace(/Thanks/g, 'Thank you for your assistance')
+                .replace(/^/, 'Please ');
+        }
+
+        makeMoreConcise(text) {
+            return text
+                .replace(/\b(that|which|who|whom)\b/g, '')
+                .replace(/\b(in order to|so as to)\b/g, 'to')
+                .replace(/\b(due to the fact that|because of the fact that)\b/g, 'because')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        makeMoreDetailed(text) {
+            return text
+                .replace(/^/, 'I would like you to ')
+                .replace(/\.$/, ' with detailed explanations and examples.');
+        }
+
+        makeMoreBeginnerFriendly(text) {
+            return text
+                .replace(/\balgorithm\b/g, 'step-by-step process')
+                .replace(/\boptimize\b/g, 'improve')
+                .replace(/\bimplement\b/g, 'create')
+                .replace(/\bconfigure\b/g, 'set up');
+        }
+
+        makeMoreTechnical(text) {
+            return text
+                .replace(/\bstep-by-step process\b/g, 'algorithm')
+                .replace(/\bimprove\b/g, 'optimize')
+                .replace(/\bcreate\b/g, 'implement')
+                .replace(/\bset up\b/g, 'configure');
+        }
+    }
+
+    // A/B Testing Framework
+    class ABTestingFramework {
+        constructor() {
+            this.experiments = new Map();
+            this.userAssignments = new Map();
+            this.metricsCollector = new MetricsCollector();
+        }
+
+        async createExperiment(experimentConfig) {
+            const experiment = {
+                id: experimentConfig.id,
+                name: experimentConfig.name,
+                description: experimentConfig.description,
+                variants: experimentConfig.variants,
+                metrics: experimentConfig.metrics,
+                status: 'draft',
+                startDate: null,
+                endDate: null,
+                minSamples: experimentConfig.minSamples || 100,
+                significanceLevel: experimentConfig.significanceLevel || 0.05,
+                results: {}
+            };
+
+            this.experiments.set(experiment.id, experiment);
+            await this.saveExperiment(experiment);
+            return experiment;
+        }
+
+        assignUserToVariant(experimentId, userId) {
+            // Check if user already assigned
+            if (this.userAssignments.has(`${experimentId}_${userId}`)) {
+                return this.userAssignments.get(`${experimentId}_${userId}`);
+            }
+
+            const experiment = this.experiments.get(experimentId);
+            if (!experiment || experiment.status !== 'running') {
+                return null;
+            }
+
+            // Weighted random assignment
+            const totalWeight = experiment.variants.reduce((sum, variant) => sum + variant.weight, 0);
+            let random = Math.random() * totalWeight;
+            
+            for (const variant of experiment.variants) {
+                random -= variant.weight;
+                if (random <= 0) {
+                    this.userAssignments.set(`${experimentId}_${userId}`, variant.id);
+                    return variant.id;
+                }
+            }
+
+            // Fallback to first variant
+            const firstVariant = experiment.variants[0];
+            this.userAssignments.set(`${experimentId}_${userId}`, firstVariant.id);
+            return firstVariant.id;
+        }
+
+        async recordMetric(experimentId, userId, metricName, value) {
+            const variantId = this.userAssignments.get(`${experimentId}_${userId}`);
+            if (!variantId) return;
+
+            const experiment = this.experiments.get(experimentId);
+            if (!experiment) return;
+
+            // Initialize results if needed
+            if (!experiment.results[variantId]) {
+                experiment.results[variantId] = {
+                    samples: 0,
+                    metrics: {}
+                };
+            }
+
+            // Record metric
+            if (!experiment.results[variantId].metrics[metricName]) {
+                experiment.results[variantId].metrics[metricName] = [];
+            }
+
+            experiment.results[variantId].metrics[metricName].push({
+                value,
+                timestamp: Date.now()
+            });
+
+            experiment.results[variantId].samples++;
+            await this.saveExperiment(experiment);
+        }
+
+        async saveExperiment(experiment) {
+            try {
+                await chrome.storage.local.set({
+                    [`experiment_${experiment.id}`]: experiment
+                });
+            } catch (error) {
+                console.error('Threadly: Error saving experiment:', error);
+            }
+        }
+    }
+
+    // Metrics Collector
+    class MetricsCollector {
+        constructor() {
+            this.metrics = new Map();
+        }
+
+        recordMetric(experimentId, variantId, metricName, value, metadata = {}) {
+            const key = `${experimentId}_${variantId}_${metricName}`;
+            if (!this.metrics.has(key)) {
+                this.metrics.set(key, []);
+            }
+            
+            this.metrics.get(key).push({
+                value,
+                timestamp: Date.now(),
+                metadata
+            });
+        }
+
+        getMetrics(experimentId, variantId, metricName) {
+            const key = `${experimentId}_${variantId}_${metricName}`;
+            return this.metrics.get(key) || [];
+        }
+    }
+
+    // --- Category Feedback Popup --- //
+    
+    function showCategoryFeedbackPopup(prompt, textElement) {
+        console.log('Threadly: Showing category feedback popup for prompt:', prompt);
+        
+        // Remove any existing feedback popup
+        const existingPopup = document.getElementById('threadly-category-feedback-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+
+        // Create popup container
+        const popup = document.createElement('div');
+        popup.id = 'threadly-category-feedback-popup';
+        popup.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        
+        // Trigger animation
+        setTimeout(() => {
+            popup.style.opacity = '1';
+        }, 10);
+
+        // Create popup content
+        const popupContent = document.createElement('div');
+        popupContent.style.cssText = `
+            background: rgba(40, 40, 40, 0.5);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            transform: scale(0.9);
+            transition: all 0.3s ease;
+        `;
+        
+        // Trigger scale animation
+        setTimeout(() => {
+            popupContent.style.transform = 'scale(1)';
+        }, 50);
+
+        // Create title
+        const title = document.createElement('h3');
+        title.textContent = 'Help Threadly Learn';
+        title.style.cssText = `
+            margin: 0 0 16px 0;
+            font-size: 24px;
+            font-weight: 700;
+                    color: #ffffff;
+            text-align: center;
+        `;
+
+        // Create description
+        const description = document.createElement('p');
+        description.textContent = 'Did Threadly correctly recognize what type of task this was?';
+        description.style.cssText = `
+            margin: 0 0 24px 0;
+            color: #e5e5e5;
+            font-size: 16px;
+            line-height: 1.6;
+            text-align: center;
+        `;
+
+        // Create prompt preview
+        const promptPreview = document.createElement('div');
+        promptPreview.style.cssText = `
+            background: rgba(255, 255, 255, 0.1);
+            padding: 16px;
+            border-radius: 8px;
+                    font-size: 14px;
+            color: #ffffff;
+            margin: 0 0 24px 0;
+            max-height: 100px;
+            overflow-y: auto;
+            border-left: 4px solid #6366f1;
+        `;
+        promptPreview.textContent = `"${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}"`;
+
+        // Create category verification section
+        const categorySection = document.createElement('div');
+        categorySection.style.cssText = `
+            margin-bottom: 24px;
+        `;
+
+        const categoryLabel = document.createElement('label');
+        categoryLabel.textContent = 'What type of task is this?';
+        categoryLabel.style.cssText = `
+            display: block;
+            margin-bottom: 12px;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 16px;
+        `;
+
+        const categorySelect = document.createElement('select');
+        categorySelect.id = 'category-select';
+        categorySelect.style.cssText = `
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+                        color: #ffffff;
+            font-size: 16px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        `;
+
+        // Add category options
+        const categories = [
+            { value: 'grammar_spelling', label: 'Grammar & Spelling' },
+            { value: 'image_generation', label: 'Image Generation' },
+            { value: 'coding', label: 'Coding' },
+            { value: 'research_analysis', label: 'Research & Analysis' },
+            { value: 'content_creation', label: 'Content Creation' },
+            { value: 'general', label: 'General' }
+        ];
+
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.value;
+            option.textContent = category.label;
+            option.style.cssText = `
+                background: #2a2a2a;
+                color: #ffffff;
+            `;
+            categorySelect.appendChild(option);
+        });
+
+        categorySection.appendChild(categoryLabel);
+        categorySection.appendChild(categorySelect);
+
+        // Create feedback text area
+        const feedbackSection = document.createElement('div');
+        feedbackSection.style.cssText = `
+            margin-bottom: 24px;
+        `;
+
+        const feedbackLabel = document.createElement('label');
+        feedbackLabel.textContent = 'Additional feedback (optional)';
+        feedbackLabel.style.cssText = `
+            display: block;
+            margin-bottom: 12px;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 16px;
+        `;
+
+        const feedbackTextarea = document.createElement('textarea');
+        feedbackTextarea.id = 'feedback-textarea';
+        feedbackTextarea.placeholder = 'Tell us how we can improve the refinement...';
+        feedbackTextarea.style.cssText = `
+            width: 100%;
+            height: 80px;
+            padding: 12px 16px;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+                        color: #ffffff;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        `;
+
+        feedbackSection.appendChild(feedbackLabel);
+        feedbackSection.appendChild(feedbackTextarea);
+
+        // Create buttons container
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        `;
+
+        // Create skip button
+        const skipButton = document.createElement('button');
+        skipButton.textContent = 'Skip';
+        skipButton.style.cssText = `
+            padding: 12px 24px;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #e5e5e5;
+            font-size: 14px;
+            font-weight: 600;
+                        cursor: pointer;
+            transition: all 0.2s ease;
+        `;
+
+        skipButton.addEventListener('mouseenter', () => {
+            skipButton.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+        });
+
+        skipButton.addEventListener('mouseleave', () => {
+            skipButton.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        });
+
+        skipButton.addEventListener('click', () => {
+            popup.remove();
+        });
+
+        // Create submit button
+        const submitButton = document.createElement('button');
+        submitButton.textContent = 'Submit Feedback';
+        submitButton.style.cssText = `
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: #6366f1;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        `;
+
+        submitButton.addEventListener('mouseenter', () => {
+            submitButton.style.backgroundColor = '#4f46e5';
+            submitButton.style.transform = 'translateY(-1px)';
+        });
+
+        submitButton.addEventListener('mouseleave', () => {
+            submitButton.style.backgroundColor = '#6366f1';
+            submitButton.style.transform = 'translateY(0)';
+        });
+
+        submitButton.addEventListener('click', async () => {
+            const selectedCategory = categorySelect.value;
+            const feedback = feedbackTextarea.value.trim();
+            
+            try {
+                await submitCategoryFeedback(prompt, selectedCategory, feedback);
+                popup.remove();
+                showToast('Thanks for the feedback! 🎉');
+            } catch (error) {
+                console.error('Threadly: Error submitting category feedback:', error);
+                showToast('Failed to submit feedback. Please try again.');
+            }
+        });
+
+        buttonContainer.appendChild(skipButton);
+        buttonContainer.appendChild(submitButton);
+
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.textContent = '✕';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            padding: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        `;
+        
+        closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+            closeButton.style.color = 'rgba(255, 255, 255, 1)';
+            closeButton.style.transform = 'scale(1.1)';
+        });
+        
+        closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            closeButton.style.color = 'rgba(255, 255, 255, 0.8)';
+            closeButton.style.transform = 'scale(1)';
+        });
+
+        closeButton.addEventListener('click', () => {
+            popup.remove();
+        });
+
+        // Assemble popup
+        popupContent.appendChild(closeButton);
+        popupContent.appendChild(title);
+        popupContent.appendChild(description);
+        popupContent.appendChild(promptPreview);
+        popupContent.appendChild(categorySection);
+        popupContent.appendChild(feedbackSection);
+        popupContent.appendChild(buttonContainer);
+        popup.appendChild(popupContent);
+
+        // Add to page
+        document.body.appendChild(popup);
+
+        // Close on background click
+        popup.addEventListener('click', (e) => {
+            if (e.target === popup) {
+                popup.remove();
+            }
+        });
+    }
+
+    async function submitCategoryFeedback(prompt, category, feedback) {
+        try {
+            const feedbackData = {
+                prompt: prompt,
+                category: category,
+                feedback: feedback,
+                timestamp: Date.now(),
+                type: 'category_feedback'
+            };
+
+            console.log('Threadly: Submitting category feedback:', feedbackData);
+
+            // Send to background script
+            const response = await chrome.runtime.sendMessage({
+                action: 'storeFeedback',
+                feedback: feedbackData
+            });
+
+            console.log('Threadly: Background script response:', response);
+
+            if (response && response.success) {
+                console.log('Threadly: Category feedback submitted successfully', feedbackData);
+                return true;
+            } else {
+                console.error('Threadly: Failed to submit category feedback - no success response');
+                throw new Error('No success response from background script');
+            }
+        } catch (error) {
+            console.error('Threadly: Error submitting category feedback:', error);
+            throw error;
+        }
     }
 
     function getCategoryDisplayName(categoryKey) {
@@ -7211,6 +9052,354 @@
             showToast('Error submitting feedback. Please try again.');
             throw error; // Re-throw to allow calling code to handle it
         }
+    }
+
+    // --- Support Popup Notification System --- //
+    
+    // Listen for popup notification messages from background script
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === 'showSupportPopup') {
+            showSupportPopup();
+            sendResponse({ success: true });
+        }
+    });
+
+    /**
+     * Initialize support popup system - shows every 8 hours
+     */
+    function initializeSupportPopup() {
+        const now = Date.now();
+        const lastPopupTime = localStorage.getItem('threadly_support_popup_last_shown');
+        const eightHours = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+        
+        // Check if 8 hours have passed since last popup
+        if (!lastPopupTime || (now - parseInt(lastPopupTime)) >= eightHours) {
+            // Show popup after a delay to let the page load
+            setTimeout(() => {
+                showSupportPopup();
+                // Update last shown time
+                localStorage.setItem('threadly_support_popup_last_shown', now.toString());
+            }, 5000); // 5 seconds delay
+        }
+    }
+
+    /**
+     * Show support popup notification
+     */
+    function showSupportPopup() {
+        // Check if popup already exists
+        if (document.getElementById('threadly-support-popup')) {
+            return;
+        }
+
+        // Create popup container with Threadly sidebar background
+        const popup = document.createElement('div');
+        popup.id = 'threadly-support-popup';
+        popup.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 280px;
+            background: transparent;
+            color: #ffffff;
+            padding: 0;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0px 6px 24px rgba(0, 0, 0, 0.1);
+            z-index: 10000;
+            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            animation: popInFromTop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            backdrop-filter: blur(0px);
+            -webkit-backdrop-filter: blur(0px);
+            isolation: isolate;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            overflow: visible;
+        `;
+
+        // Add CSS animation and Threadly sidebar glass effects
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes popInFromTop {
+                0% {
+                    transform: translateX(-50%) translateY(-100%);
+                    opacity: 0;
+                    scale: 0.9;
+                }
+                50% {
+                    transform: translateX(-50%) translateY(-5px);
+                    opacity: 0.9;
+                    scale: 1.02;
+                }
+                100% {
+                    transform: translateX(-50%) translateY(0);
+                    opacity: 1;
+                    scale: 1;
+                }
+            }
+            @keyframes popOutToTop {
+                0% {
+                    transform: translateX(-50%) translateY(0);
+                    opacity: 1;
+                    scale: 1;
+                }
+                100% {
+                    transform: translateX(-50%) translateY(-100%);
+                    opacity: 0;
+                    scale: 0.9;
+                }
+            }
+            
+            /* Threadly sidebar glass effect layers */
+            #threadly-support-popup::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                z-index: -2;
+                border-radius: 18px;
+                background: rgba(42, 42, 42, 0.8);
+                box-shadow: 0px 6px 24px rgba(0, 0, 0, 0.1);
+            }
+            
+            #threadly-support-popup::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                z-index: -1;
+                border-radius: 18px;
+                backdrop-filter: blur(0px);
+                -webkit-backdrop-filter: blur(0px);
+                pointer-events: none;
+            }
+            
+            #threadly-support-popup .threadly-tint-layer {
+                content: '';
+                position: absolute;
+                inset: 0;
+                z-index: 0;
+                border-radius: 18px;
+                background-color: transparent;
+                pointer-events: none;
+            }
+            
+            /* Yellow hover effects */
+            .threadly-popup-button:hover {
+                background: rgba(255, 193, 7, 0.15) !important;
+                border-color: rgba(255, 193, 7, 0.3) !important;
+                color: #ffc107 !important;
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(255, 193, 7, 0.2);
+            }
+            
+            /* Ensure title is centered */
+            .threadly-brand {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+            }
+            
+            /* Close button container */
+            #threadly-popup-close {
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+            }
+            
+            /* Close button hover effect */
+            #threadly-popup-close:hover {
+                background: transparent !important;
+                color: #ff0000 !important;
+            }
+
+            /* Confirmation state styles */
+            #threadly-support-popup.confirmation-mode {
+                animation: shake 0.5s ease-in-out;
+            }
+
+            @keyframes shake {
+                0%, 100% { transform: translateX(-50%) translateY(0); }
+                25% { transform: translateX(-50%) translateY(-5px) translateX(-2px); }
+                75% { transform: translateX(-50%) translateY(-5px) translateX(2px); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Create popup content with Threadly sidebar styling
+        popup.innerHTML = `
+            <div class="threadly-tint-layer"></div>
+            <div style="position: relative; width: 100%; padding: 18px; z-index: 1;">
+                <button id="threadly-popup-close" style="
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    background: transparent;
+                    border: none;
+                    color: #ffffff;
+                    font-size: 20px;
+                    cursor: pointer;
+                    padding: 0;
+                    width: 25px;
+                    height: 25px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    transition: all 0.2s;
+                    z-index: 10;
+                ">×</button>
+                
+                <div class="threadly-brand" style="margin: 0 0 10px 0; font-size: 17px; text-align: center; width: 100%;">
+                    Support Threadly
+                </div>
+                
+                <p style="margin: 0 0 14px 0; color: rgba(255, 255, 255, 0.8); font-size: 11px; line-height: 1.3; text-align: center;">
+                    Help support the creator's work!
+                </p>
+                
+                <div style="display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                    <a href="https://ko-fi.com/evinjohnn" target="_blank" class="threadly-popup-button" style="
+                        background: rgba(255, 255, 255, 0.08);
+                        color: #ffffff;
+                        text-decoration: none;
+                        padding: 7px 14px;
+                        border-radius: 6px;
+                        font-weight: 500;
+                        transition: all 0.2s;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        font-size: 11px;
+                        text-align: center;
+                    ">Buy me a coffee</a>
+                    <a href="https://github.com/evin/Threadly" target="_blank" class="threadly-popup-button" style="
+                        background: rgba(255, 255, 255, 0.08);
+                        color: #ffffff;
+                        text-decoration: none;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        padding: 7px 14px;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        font-size: 11px;
+                        transition: all 0.2s;
+                        text-align: center;
+                    ">Star the repo</a>
+                </div>
+            </div>
+        `;
+
+        // Add to page
+        document.body.appendChild(popup);
+
+        // Add event listeners
+        const closeBtn = popup.querySelector('#threadly-popup-close');
+        const starRepoLink = popup.querySelector('a[href="https://github.com/evin/Threadly"]');
+        let isConfirmationMode = false;
+
+        const removePopup = () => {
+            popup.style.animation = 'popOutToTop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 400);
+        };
+
+        const showConfirmation = () => {
+            isConfirmationMode = true;
+            popup.classList.add('confirmation-mode');
+            
+            // Change popup content to confirmation message
+            const contentDiv = popup.querySelector('div[style*="position: relative"]');
+            contentDiv.innerHTML = `
+                <button id="threadly-popup-close" style="
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    background: transparent;
+                    border: none;
+                    color: #ffffff;
+                    font-size: 20px;
+                    cursor: pointer;
+                    padding: 0;
+                    width: 25px;
+                    height: 25px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    transition: all 0.2s;
+                    z-index: 10;
+                ">×</button>
+                
+                <div class="threadly-brand" style="margin: 0 0 10px 0; font-size: 17px; text-align: center; width: 100%;">
+                    Are you sure? 😢
+                </div>
+                
+                <p style="margin: 0 0 16px 0; color: rgba(255, 255, 255, 0.8); font-size: 11px; line-height: 1.3; text-align: center;">
+                    Why don't you support the creator who spent countless hours building this amazing tool for you? A simple star on GitHub or a small donation would mean the world! 🌟
+                </p>
+                
+                <div style="display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                    <button id="confirmStarBtn" class="threadly-popup-button" style="
+                        background: rgba(255, 255, 255, 0.08);
+                        color: #ffffff;
+                        text-decoration: none;
+                        padding: 7px 14px;
+                        border-radius: 6px;
+                        font-weight: 500;
+                        transition: all 0.2s;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        font-size: 11px;
+                        text-align: center;
+                        cursor: pointer;
+                    ">⭐ Star Repository</button>
+                    <button id="confirmDonateBtn" class="threadly-popup-button" style="
+                        background: rgba(255, 255, 255, 0.08);
+                        color: #ffffff;
+                        text-decoration: none;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        padding: 7px 14px;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        font-size: 11px;
+                        transition: all 0.2s;
+                        text-align: center;
+                    ">💝 Donate</button>
+                </div>
+            `;
+            
+            // Re-add event listeners for new buttons
+            const newCloseBtn = popup.querySelector('#threadly-popup-close');
+            const confirmStarBtn = popup.querySelector('#confirmStarBtn');
+            const confirmDonateBtn = popup.querySelector('#confirmDonateBtn');
+            
+            // Remove any existing event listeners and add new ones
+            newCloseBtn.replaceWith(newCloseBtn.cloneNode(true));
+            const freshCloseBtn = popup.querySelector('#threadly-popup-close');
+            
+            freshCloseBtn.addEventListener('click', removePopup);
+            confirmStarBtn.addEventListener('click', () => {
+                window.open('https://github.com/evin/Threadly', '_blank');
+                removePopup();
+            });
+            confirmDonateBtn.addEventListener('click', () => {
+                window.open('https://ko-fi.com/evinjohnn', '_blank');
+                removePopup();
+            });
+        };
+
+        closeBtn.addEventListener('click', showConfirmation);
+        
+        // Auto-dismiss after 10 seconds
+        setTimeout(() => {
+            if (document.getElementById('threadly-support-popup')) {
+                removePopup();
+            }
+        }, 10000);
     }
 
 

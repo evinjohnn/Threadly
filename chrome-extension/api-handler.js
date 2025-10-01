@@ -331,7 +331,10 @@ class PromptRefiner {
             // Create modal content
             const modal = document.createElement('div');
             modal.style.cssText = `
-                background: white;
+                background: rgba(40, 40, 40, 0.5);
+                backdrop-filter: blur(15px);
+                -webkit-backdrop-filter: blur(15px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
                 border-radius: 16px;
                 padding: 32px;
                 max-width: 500px;
@@ -355,21 +358,21 @@ class PromptRefiner {
                     .threadly-feedback-title {
                         font-size: 24px;
                         font-weight: 700;
-                        color: #1a1a1a;
+                        color: #ffffff;
                         margin-bottom: 12px;
                     }
                     .threadly-feedback-subtitle {
                         font-size: 14px;
-                        color: #666;
+                        color: #e5e5e5;
                         margin-bottom: 24px;
                         line-height: 1.5;
                     }
                     .threadly-feedback-prompt {
-                        background: #f5f5f5;
+                        background: rgba(255, 255, 255, 0.1);
                         padding: 16px;
                         border-radius: 8px;
                         font-size: 13px;
-                        color: #333;
+                        color: #ffffff;
                         margin-bottom: 20px;
                         max-height: 100px;
                         overflow-y: auto;
@@ -377,10 +380,10 @@ class PromptRefiner {
                     }
                     .threadly-feedback-predicted {
                         font-size: 13px;
-                        color: #666;
+                        color: #e5e5e5;
                         margin-bottom: 16px;
                         padding: 12px;
-                        background: #fff9e6;
+                        background: rgba(255, 193, 7, 0.1);
                         border-radius: 6px;
                         border-left: 3px solid #fbbf24;
                     }
@@ -392,30 +395,25 @@ class PromptRefiner {
                     }
                     .threadly-category-btn {
                         padding: 16px;
-                        border: 2px solid #e5e5e5;
+                        border: 2px solid rgba(255, 255, 255, 0.2);
                         border-radius: 10px;
-                        background: white;
+                        background: rgba(255, 255, 255, 0.1);
                         cursor: pointer;
                         transition: all 0.2s;
                         font-size: 14px;
                         font-weight: 500;
-                        color: #333;
+                        color: #ffffff;
                         text-align: left;
                     }
                     .threadly-category-btn:hover {
                         border-color: #6366f1;
-                        background: #f0f0ff;
+                        background: rgba(99, 102, 241, 0.2);
                         transform: translateY(-2px);
                     }
                     .threadly-category-btn.selected {
                         border-color: #6366f1;
                         background: #6366f1;
                         color: white;
-                    }
-                    .threadly-category-icon {
-                        font-size: 20px;
-                        margin-bottom: 6px;
-                        display: block;
                     }
                     .threadly-actions {
                         display: flex;
@@ -433,11 +431,11 @@ class PromptRefiner {
                         transition: all 0.2s;
                     }
                     .threadly-btn-skip {
-                        background: #f5f5f5;
-                        color: #666;
+                        background: rgba(255, 255, 255, 0.1);
+                        color: #e5e5e5;
                     }
                     .threadly-btn-skip:hover {
-                        background: #e5e5e5;
+                        background: rgba(255, 255, 255, 0.2);
                     }
                     .threadly-btn-submit {
                         background: #6366f1;
@@ -464,27 +462,21 @@ class PromptRefiner {
                 </div>
                 <div class="threadly-category-grid">
                     <button class="threadly-category-btn" data-category="grammar_spelling">
-                        <span class="threadly-category-icon">✍️</span>
                         Grammar & Spelling
                     </button>
                     <button class="threadly-category-btn" data-category="image_generation">
-                        <span class="threadly-category-icon">🎨</span>
                         Image Generation
                     </button>
                     <button class="threadly-category-btn" data-category="coding">
-                        <span class="threadly-category-icon">💻</span>
                         Coding
                     </button>
                     <button class="threadly-category-btn" data-category="research_analysis">
-                        <span class="threadly-category-icon">🔍</span>
                         Research
                     </button>
                     <button class="threadly-category-btn" data-category="content_creation">
-                        <span class="threadly-category-icon">📝</span>
                         Content Writing
                     </button>
                     <button class="threadly-category-btn" data-category="general">
-                        <span class="threadly-category-icon">💬</span>
                         General Chat
                     </button>
                 </div>
@@ -1493,127 +1485,8 @@ REFINEMENT APPROACH:
         }
     }
 
-    detectTaskCategory(userPrompt) {
-        const prompt = userPrompt.toLowerCase();
-        
-        // Coding keywords
-        if (prompt.includes('code') || prompt.includes('programming') || prompt.includes('function') || 
-            prompt.includes('algorithm') || prompt.includes('debug') || prompt.includes('api') ||
-            prompt.includes('javascript') || prompt.includes('python') || prompt.includes('java') ||
-            prompt.includes('html') || prompt.includes('css') || prompt.includes('sql')) {
-            return 'coding';
-        }
-        
-        // Research keywords
-        if (prompt.includes('research') || prompt.includes('study') || prompt.includes('analysis') ||
-            prompt.includes('data') || prompt.includes('statistics') || prompt.includes('survey') ||
-            prompt.includes('findings') || prompt.includes('report') || prompt.includes('investigate')) {
-            return 'research';
-        }
-        
-        // Personal support keywords
-        if (prompt.includes('help me') || prompt.includes('advice') || prompt.includes('struggling') ||
-            prompt.includes('problem') || prompt.includes('difficult') || prompt.includes('support') ||
-            prompt.includes('guidance') || prompt.includes('counseling') || prompt.includes('therapy')) {
-            return 'personal_support';
-        }
-        
-        // Content creation keywords
-        if (prompt.includes('write') || prompt.includes('create') || prompt.includes('content') ||
-            prompt.includes('blog') || prompt.includes('article') || prompt.includes('copy') ||
-            prompt.includes('marketing') || prompt.includes('social media') || prompt.includes('email')) {
-            return 'content_creation';
-        }
-        
-        // Learning keywords
-        if (prompt.includes('learn') || prompt.includes('teach') || prompt.includes('explain') ||
-            prompt.includes('understand') || prompt.includes('tutorial') || prompt.includes('course') ||
-            prompt.includes('education') || prompt.includes('study guide') || prompt.includes('how to')) {
-            return 'learning';
-        }
-        
-        // Technical assistance keywords
-        if (prompt.includes('troubleshoot') || prompt.includes('fix') || prompt.includes('error') ||
-            prompt.includes('install') || prompt.includes('setup') || prompt.includes('configure') ||
-            prompt.includes('technical') || prompt.includes('computer') || prompt.includes('software')) {
-            return 'technical_assistance';
-        }
-        
-        // Creativity keywords
-        if (prompt.includes('creative') || prompt.includes('idea') || prompt.includes('brainstorm') ||
-            prompt.includes('design') || prompt.includes('story') || prompt.includes('art') ||
-            prompt.includes('imagine') || prompt.includes('invent') || prompt.includes('innovative')) {
-            return 'creativity';
-        }
-        
-        return 'general';
-    }
 
-    detectPlatform(url) {
-        if (url.includes('chat.openai.com') || url.includes('chatgpt.com')) {
-            return 'chatgpt';
-        } else if (url.includes('claude.ai')) {
-            return 'claude';
-        } else if (url.includes('aistudio.google.com')) {
-            return 'ai-studio';
-        } else if (url.includes('gemini.google.com')) {
-            return 'gemini';
-        } else if (url.includes('perplexity.ai')) {
-            return 'perplexity';
-        }
-        return 'chatgpt'; // default fallback
-    }
 
-    // Test function for triage system (for development/testing)
-    async testTriageSystem() {
-        const testPrompts = [
-            "hey chatgpt i wanna text my girlfriend a birthday message",
-            "create a photorealistic image of a sunset over mountains",
-            "write code for a Python function that calculates fibonacci numbers",
-            "can you help me write a professional email to my boss",
-            "generate an anime-style character with blue hair and green eyes",
-            "research the latest trends in artificial intelligence",
-            "fix the grammar in this sentence: 'i am go to store yesterday'",
-            "make a logo for my coffee shop called 'The Daily Grind'",
-            "Act as a senior software engineer. Write a comprehensive Python function that calculates Fibonacci numbers efficiently, including error handling, documentation, and performance analysis.",
-            "thing stuff whatever",
-            "edit this photo to add a sunset background",
-            "use this image to create a professional headshot",
-            "transform the provided image into anime style",
-            "create a logo for my startup",
-            "photorealistic portrait of a CEO, professional headshot, studio lighting",
-            "picture of a elephant in red suit at met gala",
-            "make me a c++ calculator app with pretty apple like ui, the 0 should be in red color, which can be previewed in chatgpt canvas"
-        ];
-
-        console.log('Threadly: Testing Enhanced Two-Stage Triage System...');
-        
-        for (const prompt of testPrompts) {
-            try {
-                const analysis = await this.analyzeContext(prompt);
-                console.log(`\n📝 Prompt: "${prompt}"`);
-                console.log(`🎯 Primary Category: ${analysis.primaryCategory}`);
-                console.log(`📊 Confidence: ${(analysis.confidence * 100).toFixed(1)}%`);
-                console.log(`⭐ Prompt Quality: ${analysis.promptQuality}/100`);
-                console.log(`🔧 Refinement Need: ${analysis.refinementNeed.toUpperCase()}`);
-                console.log(`📸 Has Shared Images: ${analysis.hasSharedImages ? 'YES' : 'NO'}`);
-                console.log(`💭 Reasoning: ${analysis.reasoning.join(', ')}`);
-                console.log(`⚖️ All Weights: ${Object.entries(analysis.categories).map(([key, data]) => `${key}: ${data.weight}`).join(', ')}`);
-                console.log(`🔢 Total Weight: ${analysis.totalWeight}`);
-                
-                if (analysis.similarPrompts && analysis.similarPrompts.length > 0) {
-                    console.log(`🔍 Similar Prompts Found: ${analysis.similarPrompts.length}`);
-                    analysis.similarPrompts.forEach((similar, index) => {
-                        console.log(`   ${index + 1}. [${similar.category}] Similarity: ${(similar.similarity * 100).toFixed(1)}%`);
-                    });
-                } else {
-                    console.log(`🔍 No similar prompts found`);
-                }
-            } catch (error) {
-                console.error(`❌ Error testing prompt "${prompt}":`, error);
-            }
-        }
-    }
 }
 
 // Export for use in content script

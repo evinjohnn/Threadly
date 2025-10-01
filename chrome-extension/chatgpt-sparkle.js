@@ -602,37 +602,12 @@
 
     // Handle sparkle click functionality with prompt refine feature (exact copy from Claude)
     async function handleSparkleClick() {
-        console.log('Threadly: ===== SPARKLE CLICK HANDLER CALLED =====');
         console.log('Threadly: Sparkle clicked - prompt refine activated!');
-        console.log('Threadly: Current URL:', window.location.href);
-        console.log('Threadly: Document ready state:', document.readyState);
         
         // Get current input text from ChatGPT textarea using specific selector
         const textArea = document.querySelector('#prompt-textarea');
         
-        // Debug: log textarea details
-        if (textArea) {
-            console.log('Threadly: Found textarea:', {
-                value: textArea.value,
-                textContent: textArea.textContent,
-                innerText: textArea.innerText,
-                placeholder: textArea.placeholder,
-                id: textArea.id
-            });
-        } else {
-            console.log('Threadly: No textarea found with #prompt-textarea');
-            // Fallback to any textarea
-            const fallbackTextarea = document.querySelector('textarea');
-            if (fallbackTextarea) {
-                console.log('Threadly: Found fallback textarea:', {
-                    value: fallbackTextarea.value,
-                    textContent: fallbackTextarea.textContent,
-                    innerText: fallbackTextarea.innerText,
-                    placeholder: fallbackTextarea.placeholder,
-                    id: fallbackTextarea.id
-                });
-            }
-        }
+        // Textarea detection and fallback logic
         // Use the main textarea or fallback
         const finalTextArea = textArea || document.querySelector('textarea');
         
@@ -705,30 +680,6 @@
                     
                     console.log('Threadly: Text replacement completed');
                     
-                    // --- ENHANCED FEEDBACK LOOP: Undo Detection ---
-                    const undoListener = (event) => {
-                        if ((event.metaKey || event.ctrlKey) && event.key === 'z') {
-                            // Use a small timeout to check the text *after* the browser's undo action completes
-                            setTimeout(async () => {
-                                const currentText = finalTextArea.value || finalTextArea.textContent || finalTextArea.innerText;
-                                
-                                // Check if user has undone the refinement
-                                const feedbackResult = await promptRefiner.detectUndoAndCollectFeedback(currentText);
-                                
-                                if (feedbackResult) {
-                                    console.log("Threadly: Feedback collected:", feedbackResult);
-                                }
-                                
-                                // Clean up the listener
-                                finalTextArea.removeEventListener('keydown', undoListener);
-                            }, 100);
-                        }
-                    };
-
-                    finalTextArea.addEventListener('keydown', undoListener);
-
-                    // Remove the listener after a short time to prevent it from lingering
-                    setTimeout(() => finalTextArea.removeEventListener('keydown', undoListener), 10000);
                     
                     console.log('Threadly: Prompt refined successfully');
                     

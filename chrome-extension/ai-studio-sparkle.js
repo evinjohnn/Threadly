@@ -147,14 +147,6 @@
             event.stopPropagation();
             console.log('Threadly: Sparkle clicked!');
             
-            // Test: Manually trigger hover event for debugging
-            console.log('Threadly: Manually triggering hover test');
-            const testEvent = new MouseEvent('mouseenter', {
-                bubbles: true,
-                cancelable: true,
-                view: window
-            });
-            svg.dispatchEvent(testEvent);
             
             // If popup is visible, remove it and proceed with autonomous mode
             if (popup) {
