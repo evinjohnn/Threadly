@@ -6,6 +6,7 @@
 document.addEventListener('DOMContentLoaded', async function() {
     const apiKeyInput = document.getElementById('apiKey');
     const saveBtn = document.getElementById('saveBtn');
+    const removeBtn = document.getElementById('removeBtn');
     const statusDiv = document.getElementById('status');
     const form = document.getElementById('apiKeyForm');
     const ratingBtn = document.getElementById('ratingBtn');
@@ -71,6 +72,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Handle input changes
     apiKeyInput.addEventListener('input', function() {
         clearStatus();
+    });
+
+    // Handle remove button click
+    removeBtn.addEventListener('click', async function() {
+        try {
+            await chrome.storage.local.remove(['geminiApiKey']);
+            apiKeyInput.value = '';
+            showStatus('API key removed successfully', 'success');
+        } catch (error) {
+            console.error('Failed to remove API key:', error);
+            showStatus('Failed to remove API key. Please try again.', 'error');
+        }
     });
 
     // Handle Enter key

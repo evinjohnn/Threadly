@@ -1,6 +1,232 @@
 (function() {
     'use strict';
 
+    // --- Tooltip Functions --- //
+    function showApiKeyTooltip(element) {
+        // Remove any existing tooltip
+        const existingTooltip = document.querySelector('[data-threadly-tooltip="api-key"]');
+        if (existingTooltip) {
+            existingTooltip.remove();
+        }
+
+        // Inject tooltip animation CSS if not already present
+        if (!document.querySelector('#threadly-tooltip-animations')) {
+            const style = document.createElement('style');
+            style.id = 'threadly-tooltip-animations';
+            style.textContent = `
+                /* Tooltip pill animation - same as sparkle menu */
+                .threadly-tooltip {
+                    position: fixed;
+                    z-index: 10000;
+                    overflow: hidden;
+                    pointer-events: none;
+                }
+
+                /* Growing animation */
+                .threadly-tooltip.growing {
+                    animation: tooltip-emerge 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                }
+
+                /* Shrinking animation */
+                .threadly-tooltip.shrinking {
+                    animation: tooltip-contract 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                    animation-fill-mode: forwards;
+                }
+
+                @keyframes tooltip-emerge {
+                    0% {
+                        width: 0;
+                        height: 0;
+                        opacity: 0;
+                        border-radius: 50%;
+                    }
+                    
+                    15% {
+                        width: 20px;
+                        height: 20px;
+                        opacity: 0.8;
+                        border-radius: 50%;
+                    }
+                    
+                    30% {
+                        width: 28px;
+                        height: 28px;
+                        opacity: 1;
+                        border-radius: 50%;
+                    }
+                    
+                    50% {
+                        width: 120px;
+                        height: 28px;
+                        opacity: 1;
+                        border-radius: 16px;
+                    }
+                    
+                    70% {
+                        width: 180px;
+                        height: 30px;
+                        opacity: 1;
+                        border-radius: 15px;
+                    }
+                    
+                    85% {
+                        width: 200px;
+                        height: 32px;
+                        opacity: 1;
+                        border-radius: 15px;
+                    }
+                    
+                    100% {
+                        width: 240px;
+                        height: 32px;
+                        opacity: 1;
+                        border-radius: 16px;
+                    }
+                }
+
+                @keyframes tooltip-contract {
+                    0% {
+                        width: 240px;
+                        height: 32px;
+                        opacity: 1;
+                        border-radius: 16px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    10% {
+                        width: 200px;
+                        height: 32px;
+                        border-radius: 16px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    20% {
+                        width: 180px;
+                        height: 30px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    35% {
+                        width: 140px;
+                        height: 28px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    50% {
+                        width: 100px;
+                        height: 26px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    70% {
+                        width: 60px;
+                        height: 24px;
+                        border-radius: 15px;
+                        transform: translateX(-50%);
+                    }
+                    
+                    85% {
+                        width: 30px;
+                        height: 20px;
+                        border-radius: 50%;
+                        transform: translateX(-50%);
+                    }
+                    
+                    100% {
+                        width: 0;
+                        height: 0;
+                        opacity: 0;
+                        border-radius: 50%;
+                        transform: translateX(-50%);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Create tooltip element
+        const tooltip = document.createElement('div');
+        tooltip.setAttribute('data-threadly-tooltip', 'api-key');
+        tooltip.className = 'threadly-tooltip';
+        
+        // Create content container
+        const contentContainer = document.createElement('div');
+        contentContainer.style.cssText = `
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.3s ease 0.4s;
+        `;
+        contentContainer.innerHTML = `
+            <span style="
+                font-size: 11px;
+                font-weight: 600;
+                color: #ffffff;
+                white-space: nowrap;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            ">Enter API key in extension settings</span>
+        `;
+        
+        tooltip.appendChild(contentContainer);
+
+        // Position the tooltip above the element
+        const rect = element.getBoundingClientRect();
+        tooltip.style.top = (rect.top - 45) + 'px';
+        tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+        tooltip.style.transform = 'translateX(-50%)';
+
+        // Add blur background styling
+        tooltip.style.background = 'rgba(255, 255, 255, 0.08)';
+        tooltip.style.backdropFilter = 'blur(10px)';
+        tooltip.style.webkitBackdropFilter = 'blur(10px)';
+        tooltip.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+        tooltip.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+        tooltip.style.transformOrigin = 'center center';
+        tooltip.style.transition = 'none';
+        tooltip.style.opacity = '0';
+
+        // Set initial size for animation
+        tooltip.style.width = '0';
+        tooltip.style.height = '0';
+
+        // Add to document
+        document.body.appendChild(tooltip);
+
+        // Start the pill emergence animation
+        setTimeout(() => {
+            tooltip.classList.add('growing');
+            
+            // Show content after animation starts
+            setTimeout(() => {
+                contentContainer.style.opacity = '1';
+            }, 400);
+        }, 10);
+
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (tooltip.parentNode) {
+                tooltip.classList.add('shrinking');
+                // Ensure animation completes before removing
+                setTimeout(() => {
+                    if (tooltip.parentNode) {
+                        tooltip.remove();
+                    }
+                }, 650);
+            }
+        }, 3000);
+    }
+
+    // Make tooltip function available globally
+    window.ThreadlyTooltip = {
+        showApiKeyTooltip: showApiKeyTooltip
+    };
+
     // --- Updated Configuration for 2024/2025 --- //
     const PLATFORM_CONFIG = {
         chatgpt: {

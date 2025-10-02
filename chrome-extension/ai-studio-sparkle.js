@@ -658,13 +658,18 @@
                 if (error.message.includes('Extension context invalidated')) {
                     // Show a user-friendly notification
                     showContextInvalidatedNotification();
+                } else if (error.message.includes('API key not found')) {
+                    // Show tooltip for API key errors
+                    if (window.ThreadlyTooltip && window.ThreadlyTooltip.showApiKeyTooltip) {
+                        window.ThreadlyTooltip.showApiKeyTooltip(sparkleIcon);
+                    }
                 } else {
                     // Dispatch error event for other errors
                     window.dispatchEvent(new CustomEvent('threadly-prompt-refine-error', {
                         detail: { 
                             platform: 'ai-studio', 
-                            error: error.message,
-                            originalText: currentText
+                            error: error.message, 
+                            originalText: currentText 
                         }
                     }));
                 }

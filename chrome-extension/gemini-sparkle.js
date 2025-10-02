@@ -972,12 +972,19 @@
             } catch (error) {
                 console.error('Threadly: Error refining prompt:', error);
                 
+                // Show tooltip for API key errors
+                if (error.message.includes('API key not found')) {
+                    if (window.ThreadlyTooltip && window.ThreadlyTooltip.showApiKeyTooltip) {
+                        window.ThreadlyTooltip.showApiKeyTooltip(sparkleIcon);
+                    }
+                }
+                
                 // Dispatch error event
                 window.dispatchEvent(new CustomEvent('threadly-prompt-refine-error', {
                     detail: { 
                         platform: 'gemini', 
-                        error: error.message,
-                        originalText: currentText
+                        error: error.message, 
+                        originalText: currentText 
                     }
                 }));
                 

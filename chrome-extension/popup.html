@@ -111,8 +111,8 @@
         }
 
         .save-btn {
-            width: 100%;
-            padding: 8px;
+            flex: 1;
+            padding: 8px 16px;
             background: #00bfae;
             border: 1px solid #00bfae;
             border-radius: 20px;
@@ -121,6 +121,7 @@
             font-weight: 500;
             cursor: pointer;
             transition: background-color 0.2s ease;
+            min-width: 0;
         }
 
         .save-btn:hover {
@@ -138,8 +139,30 @@
             border-color: #666666;
         }
 
+        .remove-btn {
+            flex: 1;
+            padding: 8px 16px;
+            background: #FF0000;
+            border: 1px solid #FF0000;
+            border-radius: 20px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            min-width: 0;
+        }
+
+        .remove-btn:hover {
+            background: #cc0000;
+        }
+
+        .remove-btn:active {
+            background: #990000;
+        }
+
         .status {
-            margin-top: 4px;
+            margin-top: 3px;
             padding: 6px 8px;
             border-radius: 15px;
             font-size: 11px;
@@ -266,6 +289,10 @@
             margin-top: 4px;
         }
 
+        .form-group .button-row {
+            gap: 8px;
+        }
+
         .button-row .rating-btn,
         .button-row .community-btn,
         .button-row .guide-btn,
@@ -302,9 +329,14 @@
                     >
                 </div>
                 
-                <button type="submit" class="save-btn" id="saveBtn">
-                    Save
-                </button>
+                <div class="button-row">
+                    <button type="submit" class="save-btn" id="saveBtn">
+                        Save
+                    </button>
+                    <button type="button" class="remove-btn" id="removeBtn" title="Remove API key">
+                        Remove
+                    </button>
+                </div>
             </form>
 
             <div class="status" id="status"></div>

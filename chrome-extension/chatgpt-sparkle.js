@@ -704,7 +704,12 @@
                 if (error.message.includes('Extension context invalidated')) {
                     alert('Threadly: Extension context invalidated. Please refresh the page to continue using Threadly.');
                 } else if (error.message.includes('API key not found')) {
-                    alert('Threadly: Please set your Gemini API key in the extension popup first.');
+                    // Show tooltip instead of alert
+                    if (window.ThreadlyTooltip && window.ThreadlyTooltip.showApiKeyTooltip) {
+                        window.ThreadlyTooltip.showApiKeyTooltip(sparkleIcon);
+                    } else {
+                        alert('Threadly: Please set your Gemini API key in the extension popup first.');
+                    }
                 } else {
                     alert('Threadly: Error refining prompt. Please try again.');
                 }
