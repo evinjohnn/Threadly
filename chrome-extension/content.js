@@ -1499,8 +1499,90 @@
         }
     }
 
+    // --- ChatGPT-Specific Extraction --- //
+    function extractChatGPTConversation() {
+        console.log('Threadly: ChatGPT AI response extraction starting...');
+        const extracted = [];
+        
+        // Updated selectors for current ChatGPT structure
+        const userSelector = 'div[data-message-author-role="user"] .whitespace-pre-wrap, div[data-message-author-role="user"] div[class*="prose"], div[data-message-author-role="user"] .text-base';
+        const assistantSelector = 'div[data-message-author-role="assistant"] .whitespace-pre-wrap, div[data-message-author-role="assistant"] div[class*="prose"], div[data-message-author-role="assistant"] .text-base';
+        
+        // Extract user messages
+        const userElements = document.querySelectorAll(userSelector);
+        console.log('Threadly: Found', userElements.length, 'user elements');
+        
+        userElements.forEach((userEl, index) => {
+            let text = '';
+            
+            if (userEl.textContent) {
+                text = userEl.textContent.trim();
+            } else if (userEl.innerText) {
+                text = userEl.innerText.trim();
+            }
+            
+            if (text && text.length > 2) {
+                extracted.push({
+                    role: 'user',
+                    content: text,
+                    element: userEl
+                });
+                console.log('Threadly: Extracted user message', index + 1, ':', text.substring(0, 50) + '...');
+            }
+        });
+        
+        // Extract AI responses
+        const aiElements = document.querySelectorAll(assistantSelector);
+        console.log('Threadly: Found', aiElements.length, 'AI response elements');
+        
+        aiElements.forEach((aiEl, index) => {
+            let text = '';
+            
+            if (aiEl.textContent) {
+                text = aiEl.textContent.trim();
+            } else if (aiEl.innerText) {
+                text = aiEl.innerText.trim();
+            }
+            
+            if (text && text.length > 2) {
+                extracted.push({
+                    role: 'assistant',
+                    content: text,
+                    element: aiEl
+                });
+                console.log('Threadly: Extracted AI message', index + 1, ':', text.substring(0, 50) + '...');
+            }
+        });
+        
+        console.log('Threadly: ChatGPT AI response successfully extracted!');
+        console.log('Threadly: extractConversation returning', extracted.length, 'messages');
+        
+        // Count user vs assistant messages
+        const userMessages = extracted.filter(m => m.role === 'user');
+        const assistantMessages = extracted.filter(m => m.role === 'assistant');
+        
+        console.log('Threadly: - User messages:', userMessages.length, 'Assistant messages:', assistantMessages.length);
+        console.log('Threadly: ChatGPT extraction summary:');
+        console.log('  - Total messages extracted:', extracted.length);
+        console.log('  - User messages:', userMessages.length);
+        console.log('  - AI responses:', assistantMessages.length);
+        
+        if (assistantMessages.length > 0) {
+            console.log('  - ✅ AI responses successfully extracted');
+        } else {
+            console.log('  - ❌ No AI responses found');
+        }
+        
+        return extracted;
+    }
+
     // --- Enhanced Chat Extraction --- //
     function extractConversation() {
+        // Use ChatGPT-specific extraction for ChatGPT
+        if (currentPlatformId === 'chatgpt') {
+            return extractChatGPTConversation();
+        }
+        
         const config = PLATFORM_CONFIG[currentPlatformId];
         const extracted = [];
         
@@ -4143,11 +4225,12 @@
     async function deleteMessageFromCollection(message, collectionId) {
         console.log('Threadly: deleteMessageFromCollection called with message:', message.id, 'collectionId:', collectionId);
         try {
-            // THE FIX: Use the in-memory 'allMessages' array.
-            const targetMessage = allMessages.find(m => m.id === message.id);
+            // Load ALL messages from all platforms to find the correct message
+            const allPlatformMessages = await loadAllMessagesFromAllPlatforms();
+            const targetMessage = allPlatformMessages.find(m => m.id === message.id);
             if (!targetMessage) {
-                console.error('Threadly: Message not found in current view:', message.id);
-                console.log('Threadly: Available message IDs in allMessages:', allMessages.map(m => m.id));
+                console.error('Threadly: Message not found in all platform messages:', message.id);
+                console.log('Threadly: Available message IDs in all platform messages:', allPlatformMessages.map(m => m.id));
                 return;
             }
 
@@ -4158,9 +4241,14 @@
                 targetMessage.collectionIds = targetMessage.collectionIds.filter(id => id !== collectionId);
                 console.log('Threadly: New collectionIds:', targetMessage.collectionIds);
                 
-                // Save the updated 'allMessages' array for the current page.
-                await saveMessagesToStorage(allMessages);
-                console.log('Threadly: Saved updated messages to storage');
+                // Save the updated message back to its original storage location
+                const storageKey = targetMessage.originalStorageKey || `threadly_${targetMessage.platform}_${window.location.pathname}`;
+                const platformMessages = allPlatformMessages.filter(m => 
+                    (m.originalStorageKey || `threadly_${m.platform}_${window.location.pathname}`) === storageKey
+                );
+                
+                await chrome.storage.local.set({ [storageKey]: platformMessages });
+                console.log('Threadly: Saved updated messages to storage key:', storageKey);
                 
                 await updateCollectionMessageCounts();
                 
@@ -5127,6 +5215,24 @@
         }
     }
 
+    // Helper function to check if we're on ChatGPT default page
+    function isChatGPTDefaultPage() {
+        if (!window.location.href.includes('chatgpt.com') && !window.location.href.includes('openai.com')) {
+            return false;
+        }
+        
+        try {
+            const urlObj = new URL(window.location.href);
+            // Check if we're on the homepage or a page without a conversation ID
+            return urlObj.pathname === '/' || 
+                   urlObj.pathname === '' || 
+                   urlObj.pathname === '/auth/login' ||
+                   (!urlObj.pathname.includes('/c/') && !urlObj.pathname.includes('/chat/'));
+        } catch (e) {
+            return false;
+        }
+    }
+
     // --- Enhanced Ready State Handling --- //
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
@@ -5996,14 +6102,27 @@
             
             console.log('Threadly: Created new collection:', collectionName);
             
-            // Show success feedback
-            showToast(`The collection "${collectionName}" has been created`);
-            
-            // Stay in SAVED state and re-render collections with a small delay for smooth transition
-            setTimeout(async () => {
-                morphNavbarToSavedState();
-                await renderCollectionsView();
-            }, 100);
+            // Check if we're in assignment mode - if so, automatically assign selected messages to the new collection
+            if (isAssigningMode && selectedMessageIds.length > 0) {
+                console.log('Threadly: In assignment mode - automatically assigning', selectedMessageIds.length, 'messages to new collection:', collectionName);
+                
+                // Assign the selected messages to the newly created collection
+                const messagesAddedCount = await assignMessagesToCollection(newCollection.id);
+                console.log('Threadly: Assigned', messagesAddedCount, 'messages to new collection:', collectionName);
+                
+                // Finalize the assignment and return to collections view
+                await finalizeAssignmentAndReturnToCollections(newCollection.id, messagesAddedCount);
+                
+            } else {
+                // Normal collection creation flow - show success feedback and stay in SAVED state
+                showToast(`The collection "${collectionName}" has been created`);
+                
+                // Stay in SAVED state and re-render collections with a small delay for smooth transition
+                setTimeout(async () => {
+                    morphNavbarToSavedState();
+                    await renderCollectionsView();
+                }, 100);
+            }
             
         } catch (error) {
             console.error('Threadly: Error creating collection:', error);
@@ -8100,11 +8219,18 @@
             }
 
             // Image-related words suggest image generation
-            if (patterns.taskTypeSignals.generation > 0.2 && 
-                (prompt.toLowerCase().includes('image') || prompt.toLowerCase().includes('picture'))) {
+            const lowerPrompt = prompt.toLowerCase();
+            const hasImageWords = lowerPrompt.includes('image') || lowerPrompt.includes('picture') || 
+                                lowerPrompt.includes('photo') || lowerPrompt.includes('draw') || 
+                                lowerPrompt.includes('art') || lowerPrompt.includes('visual');
+            const hasCasualImageIntent = (lowerPrompt.includes('wanna') || lowerPrompt.includes('gonna')) && 
+                                       (lowerPrompt.includes('make') || lowerPrompt.includes('create')) && hasImageWords;
+            
+            if ((patterns.taskTypeSignals.generation > 0.2 && hasImageWords) || hasCasualImageIntent) {
+                const confidence = hasCasualImageIntent ? 0.9 : patterns.taskTypeSignals.generation * 0.8;
                 suggestions.push({
                     category: 'image_generation',
-                    confidence: patterns.taskTypeSignals.generation * 0.8
+                    confidence: confidence
                 });
             }
 

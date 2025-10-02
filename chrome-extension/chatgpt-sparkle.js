@@ -868,9 +868,17 @@ async function insertSparkleIcon() {
         console.log('Threadly: Starting insertSparkleIcon...');
         
         // Use a unique attribute for the wrapper to prevent duplicates
-        if (document.querySelector('[data-threadly-sparkle-wrapper="true"]')) {
-            console.log('Threadly: Sparkle wrapper already exists, skipping...');
-            return; // Already exists, do nothing
+        const existingWrapper = document.querySelector('[data-threadly-sparkle-wrapper="true"]');
+        if (existingWrapper) {
+            // Check if the wrapper actually contains a sparkle icon
+            const sparkleIcon = existingWrapper.querySelector('[data-threadly-sparkle="true"]');
+            if (sparkleIcon) {
+                console.log('Threadly: Sparkle wrapper and icon already exist, skipping...');
+                return; // Already exists with icon, do nothing
+            } else {
+                console.log('Threadly: Sparkle wrapper exists but icon is missing, removing wrapper and recreating...');
+                existingWrapper.remove(); // Remove empty wrapper so we can recreate properly
+            }
         }
 
         // Updated selectors to match current ChatGPT DOM structure
@@ -976,25 +984,33 @@ async function insertSparkleIcon() {
         
             // Also check periodically to ensure sparkle stays in place and is positioned correctly
             setInterval(() => {
-                const existingSparkles = document.querySelectorAll('[data-threadly-sparkle-wrapper="true"]');
-                if (existingSparkles.length === 0) {
+                const existingWrappers = document.querySelectorAll('[data-threadly-sparkle-wrapper="true"]');
+                if (existingWrappers.length === 0) {
                     console.log('Threadly: Periodic check - re-adding missing sparkle icon');
                     insertSparkleIcon();
-                } else if (existingSparkles.length > 1) {
+                } else if (existingWrappers.length > 1) {
                     console.log('Threadly: Periodic check - removing duplicate sparkles');
                     // Keep only the first one, remove the rest
-                    for (let i = 1; i < existingSparkles.length; i++) {
-                        existingSparkles[i].remove();
+                    for (let i = 1; i < existingWrappers.length; i++) {
+                        existingWrappers[i].remove();
                     }
                 } else {
-                    // Check if sparkle is in the correct position (right before mic button)
-                    const sparkle = existingSparkles[0];
-                    const micButton = document.querySelector('button[aria-label*="dictate"], button[title*="dictate"]');
-                    if (micButton && micButton.previousElementSibling !== sparkle) {
-                        console.log('Threadly: Periodic check - repositioning sparkle before mic button');
-                        // Remove and re-insert to ensure correct position
-                        sparkle.remove();
+                    // Check if the wrapper contains a sparkle icon
+                    const wrapper = existingWrappers[0];
+                    const sparkleIcon = wrapper.querySelector('[data-threadly-sparkle="true"]');
+                    if (!sparkleIcon) {
+                        console.log('Threadly: Periodic check - wrapper exists but sparkle icon missing, recreating...');
+                        wrapper.remove();
                         insertSparkleIcon();
+                    } else {
+                        // Check if sparkle is in the correct position (right before mic button)
+                        const micButton = document.querySelector('button[aria-label*="dictate"], button[title*="dictate"]');
+                        if (micButton && micButton.previousElementSibling !== wrapper) {
+                            console.log('Threadly: Periodic check - repositioning sparkle before mic button');
+                            // Remove and re-insert to ensure correct position
+                            wrapper.remove();
+                            insertSparkleIcon();
+                        }
                     }
                 }
             }, 5000); // Check every 5 seconds
@@ -1006,25 +1022,33 @@ async function insertSparkleIcon() {
                 textarea.addEventListener('input', () => {
                     // Check and fix sparkle positioning after typing
                     setTimeout(() => {
-                        const existingSparkles = document.querySelectorAll('[data-threadly-sparkle-wrapper="true"]');
-                        if (existingSparkles.length === 0) {
+                        const existingWrappers = document.querySelectorAll('[data-threadly-sparkle-wrapper="true"]');
+                        if (existingWrappers.length === 0) {
                             console.log('Threadly: Re-adding missing sparkle after textarea input');
                             insertSparkleIcon();
-                        } else if (existingSparkles.length > 1) {
+                        } else if (existingWrappers.length > 1) {
                             console.log('Threadly: Removing duplicate sparkles after textarea input');
                             // Keep only the first one, remove the rest
-                            for (let i = 1; i < existingSparkles.length; i++) {
-                                existingSparkles[i].remove();
+                            for (let i = 1; i < existingWrappers.length; i++) {
+                                existingWrappers[i].remove();
                             }
                         } else {
-                            // Check if sparkle is in the correct position (right before mic button)
-                            const sparkle = existingSparkles[0];
-                            const micButton = document.querySelector('button[aria-label*="dictate"], button[title*="dictate"]');
-                            if (micButton && micButton.previousElementSibling !== sparkle) {
-                                console.log('Threadly: Repositioning sparkle before mic button after textarea input');
-                                // Remove and re-insert to ensure correct position
-                                sparkle.remove();
+                            // Check if the wrapper contains a sparkle icon
+                            const wrapper = existingWrappers[0];
+                            const sparkleIcon = wrapper.querySelector('[data-threadly-sparkle="true"]');
+                            if (!sparkleIcon) {
+                                console.log('Threadly: Wrapper exists but sparkle icon missing after textarea input, recreating...');
+                                wrapper.remove();
                                 insertSparkleIcon();
+                            } else {
+                                // Check if sparkle is in the correct position (right before mic button)
+                                const micButton = document.querySelector('button[aria-label*="dictate"], button[title*="dictate"]');
+                                if (micButton && micButton.previousElementSibling !== wrapper) {
+                                    console.log('Threadly: Repositioning sparkle before mic button after textarea input');
+                                    // Remove and re-insert to ensure correct position
+                                    wrapper.remove();
+                                    insertSparkleIcon();
+                                }
                             }
                         }
                     }, 200);
@@ -1042,25 +1066,33 @@ async function insertSparkleIcon() {
                 if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
                     // Check and fix sparkle positioning after DOM changes
                     setTimeout(() => {
-                        const existingSparkles = document.querySelectorAll('[data-threadly-sparkle-wrapper="true"]');
-                        if (existingSparkles.length === 0) {
+                        const existingWrappers = document.querySelectorAll('[data-threadly-sparkle-wrapper="true"]');
+                        if (existingWrappers.length === 0) {
                             console.log('Threadly: Re-adding missing sparkle icon after DOM change');
                             insertSparkleIcon();
-                        } else if (existingSparkles.length > 1) {
+                        } else if (existingWrappers.length > 1) {
                             console.log('Threadly: Removing duplicate sparkles after DOM change');
                             // Keep only the first one, remove the rest
-                            for (let i = 1; i < existingSparkles.length; i++) {
-                                existingSparkles[i].remove();
+                            for (let i = 1; i < existingWrappers.length; i++) {
+                                existingWrappers[i].remove();
                             }
                         } else {
-                            // Check if sparkle is in the correct position (right before mic button)
-                            const sparkle = existingSparkles[0];
-                            const micButton = document.querySelector('button[aria-label*="dictate"], button[title*="dictate"]');
-                            if (micButton && micButton.previousElementSibling !== sparkle) {
-                                console.log('Threadly: Repositioning sparkle before mic button after DOM change');
-                                // Remove and re-insert to ensure correct position
-                                sparkle.remove();
+                            // Check if the wrapper contains a sparkle icon
+                            const wrapper = existingWrappers[0];
+                            const sparkleIcon = wrapper.querySelector('[data-threadly-sparkle="true"]');
+                            if (!sparkleIcon) {
+                                console.log('Threadly: Wrapper exists but sparkle icon missing after DOM change, recreating...');
+                                wrapper.remove();
                                 insertSparkleIcon();
+                            } else {
+                                // Check if sparkle is in the correct position (right before mic button)
+                                const micButton = document.querySelector('button[aria-label*="dictate"], button[title*="dictate"]');
+                                if (micButton && micButton.previousElementSibling !== wrapper) {
+                                    console.log('Threadly: Repositioning sparkle before mic button after DOM change');
+                                    // Remove and re-insert to ensure correct position
+                                    wrapper.remove();
+                                    insertSparkleIcon();
+                                }
                             }
                         }
                     }, 1000); // Slower response to avoid repositioning during typing

@@ -109,9 +109,11 @@ class PromptRefiner {
                 'image_generation': {
                     name: 'Image Generation',
                     weight: 0,
-                    keywords: ['image', 'picture', 'photo', 'generate', 'create', 'draw', 'art', 'visual', 'design', 'portrait', 'landscape', 'scene', 'character', 'edit', 'modify', 'change', 'add', 'remove', 'transform', 'style', 'elephant', 'cat', 'dog', 'person', 'animal', 'building', 'car', 'wearing', 'suit', 'dress', 'at', 'in', 'with', 'holding'],
+                    keywords: ['image', 'picture', 'photo', 'generate', 'create', 'draw', 'art', 'visual', 'design', 'portrait', 'landscape', 'scene', 'character', 'edit', 'modify', 'change', 'add', 'remove', 'transform', 'style', 'elephant', 'cat', 'dog', 'person', 'animal', 'building', 'car', 'wearing', 'suit', 'dress', 'at', 'in', 'with', 'holding', 'wanna', 'want', 'gonna'],
                     patterns: [
                         /(create|generate|make|draw)\s+(an?\s+)?(image|picture|photo|art|visual|portrait|landscape)/i,
+                        /(wanna|want to|gonna|going to)\s+(create|generate|make|draw)\s+(an?\s+)?(image|picture|photo|art|visual|portrait|landscape)/i,
+                        /\b(make|create|generate|draw)\s+.*\b(image|picture|photo|art|visual)\b/i,
                         /(image|picture|photo|art|visual|portrait|landscape)\s+(of|showing|with)/i,
                         /^(picture|photo|image)\s+(of|showing)/i,
                         /(photorealistic|stylized|illustration|sticker|logo|mockup|anime|realistic)/i,
@@ -140,11 +142,16 @@ class PromptRefiner {
                 'research_analysis': {
                     name: 'Research & Analysis',
                     weight: 0,
-                    keywords: ['research', 'analyze', 'study', 'investigate', 'data', 'statistics', 'survey', 'findings', 'report', 'explain', 'teach', 'guide', 'tutorial', 'how to', 'help me', 'assist me', 'guide me'],
+                    keywords: ['research', 'analyze', 'study', 'investigate', 'data', 'statistics', 'survey', 'findings', 'report', 'explain', 'teach', 'guide', 'tutorial', 'how to', 'help me', 'assist me', 'guide me', 'tell me about', 'about', 'history', 'historical', 'biography', 'who was', 'what is', 'what are', 'when did', 'why did', 'how did', 'facts', 'information', 'details', 'background', 'context', 'overview'],
                     patterns: [
                         /(research|analyze|study|investigate)/i,
                         /(explain|teach|guide|tutorial|how to)/i,
-                        /(help me|assist me|guide me)/i
+                        /(help me|assist me|guide me)/i,
+                        /^(tell me about|about|who was|what is|what are|when did|why did|how did)/i,
+                        /(history|historical|biography|biographical)/i,
+                        /(facts about|information about|details about|background on)/i,
+                        /(overview of|context of|significance of)/i,
+                        /\b(hitler|napoleon|caesar|lincoln|washington|churchill|stalin|roosevelt|gandhi|mandela|einstein|darwin|shakespeare|leonardo|michelangelo)\b/i
                     ]
                 },
                 'content_creation': {
@@ -261,7 +268,7 @@ class PromptRefiner {
         } else if (triageResult.primaryCategory === 'grammar_spelling' && triageResult.confidence > 0.7) {
             // Simple grammar and spelling correction
             refinedPrompt = await this.performGrammarCorrection(userPrompt);
-        } else if (triageResult.primaryCategory === 'image_generation' && triageResult.confidence > 0.4) {
+        } else if (triageResult.primaryCategory === 'image_generation' && triageResult.confidence > 0.2) {
             // Image generation prompt refinement
             refinedPrompt = await this.refineImageGenerationPrompt(userPrompt, platform, triageResult);
         } else if (triageResult.primaryCategory === 'coding' && triageResult.confidence > 0.4) {
@@ -700,6 +707,11 @@ class PromptRefiner {
             // Special context analysis
             if (categoryKey === 'grammar_spelling') {
                 // Check for simple, conversational requests with spelling/grammar issues
+                // BUT exclude image generation requests even if they have casual language
+                const hasImageIntent = prompt.includes('picture') || prompt.includes('image') || 
+                                     prompt.includes('photo') || prompt.includes('draw') || 
+                                     prompt.includes('art') || prompt.includes('visual');
+                
                 const hasSpellingIssues = /[a-z]{2,}[a-z]*[a-z]{2,}/i.test(prompt) && 
                     (prompt.includes('heyy') || prompt.includes('youre') || prompt.includes('bitsh') || 
                      prompt.includes('wanna') || prompt.includes('gonna') || prompt.includes('dont') ||
@@ -711,7 +723,8 @@ class PromptRefiner {
                     !prompt.includes('code') && !prompt.includes('research') && !prompt.includes('analyze') &&
                     !prompt.includes('help') && !prompt.includes('explain') && !prompt.includes('understand');
                 
-                if (hasSpellingIssues || isCasualMessage) {
+                // Only apply grammar correction if it's not an image generation request
+                if ((hasSpellingIssues || isCasualMessage) && !hasImageIntent) {
                     weight += 5; // Higher weight for obvious spelling/grammar fixes
                     matches.push('simple conversational request with spelling/grammar issues');
                 }
@@ -725,6 +738,17 @@ class PromptRefiner {
                         weight += 2;
                         matches.push(`visual term: ${term}`);
                     }
+                }
+                
+                // Boost weight for casual language with image intent
+                const hasCasualImageIntent = (prompt.includes('wanna') || prompt.includes('gonna')) && 
+                                           (prompt.includes('picture') || prompt.includes('image') || 
+                                            prompt.includes('photo') || prompt.includes('draw') || 
+                                            prompt.includes('make') || prompt.includes('create'));
+                
+                if (hasCasualImageIntent) {
+                    weight += 3; // Extra boost for casual image requests
+                    matches.push('casual language with image intent');
                 }
             }
 
@@ -1229,60 +1253,144 @@ IMPORTANT: Return ONLY the refined prompt text. Do not include any labels, heade
         const guidelines = {
             'coding': `
 - Understand what the user is really trying to build or solve
-- Help them express their coding needs clearly
-- Include practical considerations that matter to them
-- Request helpful examples and documentation
-- Consider their skill level and project context
+- Help them express their coding needs clearly with specific technical requirements
+- Include practical considerations: performance, scalability, maintainability, security
+- Request helpful examples, code snippets, and documentation references
+- Consider their skill level (beginner/intermediate/advanced) and project context
 - Choose appropriate programming languages based on their actual needs, not keyword matching
-- Understand design references (e.g., "Apple-like UI" means design style, not Swift requirement)
-- Suggest the best tools and frameworks for their specific use case`,
+- Understand design references (e.g., "Apple-like UI" means clean design style, not Swift requirement)
+- Suggest the best tools, frameworks, and libraries for their specific use case
+- Include deployment considerations and hosting requirements when relevant
+- Ask for specific functionality, user interactions, and technical constraints
+- Request details about data handling, API integrations, and third-party services
+- Include testing, debugging, and error handling considerations
+- Specify target platforms (web, mobile, desktop) and compatibility requirements`,
 
             'research': `
 - Understand what the user is really trying to learn or discover
 - Help them find the information they actually need
 - Request credible sources that serve their purpose
 - Ask for recent data that's relevant to their situation
-- Consider their research goals and context`,
+- Consider their research goals and context
+- For historical topics: Add specific aspects like timeline, key events, impact, and context
+- For biographical requests: Include major achievements, controversies, historical significance, and legacy
+- For complex topics: Break down into specific subtopics and perspectives
+- Request multiple viewpoints and scholarly sources for controversial or complex subjects
+- Include context about historical period, geographical location, and cultural factors
+- Ask for specific examples, case studies, or primary sources when relevant`,
 
             'personal_support': `
-- Be genuinely empathetic and understanding
-- Listen to what the user is really going through
-- Provide specific, actionable advice that helps them
-- Offer step-by-step guidance that feels supportive
-- Consider their unique situation and needs
-- Suggest professional help when it would genuinely benefit them`,
+- Be genuinely empathetic and understanding of their emotional state
+- Listen to what the user is really going through without judgment
+- Provide specific, actionable advice that helps them move forward
+- Offer step-by-step guidance that feels supportive and manageable
+- Consider their unique situation, constraints, and personal context
+- Suggest professional help when it would genuinely benefit them
+- Include self-care strategies and coping mechanisms when appropriate
+- Respect their autonomy while offering gentle guidance
+- Ask clarifying questions to better understand their needs and goals
+- Provide resources, tools, or techniques that match their situation
+- Consider timeline and urgency of their needs
+- Include follow-up suggestions and ways to track progress`,
 
             'content_creation': `
-- Understand what the user is really trying to communicate
-- Help them connect with their intended audience
-- Create engaging content that serves their purpose
-- Include SEO optimization when it helps their goals
-- Suggest call-to-actions that feel natural and helpful
-- Respect their voice and communication style`,
+- Understand what the user is really trying to communicate and their core message
+- Help them connect with their intended audience (demographics, interests, pain points)
+- Create engaging content that serves their purpose with clear value proposition
+- Include SEO optimization when it helps their goals (keywords, meta descriptions, structure)
+- Suggest call-to-actions that feel natural and drive desired outcomes
+- Respect their voice and communication style while enhancing clarity
+- Specify content format: blog post, social media, email, landing page, etc.
+- Include target word count, tone (professional, casual, friendly), and style guidelines
+- Request audience research and competitor analysis when relevant
+- Add content structure: headlines, subheadings, bullet points, and formatting
+- Include engagement strategies: storytelling, questions, interactive elements
+- Suggest distribution channels and promotion strategies
+- Add metrics and success criteria for measuring content performance`,
 
             'learning': `
-- Understand what the user is really trying to learn
-- Break down concepts in a way that makes sense to them
-- Use analogies and examples that resonate with their experience
-- Provide practice opportunities that help them grow
-- Consider their current knowledge level and learning style
-- Include visual aids when they genuinely help understanding`,
+- Understand what the user is really trying to learn and their learning objectives
+- Break down complex concepts into digestible, logical steps
+- Use analogies and examples that resonate with their experience and background
+- Provide practice opportunities, exercises, and real-world applications
+- Consider their current knowledge level (beginner/intermediate/advanced) and learning style
+- Include visual aids, diagrams, and multimedia resources when they help understanding
+- Suggest learning paths and progression from basic to advanced concepts
+- Include assessment methods to test comprehension and retention
+- Provide additional resources: books, courses, tutorials, and expert sources
+- Consider different learning modalities: visual, auditory, kinesthetic, reading/writing
+- Include time estimates and realistic learning schedules
+- Suggest ways to apply knowledge practically and build portfolio projects`,
 
             'technical_assistance': `
-- Understand what the user is really trying to accomplish
-- Provide step-by-step help that makes sense to them
-- Include safety precautions that protect them
-- Ask for system details that help solve their problem
-- Offer alternative solutions that work for their situation
-- Include prevention tips that help them avoid future issues`,
+- Understand what the user is really trying to accomplish and their end goal
+- Provide clear, step-by-step instructions that are easy to follow
+- Include safety precautions and warnings to protect them from harm or data loss
+- Ask for relevant system details: OS, software versions, hardware specifications
+- Offer alternative solutions and workarounds that work for their specific situation
+- Include prevention tips and best practices to avoid future issues
+- Provide troubleshooting steps for common problems they might encounter
+- Include backup and recovery procedures when dealing with important data
+- Suggest tools, software, or resources that can help with their technical needs
+- Consider their technical skill level and adjust complexity accordingly
+- Include verification steps to confirm solutions are working properly
+- Provide contact information for professional help when needed`,
 
             'creativity': `
-- Understand what the user is really trying to create or express
-- Encourage their unique perspective and original ideas
-- Offer multiple options that serve their creative vision
-- Help them find inspiration that resonates with their goals
-- Include constraints that actually help their creative process
-- Suggest ways to develop their ideas that feel natural and exciting`
+- Understand what the user is really trying to create or express artistically
+- Encourage their unique perspective and original ideas without judgment
+- Offer multiple creative options and variations that serve their vision
+- Help them find inspiration from diverse sources that resonate with their goals
+- Include helpful constraints that actually enhance their creative process
+- Suggest ways to develop and iterate on their ideas that feel natural and exciting
+- Consider the medium, audience, and purpose of their creative work
+- Include techniques for overcoming creative blocks and generating new ideas
+- Suggest collaboration opportunities and feedback mechanisms
+- Provide resources for skill development and artistic growth
+- Include ways to document and showcase their creative process and results
+- Consider commercial vs. personal creative goals and adjust accordingly`,
+            
+            'image_generation': `
+- Understand what visual concept the user wants to create or modify
+- Include specific visual details: style, composition, lighting, colors, mood
+- Specify subject matter clearly: people, objects, scenes, abstract concepts
+- Add technical parameters: aspect ratio, resolution, art style (realistic, cartoon, etc.)
+- Include artistic techniques: photography style, painting technique, digital art approach
+- Specify camera angles, perspectives, and framing when relevant
+- Add environmental context: setting, background, atmosphere, time of day
+- Include character details: age, clothing, expressions, poses, interactions
+- Specify artistic influences: famous artists, art movements, visual references
+- Add quality descriptors: high detail, professional, award-winning, masterpiece
+- Include negative prompts: what to avoid or exclude from the image
+- Consider platform-specific optimization for different AI image generators`,
+            
+            'grammar_spelling': `
+- Focus on correcting spelling, grammar, and punctuation errors
+- Maintain the user's original meaning and intent
+- Preserve their natural voice and communication style
+- Fix typos and common writing mistakes without changing tone
+- Improve sentence structure for better clarity and flow
+- Correct verb tenses and subject-verb agreement
+- Fix punctuation and capitalization issues
+- Improve word choice only when it enhances clarity
+- Maintain casual language when that's the user's style
+- Don't over-formalize casual messages or texts
+- Keep the same length and structure unless clarity requires changes
+- Focus on making the message clear and error-free, not fancy`,
+            
+            'general': `
+- Understand the user's true intent and what they're really trying to accomplish
+- Provide clear, helpful guidance that directly addresses their needs
+- Consider their context, constraints, and available resources
+- Offer practical, actionable advice they can implement immediately
+- Include relevant examples and specific details that make guidance concrete
+- Suggest follow-up questions or next steps to help them progress
+- Consider different approaches and alternatives that might work better
+- Provide resources, tools, or references that support their goals
+- Include ways to measure success or track progress toward their objectives
+- Respect their expertise level and adjust complexity accordingly
+- Offer encouragement and realistic expectations about outcomes
+- Include potential challenges they might face and how to overcome them`
         };
 
         return guidelines[taskCategory] || guidelines['general'];

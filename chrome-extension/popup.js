@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const form = document.getElementById('apiKeyForm');
     const ratingBtn = document.getElementById('ratingBtn');
     const communityBtn = document.getElementById('communityBtn');
-    const githubBtn = document.getElementById('githubBtn');
+    const guideBtn = document.getElementById('guideBtn');
     const reportBtn = document.getElementById('reportBtn');
     const donateBtn = document.getElementById('donateBtn');
 
@@ -110,10 +110,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     });
 
-    // Handle GitHub button click
-    githubBtn.addEventListener('click', function() {
+    // Handle Guide button click
+    guideBtn.addEventListener('click', function() {
+        // Create a new tab with the Arcade embed
         chrome.tabs.create({
-            url: 'https://github.com/evinjohnn/threadly'
+            url: 'https://demo.arcade.software/HoiRhuZIDigdNmWQPgy0?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true'
         });
     });
 
