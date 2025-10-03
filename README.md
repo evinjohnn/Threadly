@@ -48,7 +48,7 @@ With AI-powered prompt refinement and advanced collection management, Threadly h
 
 ## 🎥 Demo
 
-![Threadly Demo](../demo.gif)
+![Threadly Demo](demo.gif)
 
 *Demo showcasing Threadly's auto-loading sidebar, instant search, and AI prompt refinement features.*
 
