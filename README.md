@@ -1,147 +1,197 @@
-# Threadly - Multi-Platform AI Extension
-
-Threadly is a universal browser extension that enhances your experience on major AI chat platforms. It automatically injects a sleek, powerful sidebar to help you manage, search, and navigate your conversations with ease. Now featuring **AI Prompt Refinement** and **Advanced Collection Management** to help you write better prompts and organize your conversations!
-
-## Features
-
-### Core Functionality
-- **Universal Compatibility**: Works seamlessly with ChatGPT, Claude, Gemini, Grok, Perplexity, Google AI Studio, and Microsoft Copilot
-- **Auto-Loading Sidebar**: No more clicking! Threadly appears automatically on supported sites
-- **Collapsible UI**: A minimalist, branded tab expands into a full-featured interface on click
-- **Instant Search**: Quickly find any message across your current conversation
-- **Platform-Aware**: Intelligently adapts to the structure of each AI platform for accurate conversation extraction
-- **Responsive Design**: Clean and functional on all screen sizes, and auto-hides on mobile
-- **Real-time Message Extraction**: Automatically captures and indexes all conversation messages as you chat
-
-### 🆕 AI Prompt Refiner
-- **Smart Prompt Enhancement**: Automatically refines your prompts for better AI responses
-- **Platform-Specific Optimization**: Tailored guidelines for ChatGPT, Claude, Gemini, and Perplexity
-- **Task Category Detection**: Automatically categorizes prompts (Coding, Research, Personal Support, etc.)
-- **Context Preservation**: Maintains your original intent while enhancing structure and clarity
-- **One-Click Refinement**: Simple "✨ Refine" button appears next to input areas
-- **Gemini API Integration**: Uses Google's Gemini API for intelligent prompt optimization
-- **Multiple Refinement Modes**: 
-  - **Refine**: Complete prompt enhancement for better AI responses
-  - **Correct**: Grammar and spelling correction only
-  - **Image**: Specialized optimization for image generation prompts
-- **Visual Feedback**: Animated sparkle icons provide clear feedback during processing
-- **Undo Detection**: Learn from user corrections with intelligent feedback system
-
-### 📚 Advanced Collection Management
-- **Smart Collections**: Organize your saved messages into color-coded collections
-- **VIBGYOR Color Palette**: Beautiful violet-to-red color scheme for easy visual organization
-- **Platform-Specific Colors**: Collections automatically match your current AI platform's theme
-- **Bulk Operations**: Select and manage multiple messages or collections at once
-- **Assignment Mode**: Easily assign messages to collections with intuitive drag-and-drop interface
-- **Collection Search**: Find specific collections or messages within collections
-- **Persistent Storage**: All collections and messages are saved locally and persist across sessions
-
-### 🔍 Advanced Search & Filtering
-- **Real-time Search**: Instant search across all your conversation messages
-- **Smart Filtering**: Filter by user messages, AI responses, or favorites
-- **Message Highlighting**: Search results are highlighted for easy identification
-- **Cross-Platform Search**: Search across all supported AI platforms simultaneously
-- **Saved Items Management**: Dedicated interface for managing all your saved content
-
-### 🎨 Beautiful UI & UX
-- **Modern Design**: Sleek, glassmorphic interface with smooth animations
-- **Metaball Animations**: Elegant floating UI elements with physics-based interactions
-- **Platform Integration**: Seamlessly blends with each AI platform's design language
-- **Responsive Layout**: Adapts perfectly to different screen sizes and orientations
-- **Smooth Transitions**: Fluid animations and transitions throughout the interface
-- **Custom Typography**: Beautiful Borel font for enhanced readability
-
-### ⚙️ Settings & Configuration
-- **API Key Management**: Secure storage and validation of your Gemini API key
-- **Platform Detection**: Automatic detection and adaptation to different AI platforms
-- **Background Processing**: Autonomous learning and feedback curation system
-- **Error Handling**: Robust error handling with user-friendly feedback
-- **Performance Optimization**: Efficient message processing and storage
-
-### 🔧 Developer Features
-- **Chrome Extension API**: Full Manifest V3 compliance
-- **Content Script Injection**: Platform-specific scripts for optimal compatibility
-- **Background Service Worker**: Handles autonomous learning and data curation
-- **Storage Management**: Efficient local storage with Chrome storage API
-- **Event System**: Comprehensive event handling for all user interactions
-
-## How to Use
-
-### Basic Setup
-1. **Download or Clone** this extension folder to your computer
-2. **Open Chrome** and go to `chrome://extensions/`
-3. **Enable Developer Mode** (toggle in the top right)
-4. **Click "Load unpacked"** and select the `chrome-extension` folder
-5. **Navigate** to any of the supported AI platforms (e.g., `chat.openai.com`, `claude.ai`)
-6. The **Threadly sidebar tab** will appear on the right side of the screen
-7. **Click the tab** to expand the sidebar and interact with your conversation
-
-### Using the Prompt Refiner
-1. **Get a Gemini API Key**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey) and create a free API key
-2. **Set Your API Key**: Click the Threadly icon in your browser toolbar and enter your API key
-3. **Start Refining**: Type a prompt in any AI platform's input area
-4. **Click "✨ Refine"**: The refine button will appear next to the input area
-5. **Choose Mode**: Select from Refine, Correct, or Image modes based on your needs
-6. **Watch the Magic**: Your prompt will be automatically enhanced for better AI responses!
-
-### Using Collections
-1. **Save Messages**: Click the bookmark icon next to any message to save it
-2. **Create Collections**: Use the collection management interface to create new collections
-3. **Assign Colors**: Choose from the VIBGYOR color palette or platform-specific colors
-4. **Organize Content**: Drag and drop messages into collections for easy organization
-5. **Search Collections**: Use the search bar to find specific collections or messages
-
-### Advanced Features
-- **Bulk Selection**: Enable selection mode to manage multiple messages at once
-- **Cross-Platform Sync**: Your collections and saved items work across all supported platforms
-- **Smart Filtering**: Use the YOU/AI/FAV toggle to filter messages by type
-- **Real-time Updates**: The sidebar updates automatically as you chat
-
-## Supported Platforms
-
-- **ChatGPT** (chat.openai.com, chatgpt.com)
-- **Claude** (claude.ai)
-- **Gemini** (gemini.google.com)
-- **Perplexity** (perplexity.ai)
-- **Grok** (grok.com, x.ai)
-- **Google AI Studio** (aistudio.google.com)
-- **Microsoft Copilot** (copilot.microsoft.com)
-
-## Technical Details
-
-### Architecture
-- **Manifest V3**: Full compliance with latest Chrome extension standards
-- **Content Scripts**: Platform-specific injection for optimal compatibility
-- **Background Service Worker**: Handles autonomous learning and data processing
-- **Local Storage**: Secure, persistent storage using Chrome storage API
-
-### Performance
-- **Efficient Processing**: Optimized message extraction and indexing
-- **Minimal Resource Usage**: Lightweight implementation with smart caching
-- **Real-time Updates**: Instant UI updates with debounced processing
-- **Cross-Platform Optimization**: Platform-specific optimizations for each AI service
-
-### Privacy & Security
-- **Local Storage Only**: All data stays on your device
-- **No Data Collection**: We don't collect or transmit your personal data
-- **Secure API Keys**: Your API keys are stored securely in Chrome's local storage
-- **Open Source**: Full source code available for transparency
-
-## Community & Support
-
-- **GitHub**: [View source code and report issues](https://github.com/evinjohnn/threadly)
-- **Reddit**: [Join our community](https://www.reddit.com/r/ThreadlyExtension)
-- **Chrome Web Store**: [Rate and review](https://chromewebstore.google.com/detail/gnnpjnaahnccnccaaaegapdnplkhfckh)
-- **Support**: [Report bugs and request features](https://github.com/evinjohnn/threadly/issues)
-
-## Contributing
-
-We welcome contributions! Please see our [GitHub repository](https://github.com/evinjohnn/threadly) for:
-- Bug reports and feature requests
-- Code contributions and pull requests
-- Documentation improvements
-- Community discussions
-
----
-
-**Enjoy a more powerful AI chat experience with Threadly!**
+<p align="center">
+<!-- Replace with your actual logo.png -->
+<img src="https://raw.githubusercontent.com/evinjohnn/Threadly/main/chrome-extension/favicon-512x512.png" align="center" width="45%">
+</p>
+<p align="center"><h1 align="center">THREADLY - MULTI-PLATFORM AI EXTENSION</h1></p>
+<p align="center">
+<em><code>❯ A universal browser extension that enhances major AI chat platforms with a sleek, powerful sidebar for managing, searching, and refining your conversations.</code></em>
+</p>
+<p align="center">
+<img src="https://img.shields.io/github/license/evinjohnn/Threadly?style=default&logo=opensourceinitiative&logoColor=white&color=00bfae" alt="license">
+<img src="https://img.shields.io/github/last-commit/evinjohnn/Threadly?style=default&logo=git&logoColor=white&color=00bfae" alt="last-commit">
+<img src="https://img.shields.io/github/languages/top/evinjohnn/Threadly?style=default&color=00bfae" alt="repo-top-language">
+<img src="https://img.shields.io/github/languages/count/evinjohnn/Threadly?style=default&color=00bfae" alt="repo-language-count">
+</p>
+<br>
+<details><summary>Table of Contents</summary>
+Overview
+Features
+Available On
+Tech Stack
+Project Structure
+Project Index
+Getting Started
+Prerequisites
+Installation
+Usage
+Technical Details
+Contributing
+License
+Acknowledgments
+</details>
+<hr>
+Overview
+Threadly is a universal browser extension that enhances your experience on major AI chat platforms like ChatGPT, Claude, and Gemini. It automatically injects a sleek, powerful sidebar to help you manage, search, and navigate your conversations with ease. Now featuring AI Prompt Refinement and Advanced Collection Management, Threadly helps you write better prompts and organize your conversations effortlessly, all powered by a modern, glassmorphic UI and local storage for complete privacy.
+🎥 Demo Video
+Watch the extension in action:
+<!-- Replace with your actual demo.gif -->
+![alt text](demo.gif)
+Demo showcasing Threadly's auto-loading sidebar, instant search, and AI prompt refinement features.
+Features
+✨ Universal Compatibility: Works seamlessly with ChatGPT, Claude, Gemini, Grok, Perplexity, and more.
+✨ AI-Powered Prompt Refiner: Automatically enhances your prompts for better AI responses using the Gemini API.
+✨ Advanced Collection Management: Organize your saved messages into color-coded, searchable collections.
+✨ Beautiful Glassmorphism UI: A modern, sleek interface with smooth, physics-based "metaball" animations.
+✨ Instant Search & Filtering: Quickly find any message and filter by user, AI, or favorites.
+✨ Real-time Message Extraction: Automatically captures and indexes conversations as you chat.
+✨ Privacy-Focused: All your data, collections, and API keys are stored securely on your local device.
+✨ Fully Manifest V3 Compliant: Built with the latest Chrome Extension standards for security and performance.
+Available On
+The extension is available for all major Chromium-based browsers.
+Browser	Link	Status
+Google Chrome	Chrome Web Store	Available
+Microsoft Edge	Edge Add-ons	Coming Soon
+Opera	Opera Addons	Coming Soon
+Tech Stack
+Technology	Description
+JavaScript (ES6+)	Core logic for the sidebar, UI interactions, data extraction, and API handling.
+HTML5 / CSS3	Structure and advanced styling for the glassmorphism UI, animations, and responsive layout.
+Manifest V3	Utilizes the latest Chrome Extension APIs for a secure and performant service worker-based architecture.
+Chrome Extension APIs	Uses storage, tabs, and alarms for data persistence, tab interaction, and background tasks.
+Google Gemini API	Powers the intelligent AI Prompt Refinement feature.
+Project Structure
+code
+Sh
+└── threadly/
+    ├── chrome-extension/
+    │   ├── Borel/                          # Custom font files
+    │   ├── ai-studio-sparkle.js            # Injects 'Refine' button on AI Studio
+    │   ├── api-handler.js                  # Handles Gemini API calls for prompt refinement
+    │   ├── background.js                   # Service worker for background tasks & learning
+    │   ├── chatgpt-sparkle.js              # Injects 'Refine' button on ChatGPT
+    │   ├── claude-icon.js                  # Injects 'Refine' button on Claude
+    │   ├── content.js                      # Main script to inject and manage the sidebar UI
+    │   ├── gemini-sparkle.js               # Injects 'Refine' button on Gemini
+    │   ├── perplexity-sparkle.js           # Injects 'Refine' button on Perplexity
+    │   ├── popup.html                      # UI for the browser action popup (API key)
+    │   ├── popup.js                        # Logic for the API key management popup
+    │   ├── prompts.json                    # Database of prompts for the Triage AI
+    │   ├── sidebar.css                     # All styling for the extension's UI
+    │   └── manifest.json                   # Extension configuration and permissions
+    └── README.md
+Project Index
+<details open>
+<summary><b><code>THREADLY/CHROME-EXTENSION/</code></b></summary>
+<blockquote>
+<table>
+<tr>
+<td><b><a href='chrome-extension/manifest.json'>manifest.json</a></b></td>
+<td><code>❯ Defines the extension's permissions (storage, tabs), content scripts, and service worker configuration.</code></td>
+</tr>
+<tr>
+<td><b><a href='chrome-extension/background.js'>background.js</a></b></td>
+<td><code>❯ The Manifest V3 service worker that handles background tasks, such as autonomous learning from user feedback.</code></td>
+</tr>
+<tr>
+<td><b><a href='chrome-extension/content.js'>content.js</a></b></td>
+<td><code>❯ The main content script injected into all supported platforms to render the sidebar, extract conversations, and manage UI state.</code></td>
+</tr>
+<tr>
+<td><b><a href='chrome-extension/api-handler.js'>api-handler.js</a></b></td>
+<td><code>❯ Contains the powerful `PromptRefiner` class and Triage AI, which handles all logic for Gemini API calls to enhance user prompts.</code></td>
+</tr>
+<tr>
+<td><b><a href='chrome-extension/popup.html'>popup.html</a></b></td>
+<td><code>❯ Provides the HTML structure for the browser action popup window, used for managing the Gemini API key.</code></td>
+</tr>
+<tr>
+<td><b><a href='chrome-extension/popup.js'>popup.js</a></b></td>
+<td><code>❯ Contains the logic for the popup, allowing users to save, remove, and validate their Gemini API key.</code></td>
+</tr>
+<tr>
+<td><b><a href='chrome-extension/sidebar.css'>sidebar.css</a></b></td>
+<td><code>❯ The complete stylesheet for the Threadly sidebar, including the glassmorphism design, metaball animations, and responsive layout.</code></td>
+</tr>
+<tr>
+<td><b><a href='chrome-extension/claude-icon.js'>claude-icon.js</a></b></td>
+<td><code>❯ A platform-specific content script that injects the ✨ Refine button and its associated logic into the Claude UI.</code></td>
+</tr>
+<tr>
+<td><b><a href='chrome-extension/chatgpt-sparkle.js'>chatgpt-sparkle.js</a></b></td>
+<td><code>❯ A platform-specific content script that injects the ✨ Refine button into the ChatGPT UI.</code></td>
+</tr>
+<tr>
+<td><b><a href='chrome-extension/gemini-sparkle.js'>gemini-sparkle.js</a></b></td>
+<td><code>❯ A platform-specific content script that injects the ✨ Refine button into the Gemini UI.</code></td>
+</tr>
+</table>
+</blockquote>
+</details>
+Getting Started
+Prerequisites
+A modern Chromium-based browser (e.g., Google Chrome, Microsoft Edge, Opera).
+git (for cloning the repository).
+A free Google Gemini API Key for the Prompt Refiner feature.
+Installation
+Clone the repository:
+code
+Sh
+git clone https://github.com/evinjohnn/Threadly
+Navigate to your browser's extension page:
+Chrome: chrome://extensions
+Edge: edge://extensions
+Opera: opera://extensions
+Enable Developer Mode: Find and activate the "Developer mode" toggle, usually located in the top-right corner.
+Load the Extension:
+Click the "Load unpacked" button.
+Select the chrome-extension directory from the cloned repository.
+The extension is now installed and active.
+Usage
+Set Your API Key: Click the Threadly icon in your browser toolbar and enter your Gemini API key.
+Navigate to a Supported AI Platform: Go to a site like chat.openai.com, claude.ai, or gemini.google.com.
+Use the Sidebar: The Threadly sidebar tab will automatically appear on the right. Click it to expand and manage your conversation.
+Refine Your Prompts: Type a prompt in the AI platform's input box. A ✨ Refine button will appear. Click it to automatically enhance your prompt for better results.
+Technical Details
+Component	Description
+Manifest V3	Ensures modern security, performance, and privacy standards using a service worker-based architecture.
+Content Scripts	Platform-specific scripts are injected to handle UI integration and feature placement on each supported AI site.
+Background Service Worker	The background.js script manages autonomous learning and data curation from user feedback in the background.
+Local Storage	All conversation data, collections, and API keys are stored securely on the user's local machine using the chrome.storage API.
+Gemini API Integration	The api-handler.js script manages all interactions with the Google Gemini API for intelligent prompt classification and refinement.
+Contributing
+💬 Join the Discussions: Share your insights, provide feedback, or ask questions on our Reddit community.
+🐛 Report Issues: Submit bugs found or log feature requests on our GitHub Issues page.
+💡 Submit Pull Requests: Review open PRs, and submit your own.
+<details><summary>Contributing Guidelines</summary>
+Fork the Repository: Start by forking the project repository to your GitHub account.
+Clone Locally: Clone the forked repository to your local machine.
+code
+Sh
+git clone https://github.com/YOUR_USERNAME/Threadly
+Create a New Branch: Always work on a new branch with a descriptive name.
+code
+Sh
+git checkout -b new-feature-x
+Make Your Changes: Develop and test your changes locally.
+Commit Your Changes: Commit with a clear message describing your updates.
+code
+Sh
+git commit -m 'Implemented new feature x.'
+Push to GitHub: Push the changes to your forked repository.
+code
+Sh
+git push origin new-feature-x
+Submit a Pull Request: Create a PR against the original project repository. Clearly describe the changes and their motivations.
+</details>
+License
+This project is licensed under the MIT License. See the LICENSE file for details.
+Acknowledgments
+Special thanks to the open-source community and all the users who provide valuable feedback to make Threadly better.
+Made with ❤️ for the AI community.
+Support the Project
+If you find this extension helpful and would like to support its development, consider buying me a coffee! ☕
+<p align="center">
+<a href="https://ko-fi.com/evinjohnn" target="_blank">
+<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
+</a>
+</p>
