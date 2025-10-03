@@ -48,7 +48,7 @@ With AI-powered prompt refinement and advanced collection management, Threadly h
 
 ## 🎥 Demo
 
-![Threadly Demo](https://raw.githubusercontent.com/evinjohnn/Threadly/main/chrome-extension/demo.gif)
+![Threadly Demo](demo.gif)
 
 *Demo showcasing Threadly's auto-loading sidebar, instant search, and AI prompt refinement features.*
 
