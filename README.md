@@ -71,7 +71,7 @@ With AI-powered prompt refinement and advanced collection management, Threadly h
 
 | Browser | Status | Link |
 |---------|--------|------|
-| Google Chrome | ✅ Available | [Chrome Web Store](https://chrome.google.com/webstore) |
+| Google Chrome | ✅ Available | [Chrome Web Store](https://chromewebstore.google.com/detail/gnnpjnaahnccnccaaaegapdnplkhfckh?utm_source=item-share-cb) |
 | Microsoft Edge | 🔜 Coming Soon | [Edge Add-ons](#) |
 | Opera | 🔜 Coming Soon | [Opera Addons](#) |
 
