@@ -191,7 +191,7 @@ threadly/
 
 We welcome contributions! Here's how you can help:
 
-- 💬 **Discussions** — Share insights and ask questions on our [Reddit community](https://reddit.com)
+- 💬 **Discussions** — Share insights and ask questions on our [Reddit community](https://www.reddit.com/r/ThreadlyExtension)
 - 🐛 **Report Issues** — Submit bugs or feature requests via [GitHub Issues](https://github.com/evinjohnn/Threadly/issues)
 - 💡 **Pull Requests** — Review open PRs or submit your own
 
