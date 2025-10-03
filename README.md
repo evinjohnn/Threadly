@@ -17,6 +17,7 @@
   <img src="https://img.shields.io/github/last-commit/evinjohnn/Threadly?style=flat&logo=git&logoColor=white&color=00bfae" alt="last-commit">
   <img src="https://img.shields.io/github/languages/top/evinjohnn/Threadly?style=flat&color=00bfae" alt="repo-top-language">
   <img src="https://img.shields.io/github/languages/count/evinjohnn/Threadly?style=flat&color=00bfae" alt="repo-language-count">
+  [![HitCount](https://hits.dwyl.com/evinjohnn/threadly.svg?style=flat-square)](http://hits.dwyl.com/evinjohnn/threadly)
 </p>
 
 ---
