@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/evinjohnn/Threadly/main/chrome-extension/favicon-512x512.png" alt="Threadly Logo" width="120">
 </p>
 
-<h1 align="center">Threadly</h1>
+
 
 <p align="center">
   <strong>Multi-Platform AI Extension</strong>
