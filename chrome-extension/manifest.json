@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Threadly",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Enhances major AI chat platforms with an auto-loading sidebar for advanced thread management and features.",
   "permissions": ["storage", "activeTab", "tabs", "alarms"],
   "background": {
