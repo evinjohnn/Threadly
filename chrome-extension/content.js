@@ -1381,6 +1381,28 @@
             };
         }
 
+        // Listen for refined prompt events to start implicit feedback tracking
+        window.addEventListener('threadly-prompt-refined', (e) => {
+            try {
+                const detail = e && e.detail ? e.detail : {};
+                const originalText = detail.originalText || '';
+                const refinedText = detail.refinedText || '';
+                const activeElement = document.activeElement;
+                if (!activeElement) {
+                    return;
+                }
+                // Start tracking edits the user makes after the refined prompt is inserted
+                implicitFeedbackTracker.startTracking(
+                    activeElement,
+                    originalText,
+                    refinedText || activeElement.value || activeElement.textContent || activeElement.innerText || ''
+                );
+                console.log('Threadly: Implicit feedback tracking started after refinement');
+            } catch (err) {
+                console.error('Threadly: Failed to start implicit feedback tracking:', err);
+            }
+        });
+
         // Enhanced Ctrl+Z handler for all websites
         function setupCtrlZHandler() {
             // Remove any existing handler
@@ -9627,7 +9649,7 @@
                         font-size: 11px;
                         text-align: center;
                     ">Buy me a coffee</a>
-                    <a href="https://github.com/evin/Threadly" target="_blank" class="threadly-popup-button" style="
+                    <a href="https://github.com/evinjohnn/Threadly" target="_blank" class="threadly-popup-button" style="
                         background: rgba(255, 255, 255, 0.08);
                         color: #ffffff;
                         text-decoration: none;
@@ -9648,7 +9670,7 @@
 
         // Add event listeners
         const closeBtn = popup.querySelector('#threadly-popup-close');
-        const starRepoLink = popup.querySelector('a[href="https://github.com/evin/Threadly"]');
+        const starRepoLink = popup.querySelector('a[href="https://github.com/evinjohnn/Threadly"]');
         let isConfirmationMode = false;
 
         const removePopup = () => {
@@ -9735,7 +9757,7 @@
             
             freshCloseBtn.addEventListener('click', removePopup);
             confirmStarBtn.addEventListener('click', () => {
-                window.open('https://github.com/evin/Threadly', '_blank');
+                window.open('https://github.com/evinjohnn/Threadly', '_blank');
                 removePopup();
             });
             confirmDonateBtn.addEventListener('click', () => {

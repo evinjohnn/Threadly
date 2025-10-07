@@ -297,29 +297,23 @@ class PromptRefiner {
 
     // Detect undo action and show feedback modal
     async detectUndoAndCollectFeedback(currentText) {
-        // Check if user has undone the refinement (text matches original prompt)
         if (this.lastOriginalPrompt && 
             this.lastRefinedPrompt && 
             this.lastTriageResult &&
             currentText.trim() === this.lastOriginalPrompt.trim() &&
             currentText.trim() !== this.lastRefinedPrompt.trim()) {
-            
             console.log('Threadly: Undo detected - showing feedback modal');
-            
-            // Show feedback modal
             return this.showFeedbackModal(
                 this.lastOriginalPrompt,
                 this.lastTriageResult.primaryCategory
             );
         }
-        
         return null;
     }
 
     // Show feedback modal to collect user correction
     showFeedbackModal(originalPrompt, predictedCategory) {
         return new Promise((resolve) => {
-            // Create modal overlay
             const overlay = document.createElement('div');
             overlay.style.cssText = `
                 position: fixed;
@@ -335,7 +329,6 @@ class PromptRefiner {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             `;
 
-            // Create modal content
             const modal = document.createElement('div');
             modal.style.cssText = `
                 background: rgba(40, 40, 40, 0.5);
@@ -353,145 +346,45 @@ class PromptRefiner {
             modal.innerHTML = `
                 <style>
                     @keyframes slideIn {
-                        from {
-                            opacity: 0;
-                            transform: translateY(-20px);
-                        }
-                        to {
-                            opacity: 1;
-                            transform: translateY(0);
-                        }
+                        from { opacity: 0; transform: translateY(-20px); }
+                        to { opacity: 1; transform: translateY(0); }
                     }
-                    .threadly-feedback-title {
-                        font-size: 24px;
-                        font-weight: 700;
-                        color: #ffffff;
-                        margin-bottom: 12px;
-                    }
-                    .threadly-feedback-subtitle {
-                        font-size: 14px;
-                        color: #e5e5e5;
-                        margin-bottom: 24px;
-                        line-height: 1.5;
-                    }
-                    .threadly-feedback-prompt {
-                        background: rgba(255, 255, 255, 0.1);
-                        padding: 16px;
-                        border-radius: 8px;
-                        font-size: 13px;
-                        color: #ffffff;
-                        margin-bottom: 20px;
-                        max-height: 100px;
-                        overflow-y: auto;
-                        border-left: 4px solid #6366f1;
-                    }
-                    .threadly-feedback-predicted {
-                        font-size: 13px;
-                        color: #e5e5e5;
-                        margin-bottom: 16px;
-                        padding: 12px;
-                        background: rgba(255, 193, 7, 0.1);
-                        border-radius: 6px;
-                        border-left: 3px solid #fbbf24;
-                    }
-                    .threadly-category-grid {
-                        display: grid;
-                        grid-template-columns: repeat(2, 1fr);
-                        gap: 12px;
-                        margin-bottom: 24px;
-                    }
-                    .threadly-category-btn {
-                        padding: 16px;
-                        border: 2px solid rgba(255, 255, 255, 0.2);
-                        border-radius: 10px;
-                        background: rgba(255, 255, 255, 0.1);
-                        cursor: pointer;
-                        transition: all 0.2s;
-                        font-size: 14px;
-                        font-weight: 500;
-                        color: #ffffff;
-                        text-align: left;
-                    }
-                    .threadly-category-btn:hover {
-                        border-color: #6366f1;
-                        background: rgba(99, 102, 241, 0.2);
-                        transform: translateY(-2px);
-                    }
-                    .threadly-category-btn.selected {
-                        border-color: #6366f1;
-                        background: #6366f1;
-                        color: white;
-                    }
-                    .threadly-actions {
-                        display: flex;
-                        gap: 12px;
-                        margin-top: 24px;
-                    }
-                    .threadly-btn {
-                        flex: 1;
-                        padding: 14px;
-                        border-radius: 10px;
-                        border: none;
-                        font-size: 15px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        transition: all 0.2s;
-                    }
-                    .threadly-btn-skip {
-                        background: rgba(255, 255, 255, 0.1);
-                        color: #e5e5e5;
-                    }
-                    .threadly-btn-skip:hover {
-                        background: rgba(255, 255, 255, 0.2);
-                    }
-                    .threadly-btn-submit {
-                        background: #6366f1;
-                        color: white;
-                    }
-                    .threadly-btn-submit:hover {
-                        background: #4f46e5;
-                        transform: translateY(-1px);
-                        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-                    }
-                    .threadly-btn-submit:disabled {
-                        background: #c7c7c7;
-                        cursor: not-allowed;
-                        transform: none;
-                    }
+                    .threadly-feedback-title { font-size: 24px; font-weight: 700; color: #ffffff; margin-bottom: 12px; }
+                    .threadly-feedback-subtitle { font-size: 14px; color: #e5e5e5; margin-bottom: 24px; line-height: 1.5; }
+                    .threadly-feedback-prompt { background: rgba(255, 255, 255, 0.1); padding: 16px; border-radius: 8px; font-size: 13px; color: #ffffff; margin-bottom: 20px; max-height: 100px; overflow-y: auto; border-left: 4px solid #6366f1; }
+                    .threadly-feedback-predicted { font-size: 13px; color: #e5e5e5; margin-bottom: 16px; padding: 12px; background: rgba(255, 193, 7, 0.1); border-radius: 6px; border-left: 3px solid #fbbf24; }
+                    .threadly-category-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
+                    .threadly-category-btn { padding: 16px; border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 10px; background: rgba(255, 255, 255, 0.1); cursor: pointer; transition: all 0.2s; font-size: 14px; font-weight: 500; color: #ffffff; text-align: left; }
+                    .threadly-category-btn:hover { border-color: #6366f1; background: rgba(99, 102, 241, 0.2); transform: translateY(-2px); }
+                    .threadly-category-btn.selected { border-color: #6366f1; background: #6366f1; color: white; }
+                    .threadly-actions { display: flex; gap: 12px; margin-top: 24px; }
+                    .threadly-btn { flex: 1; padding: 14px; border-radius: 10px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+                    .threadly-btn-skip { background: rgba(255, 255, 255, 0.1); color: #e5e5e5; }
+                    .threadly-btn-skip:hover { background: rgba(255, 255, 255, 0.2); }
+                    .threadly-btn-submit { background: #6366f1; color: white; }
+                    .threadly-btn-submit:hover { background: #4f46e5; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+                    .threadly-btn-submit:disabled { background: #c7c7c7; cursor: not-allowed; transform: none; }
                 </style>
                 <div class="threadly-feedback-title">🤔 Help Threadly Learn</div>
-                <div class="threadly-feedback-subtitle">
-                    You undid the refinement. What category did you expect?
-                </div>
+                <div class="threadly-feedback-subtitle">You undid the refinement. What category did you expect?</div>
                 <div class="threadly-feedback-prompt">"${originalPrompt.substring(0, 150)}${originalPrompt.length > 150 ? '...' : ''}"</div>
-                <div class="threadly-feedback-predicted">
-                    <strong>Threadly predicted:</strong> ${this.getCategoryDisplayName(predictedCategory)}
-                </div>
+                <div class="threadly-feedback-predicted"><strong>Threadly predicted:</strong> ${this.getCategoryDisplayName(predictedCategory)}</div>
                 <div class="threadly-category-grid">
-                    <button class="threadly-category-btn" data-category="grammar_spelling">
-                        Grammar & Spelling
-                    </button>
-                    <button class="threadly-category-btn" data-category="image_generation">
-                        Image Generation
-                    </button>
-                    <button class="threadly-category-btn" data-category="coding">
-                        Coding
-                    </button>
-                    <button class="threadly-category-btn" data-category="research_analysis">
-                        Research
-                    </button>
-                    <button class="threadly-category-btn" data-category="content_creation">
-                        Content Writing
-                    </button>
-                    <button class="threadly-category-btn" data-category="general">
-                        General Chat
-                    </button>
+                    <button class="threadly-category-btn" data-category="grammar_spelling">Grammar & Spelling</button>
+                    <button class="threadly-category-btn" data-category="image_generation">Image Generation</button>
+                    <button class="threadly-category-btn" data-category="coding">Coding</button>
+                    <button class="threadly-category-btn" data-category="research_analysis">Research</button>
+                    <button class="threadly-category-btn" data-category="content_creation">Content Writing</button>
+                    <button class="threadly-category-btn" data-category="personal_support">Personal Support</button>
+                    <button class="threadly-category-btn" data-category="learning">Learning</button>
+                    <button class="threadly-category-btn" data-category="technical_assistance">Technical Assistance</button>
+                    <button class="threadly-category-btn" data-category="creativity">Creativity</button>
+                    <button class="threadly-category-btn" data-category="general">General Chat</button>
                 </div>
                 <div class="threadly-actions">
                     <button class="threadly-btn threadly-btn-skip">Skip</button>
                     <button class="threadly-btn threadly-btn-submit" disabled>Submit Feedback</button>
-                </div>
-            `;
+                </div>`;
 
             overlay.appendChild(modal);
             document.body.appendChild(overlay);
@@ -499,41 +392,33 @@ class PromptRefiner {
             let selectedCategory = null;
             const submitBtn = modal.querySelector('.threadly-btn-submit');
 
-            // Handle category selection
             modal.querySelectorAll('.threadly-category-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    modal.querySelectorAll('.threadly-category-btn').forEach(b => 
-                        b.classList.remove('selected')
-                    );
+                    modal.querySelectorAll('.threadly-category-btn').forEach(b => b.classList.remove('selected'));
                     btn.classList.add('selected');
                     selectedCategory = btn.dataset.category;
                     submitBtn.disabled = false;
                 });
             });
 
-            // Handle skip button
             modal.querySelector('.threadly-btn-skip').addEventListener('click', () => {
                 document.body.removeChild(overlay);
                 resolve(null);
             });
 
-            // Handle submit button
             submitBtn.addEventListener('click', async () => {
                 if (selectedCategory) {
-                    // Add feedback example
                     await this.addFeedbackExample(
                         originalPrompt,
                         predictedCategory,
                         selectedCategory,
                         'User correction via undo feedback'
                     );
-                    
                     document.body.removeChild(overlay);
                     resolve(selectedCategory);
                 }
             });
 
-            // Handle overlay click (close)
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
                     document.body.removeChild(overlay);
@@ -551,6 +436,10 @@ class PromptRefiner {
             'coding': '💻 Coding',
             'research_analysis': '🔍 Research',
             'content_creation': '📝 Content Writing',
+            'personal_support': '💙 Personal Support',
+            'learning': '📚 Learning',
+            'technical_assistance': '🛠️ Technical Assistance',
+            'creativity': '🎭 Creativity',
             'general': '💬 General Chat'
         };
         return names[category] || category;
@@ -567,12 +456,7 @@ class PromptRefiner {
                 source: source,
                 confidence: this.lastTriageResult?.confidence || 0.5
             };
-
-            const response = await chrome.runtime.sendMessage({
-                action: 'storeFeedback',
-                feedback: feedback
-            });
-
+            const response = await chrome.runtime.sendMessage({ action: 'storeFeedback', feedback: feedback });
             if (response && response.success) {
                 console.log('Threadly: Feedback stored successfully', feedback);
             } else {
@@ -582,6 +466,7 @@ class PromptRefiner {
             console.error('Threadly: Error storing feedback:', error);
         }
     }
+    // Removed unreachable undo modal and related helpers
 
     // Triage AI: Two-stage hybrid approach for context analysis
     async analyzeContext(userPrompt) {
@@ -1279,20 +1164,6 @@ IMPORTANT: Return ONLY the refined prompt text. Do not include any labels, heade
 - Include context about historical period, geographical location, and cultural factors
 - Ask for specific examples, case studies, or primary sources when relevant`,
 
-            'personal_support': `
-- Be genuinely empathetic and understanding of their emotional state
-- Listen to what the user is really going through without judgment
-- Provide specific, actionable advice that helps them move forward
-- Offer step-by-step guidance that feels supportive and manageable
-- Consider their unique situation, constraints, and personal context
-- Suggest professional help when it would genuinely benefit them
-- Include self-care strategies and coping mechanisms when appropriate
-- Respect their autonomy while offering gentle guidance
-- Ask clarifying questions to better understand their needs and goals
-- Provide resources, tools, or techniques that match their situation
-- Consider timeline and urgency of their needs
-- Include follow-up suggestions and ways to track progress`,
-
             'content_creation': `
 - Understand what the user is really trying to communicate and their core message
 - Help them connect with their intended audience (demographics, interests, pain points)
@@ -1308,47 +1179,61 @@ IMPORTANT: Return ONLY the refined prompt text. Do not include any labels, heade
 - Suggest distribution channels and promotion strategies
 - Add metrics and success criteria for measuring content performance`,
 
+            'personal_support': `
+            - Be genuinely empathetic and understanding of their emotional state
+            - Listen to what the user is really going through without judgment
+            - Provide specific, actionable advice that helps them move forward
+            - Offer step-by-step guidance that feels supportive and manageable
+            - Consider their unique situation, constraints, and personal context
+            - Suggest professional help when it would genuinely benefit them
+            - Include self-care strategies and coping mechanisms when appropriate
+            - Respect their autonomy while offering gentle guidance
+            - Ask clarifying questions to better understand their needs and goals
+            - Provide resources, tools, or techniques that match their situation
+            - Consider timeline and urgency of their needs
+            - Include follow-up suggestions and ways to track progress`,
+
             'learning': `
-- Understand what the user is really trying to learn and their learning objectives
-- Break down complex concepts into digestible, logical steps
-- Use analogies and examples that resonate with their experience and background
-- Provide practice opportunities, exercises, and real-world applications
-- Consider their current knowledge level (beginner/intermediate/advanced) and learning style
-- Include visual aids, diagrams, and multimedia resources when they help understanding
-- Suggest learning paths and progression from basic to advanced concepts
-- Include assessment methods to test comprehension and retention
-- Provide additional resources: books, courses, tutorials, and expert sources
-- Consider different learning modalities: visual, auditory, kinesthetic, reading/writing
-- Include time estimates and realistic learning schedules
-- Suggest ways to apply knowledge practically and build portfolio projects`,
+            - Understand what the user is really trying to learn and their learning objectives
+            - Break down complex concepts into digestible, logical steps
+            - Use analogies and examples that resonate with their experience and background
+            - Provide practice opportunities, exercises, and real-world applications
+            - Consider their current knowledge level (beginner/intermediate/advanced) and learning style
+            - Include visual aids, diagrams, and multimedia resources when they help understanding
+            - Suggest learning paths and progression from basic to advanced concepts
+            - Include assessment methods to test comprehension and retention
+            - Provide additional resources: books, courses, tutorials, and expert sources
+            - Consider different learning modalities: visual, auditory, kinesthetic, reading/writing
+            - Include time estimates and realistic learning schedules
+            - Suggest ways to apply knowledge practically and build portfolio projects`,
 
             'technical_assistance': `
-- Understand what the user is really trying to accomplish and their end goal
-- Provide clear, step-by-step instructions that are easy to follow
-- Include safety precautions and warnings to protect them from harm or data loss
-- Ask for relevant system details: OS, software versions, hardware specifications
-- Offer alternative solutions and workarounds that work for their specific situation
-- Include prevention tips and best practices to avoid future issues
-- Provide troubleshooting steps for common problems they might encounter
-- Include backup and recovery procedures when dealing with important data
-- Suggest tools, software, or resources that can help with their technical needs
-- Consider their technical skill level and adjust complexity accordingly
-- Include verification steps to confirm solutions are working properly
-- Provide contact information for professional help when needed`,
+            - Understand what the user is really trying to accomplish and their end goal
+            - Provide clear, step-by-step instructions that are easy to follow
+            - Include safety precautions and warnings to protect them from harm or data loss
+            - Ask for relevant system details: OS, software versions, hardware specifications
+            - Offer alternative solutions and workarounds that work for their specific situation
+            - Include prevention tips and best practices to avoid future issues
+            - Provide troubleshooting steps for common problems they might encounter
+            - Include backup and recovery procedures when dealing with important data
+            - Suggest tools, software, or resources that can help with their technical needs
+            - Consider their technical skill level and adjust complexity accordingly
+            - Include verification steps to confirm solutions are working properly
+            - Provide contact information for professional help when needed`,
 
             'creativity': `
-- Understand what the user is really trying to create or express artistically
-- Encourage their unique perspective and original ideas without judgment
-- Offer multiple creative options and variations that serve their vision
-- Help them find inspiration from diverse sources that resonate with their goals
-- Include helpful constraints that actually enhance their creative process
-- Suggest ways to develop and iterate on their ideas that feel natural and exciting
-- Consider the medium, audience, and purpose of their creative work
-- Include techniques for overcoming creative blocks and generating new ideas
-- Suggest collaboration opportunities and feedback mechanisms
-- Provide resources for skill development and artistic growth
-- Include ways to document and showcase their creative process and results
-- Consider commercial vs. personal creative goals and adjust accordingly`,
+            - Understand what the user is really trying to create or express artistically
+            - Encourage their unique perspective and original ideas without judgment
+            - Offer multiple creative options and variations that serve their vision
+            - Help them find inspiration from diverse sources that resonate with their goals
+            - Include helpful constraints that actually enhance their creative process
+            - Suggest ways to develop and iterate on their ideas that feel natural and exciting
+            - Consider the medium, audience, and purpose of their creative work
+            - Include techniques for overcoming creative blocks and generating new ideas
+            - Suggest collaboration opportunities and feedback mechanisms
+            - Provide resources for skill development and artistic growth
+            - Include ways to document and showcase their creative process and results
+            - Consider commercial vs. personal creative goals and adjust accordingly`,
             
             'image_generation': `
 - Understand what visual concept the user wants to create or modify

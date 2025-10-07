@@ -741,7 +741,7 @@
                         break;
                 }
 
-                // Replace text in the input
+                        // Replace text in the input
                 if (refinedPrompt) {
                     if (textArea.tagName === 'TEXTAREA') {
                         textArea.value = refinedPrompt;
@@ -755,8 +755,25 @@
                     
                     console.log('Threadly: Prompt refined successfully with triage AI');
                     
-                    // Stop sparkle breathing animation when result is replaced
+                            // Stop sparkle breathing animation when result is replaced
                     stopClickAnimationSequence(sparkleElement);
+                            // Attach undo feedback detection on the same input
+                            try {
+                                const attachUndoListener = (el, refiner) => {
+                                    if (!el || !refiner) return;
+                                    let undoDebounce;
+                                    const handler = async () => {
+                                        clearTimeout(undoDebounce);
+                                        undoDebounce = setTimeout(async () => {
+                                            const txt = el.value || el.textContent || el.innerText || '';
+                                            try { await refiner.detectUndoAndCollectFeedback(txt); } catch (e) { /* noop */ }
+                                        }, 150);
+                                    };
+                                    el.removeEventListener('input', handler);
+                                    el.addEventListener('input', handler);
+                                };
+                                attachUndoListener(textArea, promptRefiner);
+                            } catch (_) {}
                 } else {
                     // Stop animation even if no result (error case)
                     stopClickAnimationSequence(sparkleElement);
